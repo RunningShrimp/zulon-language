@@ -1,0 +1,175 @@
+// Zulon P0 minimal-subset sample (design v2.2)
+// Goal: short, compile-like, review-friendly. Avoids P1/P2 features.
+// Demonstrates: start/main, T?, ?. / ??, T ! E, ?, ADT+match, effects+handlers,
+// region, share(x) freeze to shared, task::scope/spawn/spawn_detached, actor.
+
+// ----- Domain types -----
+
+enum IoError { NotFound, Permission, Other(String) }
+
+enum NetError { Timeout, Dns, Other(String) }
+
+enum AppError {
+  Io(IoError),
+  Net(NetError),
+  BadRequest,
+}
+
+struct Config {
+  name: String,
+  endpoint: Url,
+  retries: i32,
+}
+
+struct Request {
+  user_id: i64?,
+  token: String?,
+}
+
+struct Response {
+  status: i32,
+  body: String,
+}
+
+// ----- Effects (P0: effects set) -----
+
+effect IO {
+  fn read(path: Path) -> Bytes ! IoError;
+  fn write(path: Path, data: Bytes) -> usize ! IoError;
+}
+
+effect Net {
+  fn get(u: Url) -> Bytes ! NetError;
+}
+
+effect Retry {
+  fn should_retry(attempt: i32, err: String) -> bool;
+}
+
+// ----- Business logic (P0 primitives) -----
+
+fn parse_config(text: String) -> Config ! AppError {
+  // Minimal parser: expect "name=...;endpoint=...;retries=N".
+  // In a real compiler/runtime, this would likely live in ext::json with effects.
+  let name = parse_field(text, "name") ?? return Err(AppError::BadRequest);
+  let endpoint_s = parse_field(text, "endpoint") ?? return Err(AppError::BadRequest);
+  let retries_s = parse_field(text, "retries") ?? "3";
+
+  let endpoint: Url = Url::parse(endpoint_s).map_err(|_| AppError::BadRequest)?;
+  let retries: i32 = i32::parse(retries_s).map_err(|_| AppError::BadRequest)?;
+
+  return Ok(Config { name, endpoint, retries });
+}
+
+fn parse_field(text: String, key: String) -> String? {
+  // very small, deliberately naive
+  // returns null if not found
+  let pat = key + "=";
+  let i = text.find(pat);
+  if i < 0 { return null; }
+  let rest = text.slice(i + pat.len(), text.len());
+  let j = rest.find(";");
+  if j < 0 { return rest; }
+  return rest.slice(0, j);
+}
+
+fn auth(req: Request) -> i64 ! AppError {
+  let t = req.token ?? return Err(AppError::BadRequest);
+  if t.len() == 0 { return Err(AppError::BadRequest); }
+
+  let uid = req.user_id ?? return Err(AppError::BadRequest);
+  return Ok(uid);
+}
+
+fn handle_request(req: Request) -> Response ! AppError {
+  // region: request-scoped allocations
+  region req_scope {
+    let uid = auth(req)?;
+    let body = "hello uid=" + uid.to_string();
+    return Ok(Response { status: 200, body });
+  }
+}
+
+fn fetch(u: Url) -> Bytes ! NetError performs Net + Retry {
+  let mut attempt = 0;
+  loop {
+    attempt += 1;
+    match do Net::get(u) {
+      case Ok(b) => return Ok(b),
+      case Err(e) => {
+        if do Retry::should_retry(attempt, e.to_string()) { continue; }
+        return Err(e);
+      }
+    }
+  }
+}
+
+fn freeze_config(cfg: Config) -> shared Config {
+  // share(x): deep-freeze + promote to shared (P0)
+  return share(cfg);
+}
+
+actor Counter {
+  state n: i64
+
+  fn inc(self, by: i64) -> i64 {
+    self.n = self.n + by;
+    return self.n;
+  }
+}
+
+fn run(cfg_text: String, req: Request) -> Response ! AppError performs IO + Net + Retry {
+  let cfg = parse_config(cfg_text)?;
+  let cfg = freeze_config(cfg);
+
+  let _ = do IO::write("/tmp/zulon.log", ("boot " + cfg.name).bytes())
+    .map_err(|e| AppError::Io(e))?;
+
+  // Structured concurrency: do two parallel fetches and then handle request.
+  return task::scope {
+    let counter = Counter { n: 0 };
+
+    let h1 = task::spawn { fetch(cfg.endpoint) };
+    let h2 = task::spawn { fetch(cfg.endpoint) };
+
+    let resp = handle_request(req)?;
+
+    // awaiting here makes the scope deterministic; failures propagate via ?
+    let _b1 = h1.await.map_err(|e| AppError::Net(e))?;
+    let _b2 = h2.await.map_err(|e| AppError::Net(e))?;
+
+    let _ = counter.inc(1);
+
+    return resp;
+  };
+}
+
+// ----- Entrypoints -----
+
+fn start() ! AppError {
+  let cfg_text = "name=demo;endpoint=https://example.com;retries=3";
+  let req = Request { user_id: 1, token: "t" };
+
+  // Non-structured task must be explicit and must be consumed.
+  let bg = task::spawn_detached { Ok(()) };
+  let _ = bg.await;
+
+  let resp = handle run(cfg_text, req) {
+    // IO handler (runtime-provided)
+    case IO::read(p) => resume(io_runtime::read(p)),
+    case IO::write(p, b) => resume(io_runtime::write(p, b)),
+
+    // Net handler (runtime-provided)
+    case Net::get(u) => resume(net_runtime::get(u)),
+
+    // Retry policy: cap attempts (here fixed to 3 for P0 simplicity)
+    case Retry::should_retry(attempt, err) => resume(attempt < 3),
+  };
+
+  println(resp.body);
+  return Ok(());
+}
+
+fn main() ! AppError {
+  return start()?;
+}

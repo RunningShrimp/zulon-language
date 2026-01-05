@@ -371,12 +371,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "simd"
-version = "0.2.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0e4d15397136bb64ab58a037f139f2d8bac3e5051aab31eaa109a57b1987429c"
-
-[[package]]
 name = "smallvec"
 version = "1.15.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -521,6 +515,10 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "589f6da84c646204747d1270a2a5661ea66ed1cced2631d546fdfb155959f9ec"
 
 [[package]]
+name = "zulon-compiler"
+version = "0.1.0"
+
+[[package]]
 name = "zulon-language"
 version = "0.1.0"
 dependencies = [
@@ -531,5 +529,4 @@ dependencies = [
  "cranelift-jit",
  "cranelift-module",
  "cranelift-native",
- "simd",
 ]
