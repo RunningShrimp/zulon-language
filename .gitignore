@@ -1,6 +1,9 @@
 # 构建产物
 /target/
 /target-*/
+# 构建产物
+/target/
+/target-*/
 **/*.rs.bk
 *.pdb
 
@@ -34,3 +37,5 @@ crates/zulon-tests-fuzz/corpus/
 *.tmp
 *.log
 *~
+**/target/**
+.claude/*
