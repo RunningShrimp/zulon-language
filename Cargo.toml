@@ -1,3 +1,88 @@
 [workspace]
 resolver = "2"
-members = ["crates/zulon-language", "crates/zulon-compiler"]
+members = [
+    # 编译器前端
+    "crates/zulon-parser",
+    "crates/zulon-resolver",
+    "crates/zulon-typeck",
+    "crates/zulon-mir",
+    "crates/zulon-air",
+    
+    # 代码生成后端
+    "crates/zulon-codegen-llvm",
+    "crates/zulon-codegen-cranelift",
+    "crates/zulon-codegen-wasm",
+    "crates/zulon-codegen-jvm",
+    "crates/zulon-codegen-js",
+    "crates/zulon-codegen-rust",
+    
+    # 运行时
+    "crates/zulon-runtime-core",
+    "crates/zulon-runtime-memory",
+    "crates/zulon-runtime-scheduler",
+    "crates/zulon-runtime-effect",
+    "crates/zulon-runtime-actor",
+    "crates/zulon-runtime-io",
+    "crates/zulon-runtime-net",
+    
+    # 标准库
+    "crates/zulon-std-core",
+    "crates/zulon-std-std",
+    
+    # 扩展库
+    "crates/zulon-ext-serde",
+    "crates/zulon-ext-test",
+    "crates/zulon-ext-bench",
+    
+    # 工具链
+    "crates/zulon-tools-yan",
+    "crates/zulon-tools-lsp",
+    "crates/zulon-tools-vet",
+    "crates/zulon-tools-fmt",
+    "crates/zulon-tools-repl",
+    "crates/zulon-tools-profile",
+    
+    # 测试
+    "crates/zulon-tests-unit",
+    "crates/zulon-tests-integration",
+    "crates/zulon-tests-benchmarks",
+    "crates/zulon-tests-fuzz",
+    
+    # 其他
+    "crates/zulon-build",
+    "crates/zulon-ci",
+]
+
+# 默认成员（快速构建）
+default-members = [
+    "crates/zulon-tools-yan",
+    "crates/zulon-std-core",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+authors = ["ZULON Language Team"]
+license = "Apache-2.0 OR MIT"
+repository = "https://github.com/zulon-lang/zulon"
+homepage = "https://zulon-lang.org"
+
+# NOTE: Removed `[workspace.dependencies]` from this virtual manifest because
+# virtual workspace manifests must not specify a `dependencies` table.
+# Move crate-specific (and optional) dependencies into each member crate's
+# `Cargo.toml` (e.g., `crates/zulon-parser/Cargo.toml`) as needed.
+
+[profile.dev]
+opt-level = 0
+debug = true
+debug-assertions = true
+
+[profile.release]
+opt-level = 3
+debug = false
+lto = true
+codegen-units = 1
+
+[profile.bench]
+inherits = "release"
+debug = true

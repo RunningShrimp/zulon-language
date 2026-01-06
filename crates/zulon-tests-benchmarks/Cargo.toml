@@ -1,0 +1,12 @@
+[package]
+name = "zulon-tests-benchmarks"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+yan = { path = "../zulon-tools-yan" }
+criterion = "0.5"
+
+[[bench]]
+name = "compiler_bench"
+harness = false

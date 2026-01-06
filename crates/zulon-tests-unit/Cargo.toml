@@ -1,0 +1,7 @@
+[package]
+name = "zulon-tests-unit"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+zulon-ext-test = { path = "../zulon-ext-test" }

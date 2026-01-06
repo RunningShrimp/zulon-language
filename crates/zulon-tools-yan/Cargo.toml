@@ -1,0 +1,17 @@
+[package]
+name = "yan"
+version.workspace = true
+edition.workspace = true
+description = "ZULON Unified Toolchain"
+
+[[bin]]
+name = "yan"
+path = "src/main.rs"
+
+[dependencies]
+zulon-parser = { path = "../zulon-parser" }
+zulon-resolver = { path = "../zulon-resolver" }
+zulon-codegen-llvm = { path = "../zulon-codegen-llvm" }
+zulon-std-std = { path = "../zulon-std-std" }
+clap = { version = "4.4", features = ["derive"] }
+anyhow = { workspace = true }

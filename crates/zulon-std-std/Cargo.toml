@@ -1,0 +1,10 @@
+[package]
+name = "zulon-std-std"
+version.workspace = true
+edition.workspace = true
+description = "ZULON Standard Library"
+
+[dependencies]
+zulon-std-core = { path = "../zulon-std-core" }
+zulon-runtime-effect = { path = "../zulon-runtime-effect" }
+zulon-runtime-io = { path = "../zulon-runtime-io" }

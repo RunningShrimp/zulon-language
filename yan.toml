@@ -1,0 +1,21 @@
+[workspace]
+root = "."
+
+[profile.dev]
+opt-level = 0
+incremental = true
+
+[profile.release]
+opt-level = "speed"
+lto = true
+strip = true
+
+[profile.test]
+opt-level = 1
+
+[registry]
+default = "crates-io"
+
+[build]
+jobs = 0  # 使用所有 CPU
+target-dir = "target"

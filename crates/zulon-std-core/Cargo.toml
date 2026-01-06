@@ -1,0 +1,10 @@
+[package]
+name = "zulon-std-core"
+version.workspace = true
+edition.workspace = true
+description = "ZULON Core Library (no_std)"
+
+[features]
+default = []
+
+[dependencies]

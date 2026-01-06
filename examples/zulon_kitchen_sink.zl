@@ -1,11 +1,7 @@
-// Zulon P0 极简示例（design v2.2）
-// 目标：像 Go/Python 一样“顺着读就懂”，只展示最常用的 P0 语义入口：
-// - `T?` / `??`：空安全与默认值
-// - `T ! E` / `?`：显式错误与传播
-// - `effect` + `handle/resume`：把 I/O 与网络能力注入到业务逻辑
-// - `region { ... }`：请求级临时分配作用域
-// - `share(x)`：冻结为 `shared`，可安全跨任务共享读取
-// - `task::scope` + `task::spawn`：结构化并发（子任务不逃逸）
+// Zulon 可读性优先示例（design v2.2）
+// 目标：一份“稍完整但不吓人”的样例——像 Go/Python 一样按顺序读。
+// 保留核心：effects+handlers、T?/??、T!E/?、region、share、task::scope。
+// 刻意不展示：trait/const 泛型、SIMD、列表推导/管道、dynamic/cast、复杂 ADT。
 
 // ----- Errors / Domain -----
 
@@ -22,6 +18,7 @@ enum AppError {
 struct Config {
   name: str,
   endpoint: Url,
+  retries: i32,
 }
 
 struct Request {
@@ -44,38 +41,44 @@ effect Net {
   fn get(u: Url) -> Bytes ! NetError;
 }
 
-// ----- Small helpers (读起来像脚本) -----
+// ----- Parsing / Validation -----
 
 fn parse_field(text: str, key: str) -> str? {
-  // 很小的解析：找不到就返回 null，让调用者用 `??` 决定如何处理。
   let pat = key + "=";
   let i = text.find(pat);
   if i < 0 { return null; }
-
   let rest = text.slice(i + pat.len(), text.len());
   let j = rest.find(";");
   if j < 0 { return rest; }
   return rest.slice(0, j);
 }
 
+fn parse_i32(text: str) -> i32? {
+  // 这是示例：把“可能解析失败”写成可空返回，让调用方用 `??` 决定默认值。
+  match i32::parse(text) {
+    case Ok(v) => v,
+    case Err(_) => null,
+  }
+}
+
 fn parse_config(text: str)
   -> Config
   | throws AppError {
-  // 约定输入："name=...;endpoint=..."。
   let name = parse_field(text, "name") ?? return Err(AppError::BadRequest);
   let endpoint_s = parse_field(text, "endpoint") ?? return Err(AppError::BadRequest);
+  let retries_s = parse_field(text, "retries") ?? "3";
 
   let endpoint: Url = Url::parse(endpoint_s).map_err(|_| AppError::BadRequest)?;
-  return Ok(Config { name, endpoint });
+  let retries: i32 = parse_i32(retries_s) ?? 3;
+
+  return Ok(Config { name, endpoint, retries });
 }
 
 fn auth(req: Request)
   -> i64
   | throws AppError {
-  // `?? return Err(...)`：缺字段就早退（可读性接近脚本语言的 guard）。
   let t = req.token ?? return Err(AppError::BadRequest);
   if t.len() == 0 { return Err(AppError::BadRequest); }
-
   let uid = req.user_id ?? return Err(AppError::BadRequest);
   return Ok(uid);
 }
@@ -83,7 +86,7 @@ fn auth(req: Request)
 fn handle_request(req: Request)
   -> Response
   | throws AppError {
-  // region：请求级临时对象集中在作用域内，退出后可整体回收。
+  // region：把“请求处理过程中的临时分配”收敛在一个作用域里。
   region req_scope {
     let uid = auth(req)?;
     let body = "hello uid=" + uid.to_string();
@@ -91,33 +94,56 @@ fn handle_request(req: Request)
   }
 }
 
-fn fetch(u: Url)
+// ----- Networking -----
+
+fn fetch_once(u: Url)
   -> Bytes
   | throws NetError
   | uses Net {
-  // `do Net::get`：业务只声明“我要网络能力”，具体实现由 `handle` 注入。
   return do Net::get(u);
 }
+
+fn fetch_with_retry(u: Url, retries: i32)
+  -> Bytes
+  | throws NetError
+  | uses Net {
+  // 更像“脚本语言的直觉写法”：用显式参数表达策略，而不是再引入一个 Retry effect。
+  let mut attempt = 0;
+  loop {
+    attempt += 1;
+    match fetch_once(u) {
+      case Ok(b) => return Ok(b),
+      case Err(e) => {
+        if attempt >= retries { return Err(e); }
+        continue;
+      }
+    }
+  }
+}
+
+// ----- App -----
 
 fn run(cfg_text: str, req: Request)
   -> Response
   | throws AppError
   | uses IO + Net {
   let cfg = parse_config(cfg_text)?;
-  let cfg = share(cfg); // 冻结为 shared：可以安全地被并发任务读取
+  let cfg = share(cfg);
 
   let _ = do IO::write("/tmp/zulon.log", ("boot " + cfg.name).bytes())
     .map_err(|e| AppError::Io(e))?;
 
-  // task::scope：结构化并发作用域；子任务必须在 scope 结束前 join/await。
   return task::scope {
-    let h1 = task::spawn { fetch(cfg.endpoint).map_err(|e| AppError::Net(e)) };
-    let h2 = task::spawn { fetch(cfg.endpoint).map_err(|e| AppError::Net(e)) };
+    // 并发部分只做一件事：并行拉取两个资源，然后继续顺序业务逻辑。
+    let h1 = task::spawn {
+      fetch_with_retry(cfg.endpoint, cfg.retries).map_err(|e| AppError::Net(e))
+    };
+    let h2 = task::spawn {
+      fetch_with_retry(cfg.endpoint, cfg.retries).map_err(|e| AppError::Net(e))
+    };
 
-    // 业务逻辑仍然是“顺序写法”
     let resp = handle_request(req)?;
 
-    // 明确 await：让并发收敛为确定性（不会留下隐形后台任务）
     let _ = h1.await?;
     let _ = h2.await?;
 
@@ -128,11 +154,9 @@ fn run(cfg_text: str, req: Request)
 // ----- Entrypoints -----
 
 fn start() throws AppError {
-  // 这里用“键值对字符串”避免引入 JSON/dynamic，让示例更直观。
-  let cfg_text = "name=demo;endpoint=https://example.com";
+  let cfg_text = "name=demo;endpoint=https://example.com;retries=3";
   let req = Request { user_id: 1, token: "t" };
 
-  // handle：为 run() 所需 effect 提供实现（通常由 runtime/宿主提供）。
   let resp = handle run(cfg_text, req) {
     case IO::write(p, b) => resume(io_runtime::write(p, b)),
     case Net::get(u) => resume(net_runtime::get(u)),
@@ -146,4 +170,4 @@ fn main() throws AppError {
   start()?;
   return Ok(());
 }
- 
+

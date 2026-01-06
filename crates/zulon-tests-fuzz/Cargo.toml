@@ -1,0 +1,11 @@
+[package]
+name = "zulon-tests-fuzz"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+libfuzzer-sys = "0.4"
+
+[[bin]]
+name = "fuzz_parser"
+path = "fuzz_targets/parse.rs"

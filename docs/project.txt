@@ -1,0 +1,300 @@
+zulon-lang/                      # Workspace 根目录
+├── Cargo.toml                   # Workspace 配置
+├── rust-toolchain.toml          # 工具链版本锁定
+├── .github/
+│   ├── workflows/
+│   │   ├── ci.yml              # 主 CI 管道
+│   │   ├── fuzz.yml            # 模糊测试
+│   │   └── release.yml         # 发布流程
+│   ├── PULL_REQUEST_TEMPLATE.md
+│   └── SECURITY.md
+├── .vscode/
+│   ├── settings.json
+│   ├── extensions.json
+│   └── launch.json
+├── .gitignore
+├── benchmark-results/
+├── target/                      # 构建输出（gitignore）
+│   ├── debug/
+│   └── release/
+├── Cargo.lock                   # 依赖锁定
+├── yan.toml                     # ZULON 工具链配置
+└── crates/                      # 所有 Crate 模块
+    ├── zulon-parser/            # 前端：解析器
+    │   ├── Cargo.toml
+    │   ├── src/
+    │   │   ├── lib.rs
+    │   │   ├── lexer.rs
+    │   │   ├── parser.rs
+    │   │   ├── error_recovery.rs
+    │   │   └── incremental.rs   # P1 增量解析
+    │   └── tests/
+    │       └── parse_tests.rs
+    ├── zulon-resolver/          # 名称解析
+    │   ├── Cargo.toml
+    │   ├── src/
+    │   │   ├── lib.rs
+    │   │   ├── def_map.rs
+    │   │   ├── visibilty.rs
+    │   │   └── orphan_rule.rs
+    │   └── tests/
+    │       └── resolve_tests.rs
+    ├── zulon-typeck/            # 类型检查器
+    │   ├── Cargo.toml
+    │   ├── src/
+    │   │   ├── lib.rs
+    │   │   ├── infer.rs
+    │   │   ├── unify.rs
+    │   │   ├── effect_solver.rs # P1 效应求解
+    │   │   └── trait_solver.rs  # P1 Trait 求解
+    │   └── tests/
+    │       ├── type_tests.rs
+    │       └── effect_tests.rs
+    ├── zulon-mir/               # MIR 生成与借用检查
+    │   ├── Cargo.toml
+    │   ├── src/
+    │   │   ├── lib.rs
+    │   │   ├── lower.rs
+    │   │   ├── borrowck.rs      # P0 作用域版本
+    │   │   ├── polonius.rs       # P1 NLL 完整版
+    │   │   └── drop_insertion.rs
+    │   └── tests/
+    │       └── borrowck_tests.rs
+    ├── zulon-air/               # AIR 生成（P1）
+    │   ├── Cargo.toml
+    │   ├── src/
+    │   │   ├── lib.rs
+    │   │   ├── lower.rs
+    │   │   ├── region_analysis.rs
+    │   │   └── effect_lower.rs
+    │   └── tests/
+    │       └── air_tests.rs
+    ├── zulon-codegen-llvm/      # LLVM 后端
+    │   ├── Cargo.toml
+    │   ├── src/
+    │   │   ├── lib.rs
+    │   │   ├── llvm_ctx.rs
+    │   │   ├── llvm_builder.rs
+    │   │   ├── effect_cps.rs
+    │   │   └── abi.rs
+    │   └── tests/
+    │       └── codegen_tests.rs
+    ├── zulon-codegen-cranelift/ # Cranelift 后端（P1）
+    │   ├── Cargo.toml
+    │   └── src/
+    │       └── lib.rs
+    ├── zulon-codegen-wasm/      # Wasm 后端（P1）
+    │   ├── Cargo.toml
+    │   └── src/
+    │       └── lib.rs
+    ├── zulon-codegen-jvm/       # JVM 后端（P2）
+    │   ├── Cargo.toml
+    │   └── src/
+    │       └── lib.rs
+    ├── zulon-codegen-js/        # JS 后端（P1）
+    │   ├── Cargo.toml
+    │   └── src/
+    │       └── lib.rs
+    ├── zulon-codegen-rust/      # Rust 源码后端（P2）
+    │   ├── Cargo.toml
+    │   └── src/
+    │       └── lib.rs
+    ├── zulon-runtime-core/      # 运行时核心
+    │   ├── Cargo.toml
+    │   ├── src/
+    │   │   ├── lib.rs
+    │   │   ├── task.rs          # Task 抽象
+    │   │   ├── future.rs        # Future 特化
+    │   │   ├── waker.rs
+    │   │   └── park.rs
+    │   └── tests/
+    │       └── runtime_tests.rs
+    ├── zulon-runtime-memory/    # 内存管理
+    │   ├── Cargo.toml
+    │   ├── src/
+    │   │   ├── lib.rs
+    │   │   ├── region.rs        # Region 分配器
+    │   │   ├── shared.rs        # ARC 实现
+    │   │   ├── freeze.rs        # 冻结逻辑
+    │   │   └── escape_analysis.rs # 逃逸分析（编译期）
+    │   └── tests/
+    │       └── memory_tests.rs
+    ├── zulon-runtime-scheduler/ # 任务调度
+    │   ├── Cargo.toml
+    │   ├── src/
+    │   │   ├── lib.rs
+    │   │   ├── mpmc_queue.rs    # 多队列
+    │   │   ├── work_stealing.rs # 工作窃取
+    │   │   └── single_thread.rs # P0 单线程版
+    │   └── tests/
+    │       └── scheduler_tests.rs
+    ├── zulon-runtime-effect/    # Effect 运行时
+    │   ├── Cargo.toml
+    │   ├── src/
+    │   │   ├── lib.rs
+    │   │   ├── handler.rs       # Handler 注册
+    │   │   ├── perform.rs       # perform 实现
+    │   │   └── resume.rs        # resume 实现
+    │   └── tests/
+    │       └── effect_tests.rs
+    ├── zulon-runtime-actor/     # Actor 系统（P1）
+    │   ├── Cargo.toml
+    │   ├── src/
+    │   │   ├── lib.rs
+    │   │   ├── mailbox.rs       # 邮箱
+    │   │   ├── supervision.rs   # 监督树
+    │   │   └── actor_macro.rs   # actor! 宏
+    │   └── tests/
+    │       └── actor_tests.rs
+    ├── zulon-runtime-io/        # IO 运行时（P1）
+    │   ├── Cargo.toml
+    │   ├── src/
+    │   │   ├── lib.rs
+    │   │   ├── posix.rs         # POSIX 后端
+    │   │   ├── io_uring.rs      # io_uring 后端
+    │   │   └── wasi.rs          # WASI 后端
+    │   └── tests/
+    │       └── io_tests.rs
+    ├── zulon-runtime-net/       # 网络运行时（P1）
+    │   ├── Cargo.toml
+    │   ├── src/
+    │   │   ├── lib.rs
+    │   │   ├── tcp.rs
+    │   │   ├── udp.rs
+    │   │   └── http.rs
+    │   └── tests/
+    │       └── net_tests.rs
+    ├── zulon-std-core/          # 核心标准库
+    │   ├── Cargo.toml
+    │   └── src/
+    │       ├── lib.rs
+    │       ├── result.rs
+    │       ├── option.rs
+    │       ├── slice.rs
+    │       ├── array.rs
+    │       ├── marker.rs        # Send/Share/Sync
+    │       └── convert.rs
+    ├── zulon-std-std/           # 完整标准库
+    │   ├── Cargo.toml
+    │   └── src/
+    │       ├── lib.rs
+    │       ├── io.rs            # 基于 effect
+    │       ├── net.rs
+    │       ├── task.rs
+    │       ├── chan.rs
+    │       ├── actor.rs
+    │       └── time.rs
+    ├── zulon-ext-serde/         # 序列化库（P1）
+    │   ├── Cargo.toml
+    │   └── src/
+    │       ├── lib.rs
+    │       ├── serialize.rs
+    │       ├── deserialize.rs
+    │       └── formats/
+    │           ├── json.rs
+    │           └── cbor.rs
+    ├── zulon-ext-test/          # 测试框架
+    │   ├── Cargo.toml
+    │   └── src/
+    │       ├── lib.rs
+    │       ├── assert.rs
+    │       └── bench.rs
+    ├── zulon-ext-bench/         # 基准测试（P1）
+    │   ├── Cargo.toml
+    │   └── src/
+    │       ├── lib.rs
+    │       └── bencher.rs
+    ├── zulon-tools-yan/         # 主 CLI 工具
+    │   ├── Cargo.toml
+    │   ├── src/
+    │   │   ├── main.rs
+    │   │   ├── commands/
+    │   │   │   ├── build.rs
+    │   │   │   ├── test.rs
+    │   │   │   ├── bench.rs
+    │   │   │   └── vet.rs
+    │   │   └── lib.rs
+    │   └── tests/
+    │       └── integration_tests.rs
+    ├── zulon-tools-lsp/         # LSP 服务器（P1）
+    │   ├── Cargo.toml
+    │   ├── src/
+    │   │   ├── main.rs
+    │   │   ├── server.rs
+    │   │   ├── handlers/
+    │   │   │   ├── completion.rs
+    │   │   │   ├── goto_definition.rs
+    │   │   │   └── hover.rs
+    │   │   └── db.rs            # salsa database
+    │   └── tests/
+    │       └── lsp_tests.rs
+    ├── zulon-tools-vet/         # 静态审计（P1）
+    │   ├── Cargo.toml
+    │   └── src/
+    │       ├── lib.rs
+    │       ├── rules/
+    │       │   ├── send_sync.rs
+    │       │   ├── unsafe.rs
+    │       │   └── region_escape.rs
+    │       └── reporter.rs
+    ├── zulon-tools-fmt/         # 格式化工具（P1）
+    │   ├── Cargo.toml
+    │   └── src/
+    │       ├── lib.rs
+    │       └── formatter.rs
+    ├── zulon-tools-repl/        # 交互式环境（P1）
+    │   ├── Cargo.toml
+    │   └── src/
+    │       ├── main.rs
+    │       ├── eval.rs
+    │       └── history.rs
+    ├── zulon-tools-profile/     # 性能分析（P1）
+    │   ├── Cargo.toml
+    │   └── src/
+    │       ├── lib.rs
+    │       ├── flamegraph.rs
+    │       └── instrumentation.rs
+    ├── zulon-tests-unit/        # 单元测试聚合
+    │   ├── Cargo.toml
+    │   └── src/
+    │       └── lib.rs
+    ├── zulon-tests-integration/ # 集成测试
+    │   ├── Cargo.toml
+    │   └── tests/
+    │       ├── compile_tests.rs
+    │       ├── runtime_tests.rs
+    │       └── ffi_tests.rs
+    ├── zulon-tests-benchmarks/  # 基准测试
+    │   ├── Cargo.toml
+    │   └── benches/
+    │       ├── await_bench.rs
+    │       ├── channel_bench.rs
+    │       └── actor_bench.rs
+    ├── zulon-tests-fuzz/        # 模糊测试
+    │   ├── Cargo.toml
+    │   └── fuzz_targets/
+    │       ├── parse.rs
+    │       └── typeck.rs
+    ├── zulon-build/             # 构建脚本与工具
+    │   ├── Cargo.toml
+    │   └── src/
+    │       ├── lib.rs
+    │       └── build_script.rs
+    ├── zulon-ci/                # CI 工具集
+    │   ├── Cargo.toml
+    │   └── src/
+    │       └── lib.rs
+    ├── zulon-docs/              # 文档源文件
+    │   ├── book/
+    │   │   ├── src/
+    │   │   │   └── *.md
+    │   │   └── book.toml
+    │   └── reference/
+    │       └── src/
+    │           └── *.md
+    └── zulon-examples/          # 示例程序
+        ├── Cargo.toml
+        ├── hello_world.zl
+        ├── echo_server.zl
+        ├── concurrent_crawler.zl
+        └── web_api.zl

@@ -1,0 +1,7 @@
+[package]
+name = "zulon-tools-repl"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+zulon-std-core = { path = "../zulon-std-core" }

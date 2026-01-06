@@ -1,0 +1,8 @@
+[package]
+name = "zulon-runtime-scheduler"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+zulon-runtime-core = { path = "../zulon-runtime-core" }
+smallvec = { workspace = true }
