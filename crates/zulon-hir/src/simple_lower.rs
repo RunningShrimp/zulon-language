@@ -403,6 +403,20 @@ impl SimpleLoweringContext {
                 })
             }
 
+            ast::ExpressionKind::FieldAccess(object, field_name) => {
+                let lowered_object = Box::new(self.lower_expression(object)?);
+
+                // Get the type of the field access from type checker
+                let field_ty = self.typeck.check_expression(expr)?;
+
+                Ok(HirExpression::Field {
+                    base: lowered_object,
+                    field_name: field_name.name.clone(),
+                    ty: HirTy::from(field_ty),
+                    span: expr.span.clone(),
+                })
+            }
+
             _ => Err(LoweringError::UnsupportedFeature {
                 feature: format!("expression: {:?}", expr.kind),
                 span: expr.span.clone(),
