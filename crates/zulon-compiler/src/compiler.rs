@@ -93,7 +93,10 @@ impl Compiler {
         // Step 2: Parsing
         println!("  [2/7] Parsing...");
         let mut parser = Parser::new(tokens);
-        let ast = parser.parse().map_err(|e| CompilerError::parse(format!("{:?}", e)))?;
+        let ast = parser.parse().map_err(|e| {
+            let error_msg = self.format_parse_error(&e, input_path);
+            CompilerError::parse(error_msg)
+        })?;
         println!("    ✅ AST parsed");
 
         // Extract extern function declarations
@@ -105,7 +108,10 @@ impl Compiler {
         // Step 3: Type checking
         println!("  [3/7] Type checking...");
         let mut typeck = TypeChecker::new();
-        typeck.check(&ast).map_err(|e| CompilerError::type_check(format!("{:?}", e)))?;
+        typeck.check(&ast).map_err(|e| {
+            let error_msg = self.format_typeck_error(&e, input_path);
+            CompilerError::type_check(error_msg)
+        })?;
         println!("    ✅ Type checked");
 
         // Step 4: HIR lowering
@@ -209,6 +215,90 @@ impl Compiler {
             }
             _ => LirTy::I32, // Default to i32 for complex types
         }
+    }
+
+    /// Format parse errors with helpful context
+    fn format_parse_error(&self, error: &zulon_parser::ParseError, file_path: &Path) -> String {
+        use zulon_parser::ParseError;
+        use std::fmt::Write;
+
+        let mut msg = String::new();
+
+        match error {
+            ParseError::UnexpectedToken { expected, found, span } => {
+                writeln!(msg, "Parse error: {}", self.format_location(span, file_path)).unwrap_or(());
+                writeln!(msg, "  Expected: {}", expected).unwrap_or(());
+                writeln!(msg, "  Found: {:?}", found).unwrap_or(());
+
+                // Add helpful suggestions
+                if expected.contains("Semicolon") {
+                    writeln!(msg).unwrap_or(());
+                    writeln!(msg, "  💡 Hint: Add a semicolon (;) after the previous statement").unwrap_or(());
+                    writeln!(msg, "  Example:").unwrap_or(());
+                    writeln!(msg, "    let x = 10;  ← Add semicolon here").unwrap_or(());
+                }
+            }
+            ParseError::UnexpectedEof { span } => {
+                writeln!(msg, "Parse error: {}", self.format_location(span, file_path)).unwrap_or(());
+                writeln!(msg, "  Unexpected end of file").unwrap_or(());
+                writeln!(msg).unwrap_or(());
+                writeln!(msg, "  💡 Hint: Check that all braces, parentheses, and brackets are properly closed").unwrap_or(());
+            }
+            ParseError::InvalidSyntax { message, span } => {
+                writeln!(msg, "Parse error: {}", self.format_location(span, file_path)).unwrap_or(());
+                writeln!(msg, "  {}", message).unwrap_or(());
+            }
+            ParseError::ModuleError { source } => {
+                return self.format_parse_error(source, file_path);
+            }
+        }
+
+        msg
+    }
+
+    /// Format type check errors with helpful context
+    fn format_typeck_error(&self, error: &zulon_typeck::TypeError, file_path: &Path) -> String {
+        use zulon_typeck::TypeError;
+        use std::fmt::Write;
+
+        let mut msg = String::new();
+
+        match error {
+            TypeError::UndefinedVariable { name, span } => {
+                writeln!(msg, "Type error: {}", self.format_location_span(span, file_path)).unwrap_or(());
+                writeln!(msg, "  Undefined variable: '{}'", name).unwrap_or(());
+                writeln!(msg).unwrap_or(());
+                writeln!(msg, "  💡 Hint: Check that the variable is spelled correctly").unwrap_or(());
+                writeln!(msg, "  💡 Hint: Make sure the variable is declared before use").unwrap_or(());
+            }
+            _ => {
+                writeln!(msg, "Type error: {:?}", error).unwrap_or(());
+            }
+        }
+
+        msg
+    }
+
+    /// Format error location with file context (for generic spans)
+    fn format_location_span(&self, span: &zulon_parser::Span, file_path: &Path) -> String {
+        format!("{}:{}:{} to {}:{}",
+            file_path.display(),
+            span.start.line,
+            span.start.column,
+            span.end.line,
+            span.end.column
+        )
+    }
+
+    /// Format error location with file context
+    fn format_location(&self, span: &zulon_parser::Span, file_path: &Path) -> String {
+        format!("{}:{}:{} to {}:{}",
+            file_path.display(),
+            span.start.line,
+            span.start.column,
+            span.end.line,
+            span.end.column
+        )
     }
 }
 
