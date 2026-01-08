@@ -1,0 +1,342 @@
+// 08_efpl_and_test.zl
+// ZULON EFPL 和测试框架示例
+// 演示如何使用 YAN 工具链的 EFPL 交互环境和测试框架
+
+// ==================== 基础函数定义 ====================
+
+// 加法函数
+fn add(a: i32, b: i32) -> i32 {
+    return a + b
+}
+
+// 乘法函数
+fn multiply(a: i32, b: i32) -> i32 {
+    return a * b
+}
+
+// 阶乘函数（递归）
+fn factorial(n: i32) -> i32 {
+    if n <= 1 {
+        return 1
+    }
+    return n * factorial(n - 1)
+}
+
+// 斐波那契数列
+fn fibonacci(n: i32) -> i32 {
+    if n <= 1 {
+        return n
+    }
+    return fibonacci(n - 1) + fibonacci(n - 2)
+}
+
+// ==================== 测试用例 ====================
+
+// 基础测试
+#[test]
+fn test_add() {
+    assert_eq!(add(2, 3), 5)
+    assert_eq!(add(-1, 1), 0)
+    assert_eq!(add(0, 0), 0)
+}
+
+#[test]
+fn test_multiply() {
+    assert_eq!(multiply(2, 3), 6)
+    assert_eq!(multiply(-2, 3), -6)
+    assert_eq!(multiply(0, 100), 0)
+}
+
+#[test]
+fn test_factorial() {
+    assert_eq!(factorial(0), 1)
+    assert_eq!(factorial(1), 1)
+    assert_eq!(factorial(5), 120)
+    assert_eq!(factorial(10), 3628800)
+}
+
+#[test]
+fn test_fibonacci() {
+    assert_eq!(fibonacci(0), 0)
+    assert_eq!(fibonacci(1), 1)
+    assert_eq!(fibonacci(5), 5)
+    assert_eq!(fibonacci(10), 55)
+}
+
+// 参数化测试
+#[test]
+#[data(2, 3, 5)]
+#[data(10, 20, 30)]
+#[data(-5, 5, 0)]
+fn test_add_params(a: i32, b: i32, expected: i32) {
+    assert_eq!(add(a, b), expected)
+}
+
+// 异步测试
+#[test]
+async fn test_async_operation() {
+    let result = async_add(2, 3).await
+    assert_eq!(result, 5)
+}
+
+// 超时测试
+#[test]
+#[timeout(1000)]  // 1秒超时
+fn test_slow_operation() {
+    // 模拟耗时操作
+    sleep(Duration::from_millis(100))
+    assert!(true)
+}
+
+// 应该失败的测试
+#[test]
+#[should_panic]
+fn test_panic() {
+    panic!("intentional panic")
+}
+
+// 条件编译测试
+#[test]
+#[cfg(target_os = "linux")]
+fn test_linux_only() {
+    // Linux 特定测试
+    assert!(true)
+}
+
+// ==================== 异步函数 ====================
+
+async fn async_add(a: i32, b: i32) -> i32 {
+    // 模拟异步操作
+    await sleep(Duration::from_millis(10))
+    return a + b
+}
+
+// ==================== 非阻塞 IO 示例 ====================
+
+// 异步文件读取
+async fn read_file_async(path: str) -> Result<String, IoError> {
+    let file = async_open(path).await?
+    let content = file.read_to_string().await?
+    return Ok(content)
+}
+
+// 异步 HTTP 请求
+async fn fetch_url(url: str) -> Result<String, HttpError> {
+    let response = async_http_get(url).await?
+    return Ok(response.body)
+}
+
+// 异步 TCP 服务器
+async fn run_tcp_server() -> Result<(), IoError> {
+    let listener = TcpListener::bind("0.0.0.0:8080").await?
+
+    loop {
+        select {
+            result = listener.accept() => {
+                match result {
+                    Ok((stream, addr)) => {
+                        spawn handle_client(stream)
+                    },
+                    Err(e) => {
+                        eprintln!("接受连接失败: {:?}", e)
+                    },
+                }
+            },
+            _ = timer.after(Duration::seconds(60)) => {
+                println!("服务器运行中...")
+            },
+        }
+    }
+}
+
+async fn handle_client(mut stream: TcpStream) {
+    let mut buf = vec![0u8; 1024]
+    let n = stream.read(&mut buf).await?
+
+    let response = "HTTP/1.1 200 OK\r\n\r\nHello from async server!"
+    stream.write_all(response.as_bytes()).await?
+    stream.flush().await?
+}
+
+// ==================== Channel 和并发 ====================
+
+struct Message {
+    from: i32,
+    content: str,
+}
+
+// Producer-Consumer 模式
+async fn producer(channel: Sender<Message>, count: i32) {
+    for i in 0..count {
+        let msg = Message {
+            from: 1,
+            content: format!("Message {}", i),
+        }
+        channel.send(msg).await
+    }
+}
+
+async fn consumer(channel: Receiver<Message>) {
+    loop {
+        select {
+            msg = channel.recv() => {
+                match msg {
+                    Some(m) => println!("收到: {}", m.content),
+                    None => break,
+                }
+            },
+            _ = timer.after(Duration::seconds(5)) => {
+                println!("消费者等待中...")
+            },
+        }
+    }
+}
+
+// ==================== EFPL 交互示例 ====================
+
+/*
+在终端运行 EFPL:
+
+$ yan efpl
+
+# 基础表达式求值
+>>> 1 + 2
+3
+
+>>> "Hello" + " " + "World"
+"Hello World"
+
+# 定义变量
+>>> let x = 10
+10
+
+>>> let y = 20
+20
+
+>>> x + y
+30
+
+# 定义函数
+>>> fn square(n: i32) -> i32 { n * n }
+fn square(i32) -> i32
+
+>>> square(5)
+25
+
+# 使用本文件中定义的函数
+>>> add(2, 3)
+5
+
+>>> factorial(5)
+120
+
+# 类型检查
+>>> :type add
+fn(i32, i32) -> i32
+
+>>> :type factorial
+fn(i32) -> i32
+
+# 查看文档
+>>> :doc add
+加法函数
+
+# 导入模块
+>>> :import std::math
+
+>>> std::math::sqrt(16.0)
+4.0
+
+# 多行输入
+>>> let result = {
+...     let a = 10
+...     let b = 20
+...     a + b
+... }
+30
+
+# 列表操作
+>>> [1, 2, 3].map(|x| x * 2)
+[2, 4, 6]
+
+>>> (1..10).filter(|x| x % 2 == 0).collect()
+[2, 4, 6, 8]
+
+# 环境信息
+>>> :env
+Variables:
+  x: i32 = 10
+  y: i32 = 20
+  result: i32 = 30
+Functions:
+  square: fn(i32) -> i32
+
+# 保存会话
+>>> :save my_session.zl
+Session saved to my_session.zl
+
+# 重置环境
+>>> :reset
+Environment reset
+
+# 退出
+>>> :quit
+Bye!
+*/
+
+// ==================== 主函数 ====================
+
+fn main() {
+    println!("=== EFPL 和测试框架示例 ===\n")
+
+    // 演示基础函数
+    println!("基础运算:")
+    println!("  add(2, 3) = {}", add(2, 3))
+    println!("  multiply(4, 5) = {}", multiply(4, 5))
+    println!("  factorial(5) = {}", factorial(5))
+    println!("  fibonacci(10) = {}", fibonacci(10))
+
+    println!("\n非阻塞 IO:")
+    println!("  使用 io_uring (Linux) / IOCP (Windows) / kqueue (macOS)")
+
+    println!("\nEFPL 交互环境:")
+    println!("  运行 'yan efpl' 启动交互式环境")
+    println!("  支持表达式求值、函数定义、模块导入等")
+
+    println!("\n测试框架:")
+    println!("  运行 'yan test' 执行所有测试")
+    println!("  运行 'yan test --coverage' 查看覆盖率")
+    println!("  运行 'yan test --parallel' 并行执行测试")
+}
+
+// ==================== 运行说明 ====================
+
+/*
+1. 运行程序:
+   yan run 08_efpl_and_test.zl
+
+2. 运行测试:
+   yan test 08_efpl_and_test.zl
+
+3. 运行测试并显示覆盖率:
+   yan test --coverage 08_efpl_and_test.zl
+
+4. 启动 EFPL 环境:
+   yan efpl
+
+5. 在 EFPL 中加载本文件:
+   yan efpl -i 08_efpl_and_test.zl
+
+6. 执行单个表达式:
+   yan efpl -e "factorial(5)"
+
+7. 并行运行测试:
+   yan test --parallel
+
+8. 运行特定测试:
+   yan test --test "test_add"
+
+9. 调试模式:
+   yan build 08_efpl_and_test.zl -o example --debug
+   lldb ./example
+*/

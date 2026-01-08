@@ -1,0 +1,31 @@
+// Simple closure test
+fn main() -> i32 {
+    // Test 1: Simple closure with no parameters
+    let get_value = || 42;
+
+    // Test 2: Closure with one parameter
+    let square = |x| x * x;
+
+    // Test 3: Closure with multiple parameters
+    let add = |x, y| x + y;
+
+    // Test 4: Closure with type annotations
+    let typed_add = |x: i32, y: i32| -> i32 { x + y };
+
+    // Test 5: Closure with block body
+    let complex = |x| {
+        let y = x * 2;
+        y + 10
+    };
+
+    // Test 6: Immediate invocation
+    let result = (|a, b| a + b)(10, 20);
+
+    // Test 7: Empty closure
+    let empty = || {
+        println("Empty closure");
+        0
+    };
+
+    0
+}

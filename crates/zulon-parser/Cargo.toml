@@ -4,11 +4,20 @@ version.workspace = true
 edition.workspace = true
 authors.workspace = true
 license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+
+description = "Lexer and parser for the ZULON programming language"
 
 [dependencies]
-zulon-std-core = { path = "../zulon-std-core" }
-serde = { workspace = true }
-thiserror = { workspace = true }
+# Error handling
+thiserror = "1.0"
+anyhow = "1.0"
 
+# Utilities
+unicode-xid = "0.2"
+unicode-segmentation = "1.11"
+
+# Testing
 [dev-dependencies]
-zulon-ext-test = { path = "../zulon-ext-test" }
+criterion = "0.5"

@@ -1,0 +1,552 @@
+// 07_cli_tool.zl
+// ZULON CLI 工具示例
+// 一个实用的文件处理工具，支持多种操作和分析
+
+use std::env::args
+use std::fs::{File, read_to_string, write}
+use std::io::{self, Write, BufRead}
+use std::path::Path
+use std::collections::HashMap
+
+// ==================== 命令行参数解析 ====================
+
+struct CliArgs {
+    command: Command,
+    input_file: str,
+    output_file: Option<str>,
+    options: HashMap<str, str>,
+}
+
+enum Command {
+    Count,          // 统计行数、字数、字符数
+    Grep { pattern: str },  // 搜索模式
+    Sort,           // 排序行
+    Unique,         // 去重
+    Replace { from: str, to: str },  // 替换
+    Analyze,        // 文件分析
+    Convert,        // 格式转换
+}
+
+fn parse_args() -> Result<CliArgs, CliError> {
+    let argv = args().collect::<Vec<String>>();
+
+    if argv.len() < 2 {
+        return Err(CliError::MissingCommand)
+    }
+
+    let command = match argv[1].as_str() {
+        "count" => Command::Count,
+        "grep" => {
+            if argv.len() < 4 {
+                return Err(CliError::MissingArgument)
+            }
+            Command::Grep { pattern: argv[2].clone() }
+        },
+        "sort" => Command::Sort,
+        "unique" => Command::Unique,
+        "replace" => {
+            if argv.len() < 5 {
+                return Err(CliError::MissingArgument)
+            }
+            Command::Replace {
+                from: argv[2].clone(),
+                to: argv[3].clone(),
+            }
+        },
+        "analyze" => Command::Analyze,
+        "convert" => Command::Convert,
+        _ => return Err(CliError::UnknownCommand(argv[1].clone())),
+    };
+
+    let mut options = HashMap::new();
+    let mut input_file = "";
+    let mut output_file = None;
+
+    // 解析选项和文件
+    let mut i = 2;
+    while i < argv.len() {
+        let arg = &argv[i];
+
+        if arg.starts_with("--") {
+            // 长选项
+            let option = &arg[2..];
+            if i + 1 < argv.len() && !argv[i + 1].starts_with("-") {
+                options.insert(option.clone(), argv[i + 1].clone());
+                i = i + 1;
+            } else {
+                options.insert(option.clone(), "true".to_string());
+            }
+        } else if arg.starts_with("-") {
+            // 短选项
+            let option = &arg[1..];
+            if i + 1 < argv.len() && !argv[i + 1].starts_with("-") {
+                options.insert(option.clone(), argv[i + 1].clone());
+                i = i + 1;
+            } else {
+                options.insert(option.clone(), "true".to_string());
+            }
+        } else if input_file.is_empty() {
+            input_file = arg.clone();
+        } else if output_file.is_none() {
+            output_file = Some(arg.clone());
+        }
+
+        i = i + 1;
+    }
+
+    if input_file.is_empty() {
+        return Err(CliError::MissingInputFile)
+    }
+
+    return Ok(CliArgs {
+        command,
+        input_file,
+        output_file,
+        options,
+    })
+}
+
+// ==================== 文件操作 ====================
+
+fn read_file_lines(path: &str) -> Result<Vec<String>, IoError> {
+    let file = File::open(path)?;
+    let reader = io::BufReader::new(file);
+    let mut lines = vec![];
+
+    for line in reader.lines() {
+        lines.push(line?)
+    }
+
+    return Ok(lines)
+}
+
+fn write_file_lines(path: &str, lines: &[String]) -> Result<(), IoError> {
+    let content = lines.join("\n");
+    write(path, content)?;
+    return Ok(())
+}
+
+// ==================== 命令处理器 ====================
+
+fn handle_count(args: &CliArgs) -> Result<(), CliError> {
+    let lines = read_file_lines(&args.input_file)?;
+
+    let mut total_lines = lines.len();
+    let mut total_words = 0;
+    let mut total_chars = 0;
+    let mut total_bytes = 0;
+
+    for line in &lines {
+        total_words = total_words + line.split_whitespace().count();
+        total_chars = total_chars + line.chars().count();
+        total_bytes = total_bytes + line.bytes().len();
+    }
+
+    println!("文件统计: {}", args.input_file);
+    println!("  行数: {}", total_lines);
+    println!("  字数: {}", total_words);
+    println!("  字符数: {}", total_chars);
+    println!("  字节数: {}", total_bytes);
+
+    // 如果有多个文件
+    if let Some(files) = args.options.get("files") {
+        // 处理多文件统计
+    }
+
+    return Ok(())
+}
+
+fn handle_grep(args: &CliArgs) -> Result<(), CliError> {
+    let pattern = match &args.command {
+        Command::Grep { pattern } => pattern.clone(),
+        _ => return Err(CliError::InvalidCommand),
+    };
+
+    let lines = read_file_lines(&args.input_file)?;
+    let mut matches = vec![];
+
+    for (i, line) in lines.iter().enumerate() {
+        if line.contains(&pattern) {
+            matches.push((i + 1, line.clone()))
+        }
+    }
+
+    // 显示匹配结果
+    let show_line_numbers = args.options.get("n").is_some()
+        || args.options.get("line-number").is_some();
+
+    let case_insensitive = args.options.get("i").is_some()
+        || args.options.get("ignore-case").is_some();
+
+    let count_only = args.options.get("c").is_some()
+        || args.options.get("count").is_some();
+
+    if count_only {
+        println!("匹配行数: {}", matches.len())
+    } else {
+        for (line_num, line) in &matches {
+            if show_line_numbers {
+                println!("{}: {}", line_num, line)
+            } else {
+                println!("{}", line)
+            }
+        }
+    }
+
+    // 输出到文件
+    if let Some(output) = &args.output_file {
+        let output_lines: Vec<String> = matches
+            .iter()
+            .map(|(_, line)| line.clone())
+            .collect();
+        write_file_lines(output, &output_lines)?;
+        println!("结果已写入: {}", output)
+    }
+
+    return Ok(())
+}
+
+fn handle_sort(args: &CliArgs) -> Result<(), CliError> {
+    let mut lines = read_file_lines(&args.input_file)?;
+
+    // 排序选项
+    let reverse = args.options.get("r").is_some()
+        || args.options.get("reverse").is_some();
+
+    let numeric = args.options.get("n").is_some()
+        || args.options.get("numeric").is_some();
+
+    let unique = args.options.get("u").is_some()
+        || args.options.get("unique").is_some();
+
+    // 排序
+    if numeric {
+        lines.sort_by(|a, b| {
+            let a_num = a.parse::<f64>().unwrap_or(0.0);
+            let b_num = b.parse::<f64>().unwrap_or(0.0);
+            a_num.partial_cmp(&b_num).unwrap()
+        })
+    } else {
+        lines.sort()
+    }
+
+    if reverse {
+        lines.reverse()
+    }
+
+    // 去重
+    if unique {
+        lines.dedup()
+    }
+
+    // 输出
+    let output_lines: Vec<String> = lines.iter().map(|l| l.clone()).collect();
+
+    if let Some(output) = &args.output_file {
+        write_file_lines(output, &output_lines)?;
+        println!("排序结果已写入: {}", output)
+    } else {
+        for line in &output_lines {
+            println!("{}", line)
+        }
+    }
+
+    return Ok(())
+}
+
+fn handle_unique(args: &CliArgs) -> Result<(), CliError> {
+    let lines = read_file_lines(&args.input_file)?;
+
+    let mut seen = HashMap::new();
+    let mut unique_lines = vec![];
+
+    for line in lines {
+        if !seen.contains_key(&line) {
+            seen.insert(line.clone(), true);
+            unique_lines.push(line)
+        }
+    }
+
+    // 输出
+    if let Some(output) = &args.output_file {
+        write_file_lines(output, &unique_lines)?;
+        println!("去重结果已写入: {}", output)
+    } else {
+        for line in &unique_lines {
+            println!("{}", line)
+        }
+    }
+
+    println!("原始行数: {}", seen.len());
+    println!("去重后行数: {}", unique_lines.len());
+
+    return Ok(())
+}
+
+fn handle_replace(args: &CliArgs) -> Result<(), CliError> {
+    let (from, to) = match &args.command {
+        Command::Replace { from, to } => (from.clone(), to.clone()),
+        _ => return Err(CliError::InvalidCommand),
+    };
+
+    let content = read_to_string(&args.input_file)?;
+
+    let replaced = content.replace(&from, &to);
+
+    if let Some(output) = &args.output_file {
+        write(output, replaced)?;
+        println!("替换结果已写入: {}", output)
+    } else {
+        println!("{}", replaced)
+    }
+
+    return Ok(())
+}
+
+fn handle_analyze(args: &CliArgs) -> Result<(), CliError> {
+    let lines = read_file_lines(&args.input_file)?;
+
+    println!("文件分析: {}", args.input_file);
+    println!("========================================");
+
+    // 基本统计
+    println!("\n【基本统计】");
+    println!("总行数: {}", lines.len());
+
+    let empty_lines = lines.iter().filter(|l| l.trim().is_empty()).count();
+    println!("空行数: {}", empty_lines);
+    println!("非空行数: {}", lines.len() - empty_lines);
+
+    // 最长行
+    let max_length = lines.iter().map(|l| l.len()).max().unwrap_or(0);
+    println!("最长行: {} 字符", max_length);
+
+    let avg_length = lines.iter().map(|l| l.len()).sum::<usize>() as f64
+        / lines.len() as f64;
+    println!("平均行长: {:.1} 字符", avg_length);
+
+    // 词频统计
+    println!("\n【词频统计（前10）】");
+    let mut word_count = HashMap::new();
+
+    for line in &lines {
+        for word in line.split_whitespace() {
+            let count = word_count.entry(word.clone()).or_insert(0);
+            *count = *count + 1
+        }
+    }
+
+    let mut count_vec: Vec<(&str, i32)> = word_count
+        .iter()
+        .map(|(k, v)| (k.as_str(), *v))
+        .collect();
+
+    count_vec.sort_by(|a, b| b.1.cmp(&a.1));
+
+    for (word, count) in count_vec.iter().take(10) {
+        println!("  {:20}: {}", word, count)
+    }
+
+    // 字符分布
+    println!("\n【字符分布】");
+    let mut char_count = HashMap::new();
+
+    for line in &lines {
+        for ch in line.chars() {
+            if ch.is_alphanumeric() {
+                let count = char_count.entry(ch).or_insert(0);
+                *count = *count + 1
+            }
+        }
+    }
+
+    let mut char_vec: Vec<(char, i32)> = char_count
+        .iter()
+        .map(|(k, v)| (*k, *v))
+        .collect();
+
+    char_vec.sort_by(|a, b| b.1.cmp(&a.1));
+
+    for (ch, count) in char_vec.iter().take(10) {
+        println!("  '{}': {}", ch, count)
+    }
+
+    // 代码分析（如果是代码文件）
+    if args.input_file.ends_with(".zl") {
+        println!("\n【代码分析】");
+        let mut fn_count = 0;
+        let mut struct_count = 0;
+        let mut impl_count = 0;
+
+        for line in &lines {
+            if line.trim().starts_with("fn ") {
+                fn_count = fn_count + 1
+            }
+            if line.trim().starts_with("struct ") {
+                struct_count = struct_count + 1
+            }
+            if line.trim().starts_with("impl ") {
+                impl_count = impl_count + 1
+            }
+        }
+
+        println!("函数数: {}", fn_count);
+        println!("结构体数: {}", struct_count);
+        println!("impl 块数: {}", impl_count)
+    }
+
+    return Ok(())
+}
+
+fn handle_convert(args: &CliArgs) -> Result<(), CliError> {
+    let content = read_to_string(&args.input_file)?;
+
+    // 确定输出格式
+    let format = args.options
+        .get("format")
+        .or_else(|| args.options.get("f"))
+        .unwrap_or(&"json".to_string())
+        .clone();
+
+    match format.as_str() {
+        "json" => {
+            // 转换为 JSON
+            let lines: Vec<&str> = content.lines().collect();
+            let json = serde_json::json!({
+                "file": args.input_file,
+                "lines": lines,
+                "count": lines.len()
+            });
+
+            let output = serde_json::to_string_pretty(&json)?;
+
+            if let Some(output_file) = &args.output_file {
+                write(output_file, output)?;
+                println!("JSON 已写入: {}", output_file)
+            } else {
+                println!("{}", output)
+            }
+        },
+        "csv" => {
+            // 转换为 CSV
+            let lines: Vec<&str> = content.lines().collect();
+            let mut csv = "line_number,content\n".to_string();
+
+            for (i, line) in lines.iter().enumerate() {
+                csv = csv + &format!("{},\"{}\"\n", i + 1, line)
+            }
+
+            if let Some(output_file) = &args.output_file {
+                write(output_file, csv)?;
+                println!("CSV 已写入: {}", output_file)
+            } else {
+                println!("{}", csv)
+            }
+        },
+        "upper" => {
+            // 转换为大写
+            let output = content.to_uppercase();
+
+            if let Some(output_file) = &args.output_file {
+                write(output_file, output)?;
+                println!("大写版本已写入: {}", output_file)
+            } else {
+                println!("{}", output)
+            }
+        },
+        "lower" => {
+            // 转换为小写
+            let output = content.to_lowercase();
+
+            if let Some(output_file) = &args.output_file {
+                write(output_file, output)?;
+                println!("小写版本已写入: {}", output_file)
+            } else {
+                println!("{}", output)
+            }
+        },
+        _ => {
+            return Err(CliError::UnknownFormat(format))
+        },
+    }
+
+    return Ok(())
+}
+
+// ==================== 主函数 ====================
+
+fn main() {
+    println!("ZULON 文件处理工具 v1.0");
+    println!("========================================\n");
+
+    match parse_args() {
+        Ok(args) => {
+            let result = match &args.command {
+                Command::Count => handle_count(&args),
+                Command::Grep { .. } => handle_grep(&args),
+                Command::Sort => handle_sort(&args),
+                Command::Unique => handle_unique(&args),
+                Command::Replace { .. } => handle_replace(&args),
+                Command::Analyze => handle_analyze(&args),
+                Command::Convert => handle_convert(&args),
+            };
+
+            match result {
+                Ok(()) => {},
+                Err(e) => {
+                    eprintln!("错误: {:?}", e);
+                    std::process::exit(1)
+                },
+            }
+        },
+        Err(e) => {
+            eprintln!("错误: {:?}", e);
+            print_usage();
+            std::process::exit(1)
+        },
+    }
+}
+
+fn print_usage() {
+    println!("\n用法:");
+    println!("  ztool <command> [options] <input-file> [output-file]\n");
+    println!("命令:");
+    println!("  count              统计文件的行数、字数、字符数");
+    println!("  grep <pattern>     搜索包含模式的行");
+    println!("  sort               对文件行进行排序");
+    println!("  unique             删除重复的行");
+    println!("  replace <from> <to>  替换文本");
+    println!("  analyze            分析文件内容");
+    println!("  convert            转换文件格式\n");
+    println!("选项:");
+    println!("  -o, --output       指定输出文件");
+    println!("  -n, --line-number  显示行号（grep）");
+    println!("  -r, --reverse      反向排序");
+    println!("  -i, --ignore-case  忽略大小写");
+    println!("  -u, --unique       去除重复行");
+    println!("  -f, --format       输出格式（json/csv/upper/lower）\n");
+    println!("示例:");
+    println!("  ztool count data.txt");
+    println!("  ztool grep \"error\" log.txt -n");
+    println!("  ztool sort numbers.txt -n -o sorted.txt");
+    println!("  ztool replace \"old\" \"new\" input.txt -o output.txt");
+    println!("  ztool analyze code.zl");
+    println!("  ztool convert data.txt -f json -o output.json\n");
+}
+
+// ==================== 错误类型 ====================
+
+error CliError {
+    MissingCommand,
+    UnknownCommand(String),
+    MissingArgument,
+    MissingInputFile,
+    InvalidCommand,
+    UnknownFormat(String),
+    IoError(IoError),
+}
+
+// 运行此示例:
+// zc run 07_cli_tool.zl count examples/00_hello_world.zl
+// zc run 07_cli_tool.zl grep "println" examples/01_basics.zl -n
+// zc run 07_cli_tool.zl analyze examples/02_types.zl

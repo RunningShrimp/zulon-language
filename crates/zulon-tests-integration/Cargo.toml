@@ -2,6 +2,15 @@
 name = "zulon-tests-integration"
 version.workspace = true
 edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
 
 [dependencies]
-yan = { path = "../zulon-tools-yan" }
+zulon-parser = { path = "../zulon-parser" }
+zulon-hir = { path = "../zulon-hir" }
+zulon-typeck = { path = "../zulon-typeck" }
+zulon-mir = { path = "../zulon-mir" }
+
+[dev-dependencies]

@@ -2,11 +2,12 @@
 name = "zulon-tests-benchmarks"
 version.workspace = true
 edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
 
+# TODO: Add dependencies when needed
 [dependencies]
-yan = { path = "../zulon-tools-yan" }
-criterion = "0.5"
 
-[[bench]]
-name = "compiler_bench"
-harness = false
+[dev-dependencies]

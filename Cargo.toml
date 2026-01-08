@@ -5,9 +5,11 @@ members = [
     "crates/zulon-parser",
     "crates/zulon-resolver",
     "crates/zulon-typeck",
+    "crates/zulon-hir",
     "crates/zulon-mir",
+    "crates/zulon-lir",
     "crates/zulon-air",
-    
+
     # 代码生成后端
     "crates/zulon-codegen-llvm",
     "crates/zulon-codegen-cranelift",

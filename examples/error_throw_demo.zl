@@ -1,0 +1,211 @@
+// error_throw_demo.zl
+// Demonstrates throw statement error handling
+//
+// This example shows how to use the throw statement to return errors.
+
+// ============================================================================
+// Example 1: Basic throw statement
+// ============================================================================
+
+fn divide_simple(a: i32, b: i32) -> Outcome<i32, DivideError> {
+    if b == 0 {
+        throw DivideError::Zero;
+    }
+    Outcome::Ok(a / b)
+}
+
+// ============================================================================
+// Example 2: Multiple error variants
+// ============================================================================
+
+fn divide_detailed(a: i32, b: i32) -> Outcome<i32, DivideError> {
+    if b == 0 {
+        throw DivideError::Zero;
+    }
+    if a < 0 || b < 0 {
+        throw DivideError::Negative;
+    }
+    Outcome::Ok(a / b)
+}
+
+// ============================================================================
+// Example 3: Throw with different error types
+// ============================================================================
+
+fn parse_number(s: string) -> Outcome<i32, ParseError> {
+    // Placeholder: In real implementation, would parse string
+    // For now, just throw an error to demonstrate syntax
+    throw ParseError::Invalid;
+}
+
+// ============================================================================
+// Example 4: Throw in nested function
+// ============================================================================
+
+fn inner_divide(a: i32, b: i32) -> Outcome<i32, DivideError> {
+    if b == 0 {
+        throw DivideError::Zero;
+    }
+    Outcome::Ok(a / b)
+}
+
+fn outer_calculate(a: i32, b: i32) -> Outcome<i32, DivideError> {
+    if a < 0 {
+        throw DivideError::Negative;
+    }
+    inner_divide(a, b)
+}
+
+// ============================================================================
+// Example 5: Throw with early exit
+// ============================================================================
+
+fn validate_and_process(x: i32) -> Outcome<i32, ValidationError> {
+    // Validate input
+    if x < 0 {
+        throw ValidationError::Negative;
+    }
+    if x > 100 {
+        throw ValidationError::TooLarge;
+    }
+
+    // Process valid input
+    Outcome::Ok(x * 2)
+}
+
+// ============================================================================
+// Example 6: Throw with complex error conditions
+// ============================================================================
+
+fn complex_divide(a: i32, b: i32) -> Outcome<i32, DivideError> {
+    // Check for division by zero
+    if b == 0 {
+        throw DivideError::Zero;
+    }
+
+    // Check for negative operands
+    if a < 0 {
+        throw DivideError::Negative;
+    }
+    if b < 0 {
+        throw DivideError::Negative;
+    }
+
+    // Check for overflow
+    if a > 1000000 && b < 1 {
+        throw DivideError::Overflow;
+    }
+
+    // All checks passed, perform division
+    Outcome::Ok(a / b)
+}
+
+// ============================================================================
+// Example 7: Throw in expression position
+// ============================================================================
+
+fn calculate_or_throw(a: i32, b: i32) -> Outcome<i32, DivideError> {
+    if b == 0 {
+        throw DivideError::Zero;
+    }
+
+    // Can use throw in more complex expressions
+    let result = if a < 0 {
+        throw DivideError::Negative
+    } else {
+        Outcome::Ok(a / b)
+    };
+
+    result
+}
+
+// ============================================================================
+// Error type definitions
+// ============================================================================
+
+enum DivideError {
+    Zero,
+    Negative,
+    Overflow,
+}
+
+enum ParseError {
+    Invalid,
+    TooLong,
+    Empty,
+}
+
+enum ValidationError {
+    Negative,
+    TooLarge,
+    InvalidFormat,
+}
+
+// ============================================================================
+// Main function demonstrating usage
+// ============================================================================
+
+fn main() -> i32 {
+    // Test 1: Successful division
+    let result1 = divide_simple(10, 2);
+    match result1 {
+        Outcome::Ok(value) => {
+            // Success: 10 / 2 = 5
+            let _ = value;
+        },
+        Outcome::Err(_) => {
+            // Handle error
+        }
+    }
+
+    // Test 2: Division by zero (throws)
+    let result2 = divide_simple(10, 0);
+    match result2 {
+        Outcome::Ok(value) => {
+            let _ = value;
+        },
+        Outcome::Err(err) => {
+            // Error: DivideError::Zero
+            match err {
+                DivideError::Zero => {
+                    // Handle division by zero
+                },
+                _ => {}
+            }
+        }
+    }
+
+    // Test 3: Multiple error types
+    let result3 = divide_detailed(-10, 2);
+    match result3 {
+        Outcome::Ok(value) => {
+            let _ = value;
+        },
+        Outcome::Err(err) => {
+            match err {
+                DivideError::Negative => {
+                    // Handle negative operand
+                },
+                _ => {}
+            }
+        }
+    }
+
+    // Test 4: Validation with throw
+    let result4 = validate_and_process(150);
+    match result4 {
+        Outcome::Ok(value) => {
+            let _ = value;
+        },
+        Outcome::Err(err) => {
+            match err {
+                ValidationError::TooLarge => {
+                    // Handle value too large
+                },
+                _ => {}
+            }
+        }
+    }
+
+    0  // Return success
+}

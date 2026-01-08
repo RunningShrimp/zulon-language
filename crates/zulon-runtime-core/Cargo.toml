@@ -2,7 +2,15 @@
 name = "zulon-runtime-core"
 version.workspace = true
 edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+links = "zulon_entry"
 
 [dependencies]
-zulon-runtime-core = { path = "../zulon-runtime-core" }
-smallvec = { workspace = true }
+
+[dev-dependencies]
+
+[build-dependencies]
+cc = "1.2"

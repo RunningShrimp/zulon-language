@@ -1,0 +1,227 @@
+// 03_error_handling.zl
+// ZULON 错误处理示例
+// 演示 Result 类型、throw 关键字和效应处理
+
+fn main() {
+    result_demo()
+    throw_demo()
+    effect_demo()
+    advanced_error_handling()
+}
+
+// 自定义错误类型
+error MathError {
+    DivisionByZero,
+    NegativeNumber,
+    Overflow,
+}
+
+// 使用 Result 类型
+type Result<T> =
+    | Ok(T)
+    | Err(MathError)
+
+// Result 基础示例
+fn result_demo() {
+    println!("=== Result 类型 ===")
+
+    // 除法函数（可能返回错误）
+    fn divide(a: i32, b: i32) -> Result<i32> {
+        if b == 0 {
+            return Err(MathError::DivisionByZero)
+        }
+        if a < 0 || b < 0 {
+            return Err(MathError::NegativeNumber)
+        }
+        return Ok(a / b)
+    }
+
+    // 处理 Result
+    let result = divide(10, 2)
+    match result {
+        Ok(value) => println!("10 / 2 = {}", value),
+        Err(MathError::DivisionByZero) => println!("错误: 除零"),
+        Err(MathError::NegativeNumber) => println!("错误: 负数"),
+        Err(MathError::Overflow) => println!("错误: 溢出"),
+    }
+
+    // ? 运算符（错误传播）
+    fn calculate() -> Result<i32> {
+        let a = divide(100, 2)?
+        let b = divide(a, 5)?
+        return Ok(b)
+    }
+
+    match calculate() {
+        Ok(value) => println!("计算结果: {}", value),
+        Err(e) => println!("计算错误: {:?}", e),
+    }
+}
+
+// throw 关键字示例
+fn throw_demo() {
+    println!("\n=== Throw 关键字 ===")
+
+    // 使用 throw 的函数
+    fn validate_age(age: i32) -> Result<()> {
+        if age < 0 {
+            throw MathError::NegativeNumber
+        }
+        if age > 150 {
+            throw MathError::Overflow
+        }
+        return Ok(())
+    }
+
+    // 处理错误
+    match validate_age(25) {
+        Ok(()) => println!("年龄有效"),
+        Err(MathError::NegativeNumber) => println!("错误: 年龄不能为负"),
+        Err(MathError::Overflow) => println!("错误: 年龄过大"),
+        _ => println!("其他错误"),
+    }
+
+    match validate_age(-5) {
+        Ok(()) => println!("年龄有效"),
+        Err(e) => println!("错误: {:?}", e),
+    }
+}
+
+// 效应（Effect）定义
+effect IO {
+    fn read_line() -> str
+    fn print_line(line: str)
+}
+
+effect Database {
+    fn query(sql: str) -> Result<Vec<User>>
+    fn execute(sql: str) -> Result<usize>
+}
+
+// 用户结构
+struct User {
+    id: i32,
+    name: str,
+    email: str,
+}
+
+// 使用 | 分隔符标记返回值、错误和效应
+fn greet_user() -> str | IO {
+    perform print_line("请输入您的名字:")
+    let name = perform read_line()
+    return format!("你好，{}！", name)
+}
+
+// 多个错误类型
+fn process_data(input: str) -> Result<i32> | ParseError | ValidationError {
+    let parsed = parse(input)?
+    let validated = validate(parsed)?
+    return Ok(validated)
+}
+
+error ParseError {
+    InvalidFormat,
+}
+
+error ValidationError {
+    OutOfRange,
+}
+
+fn parse(input: str) -> Result<i32> | ParseError {
+    match input.parse::<i32>() {
+        Ok(value) => Ok(value),
+        Err(_) => Err(ParseError::InvalidFormat),
+    }
+}
+
+fn validate(value: i32) -> Result<i32> | ValidationError {
+    if value < 0 || value > 100 {
+        Err(ValidationError::OutOfRange)
+    } else {
+        Ok(value)
+    }
+}
+
+// 效应示例
+fn effect_demo() {
+    println!("\n=== 效应处理 ===")
+
+    // 使用 try 块处理效应
+    let result = try {
+        greet_user()
+    } with IO {
+        fn read_line() -> str {
+            return "Alice"  // 模拟输入
+        }
+
+        fn print_line(line: str) {
+            println!("{}", line)
+        }
+    }
+
+    println!("结果: {}", result)
+
+    // 多个效应
+    fn process_db() -> Result<Vec<User>> | Database | IO {
+        perform print_line("查询数据库...")
+        let users = perform Database::query("SELECT * FROM users")?
+        perform print_line(&format!("找到 {} 个用户", users.len()))
+        return Ok(users)
+    }
+}
+
+// 高级错误处理
+fn advanced_error_handling() {
+    println!("\n=== 高级错误处理 ===")
+
+    // 带上下文的错误
+    error FileError {
+        NotFound { path: str, hint: str },
+        PermissionDenied { path: str },
+        Corrupted { path: str },
+    }
+
+    fn read_file(path: str) -> Result<String> | FileError {
+        // 模拟文件读取
+        if path == "" {
+            throw FileError::NotFound {
+                path,
+                hint: "请提供有效的文件路径",
+            }
+        }
+        return Ok("文件内容".to_string())
+    }
+
+    // 错误链
+    fn process_file(path: str) -> Result<String> | FileError {
+        let content = read_file(path)?
+        return Ok(content.to_uppercase())
+    }
+
+    match process_file("") {
+        Ok(content) => println!("文件内容: {}", content),
+        Err(FileError::NotFound { path, hint }) => {
+            println!("文件未找到: {} ({})", path, hint)
+        },
+        Err(e) => println!("其他错误: {:?}", e),
+    }
+
+    // 组合错误类型
+    fn complex_operation(a: i32, b: i32) -> Result<i32> | MathError | ParseError {
+        if a < 0 {
+            throw MathError::NegativeNumber
+        }
+        if b == 0 {
+            throw MathError::DivisionByZero
+        }
+        return Ok(a / b)
+    }
+
+    match complex_operation(10, 2) {
+        Ok(result) => println!("操作结果: {}", result),
+        Err(e) => println!("操作错误: {:?}", e),
+    }
+}
+
+// 运行此示例:
+// zc run 03_error_handling.zl

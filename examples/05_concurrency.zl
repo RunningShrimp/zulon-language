@@ -1,0 +1,550 @@
+// 05_concurrency.zl
+// ZULON 并发编程示例
+// 演示 EPVS 无锁数据结构、结构化并发、Actor 模型和异步编程
+
+fn main() {
+    epvs_demo()
+    structured_concurrency_demo()
+    actor_demo()
+    async_await_demo()
+    parallel_iterators_demo()
+}
+
+// ==================== EPVS 无锁数据结构 ====================
+
+use std::sync::epvs::{EpochGuard, EpsVector}
+
+fn epvs_demo() {
+    println!("=== EPVS 无锁数据结构 ===")
+
+    // EPVS (Epoch Protected Version Scheme)
+    // 来自 POPL 2025，实现无锁、无等待的数据结构
+
+    // 创建无锁向量
+    let vector = EpsVector::<i32>::new()
+
+    // 并发写入（使用多线程）
+    let guard = EpochGuard::new()
+
+    // 线程 1: 添加元素
+    spawn {
+        for i in 0..100 {
+            vector.push(i, &guard)
+        }
+    }
+
+    // 线程 2: 读取元素
+    spawn {
+        for i in 0..100 {
+            match vector.get(i, &guard) {
+                Some(value) => println!("读取[{}]: {}", i, value),
+                None => {},
+            }
+        }
+    }
+
+    // 无锁队列
+    use std::sync::LockFreeQueue
+
+    let queue = LockFreeQueue::<i32>::new()
+
+    // 生产者
+    spawn {
+        for i in 0..10 {
+            queue.enqueue(i)
+            println!("入队: {}", i)
+        }
+    }
+
+    // 消费者
+    spawn {
+        loop {
+            match queue.dequeue() {
+                Some(value) => println!("出队: {}", value),
+                None => {
+                    // 队列空，稍后重试
+                    yield_thread()
+                    if queue.is_empty() {
+                        break
+                    }
+                },
+            }
+        }
+    }
+
+    // 无锁哈希表
+    use std::sync::ConcurrentHashMap
+
+    let map = ConcurrentHashMap::<str, i32>::new()
+
+    // 并发插入
+    for i in 0..10 {
+        spawn {
+            let key = format!("key_{}", i)
+            map.insert(key, i)
+            println!("插入: {} = {}", key, i)
+        }
+    }
+
+    // 等待所有操作完成
+    sleep(Duration::from_seconds(1))
+
+    // 读取结果
+    match map.get("key_5") {
+        Some(value) => println!("查找 key_5: {}", value),
+        None => println!("key_5 不存在"),
+    }
+}
+
+// ==================== 结构化并发 ====================
+
+fn structured_concurrency_demo() {
+    println!("\n=== 结构化并发 ===")
+
+    // Go 风格的结构化并发
+
+    // 示例 1: 简单的任务组
+    fn download_files(urls: &[str]) -> Vec<Vec<u8>> {
+        let mut results = vec![]
+
+        // 创建任务组
+        let group = TaskGroup::new()
+
+        for url in urls {
+            group.spawn {
+                match download(url) {
+                    Ok(data) => return data,
+                    Err(e) => {
+                        println!("下载失败 {}: {:?}", url, e)
+                        return vec![]
+                    },
+                }
+            }
+        }
+
+        // 等待所有任务完成
+        for task in group {
+            let data = task.await
+            results.push(data)
+        }
+
+        return results
+    }
+
+    let urls = [
+        "https://example.com/file1",
+        "https://example.com/file2",
+        "https://example.com/file3",
+    ]
+
+    let files = download_files(&urls)
+    println!("下载了 {} 个文件", files.len())
+
+    // 示例 2: 带超时的任务
+    fn with_timeout<T>(task: Task<T>, timeout: Duration) -> Result<T, TimeoutError> {
+        let timer = spawn {
+            sleep(timeout)
+            return Err(TimeoutError)
+        }
+
+        select {
+            result = task => Ok(result),
+            _ = timer => Err(TimeoutError),
+        }
+    }
+
+    let work = spawn {
+        // 执行长时间任务
+        sleep(Duration::from_seconds(5))
+        return "完成"
+    }
+
+    match with_timeout(work, Duration::from_seconds(3)) {
+        Ok(result) => println!("任务完成: {}", result),
+        Err(TimeoutError) => println!("任务超时"),
+    }
+
+    // 示例 3: 错误传播
+    fn process_items(items: Vec<i32>) -> Result<Vec<i32>, ProcessError> {
+        let group = TaskGroup::new()
+
+        for item in items {
+            group.spawn {
+                match process_item(item) {
+                    Ok(result) => Ok(result),
+                    Err(e) => Err(e),
+                }
+            }
+        }
+
+        let mut results = vec![]
+        for task in group {
+            match task.await {
+                Ok(result) => results.push(result),
+                Err(e) => return Err(e),  // 任何任务失败，整体失败
+            }
+        }
+
+        return Ok(results)
+    }
+
+    let items = [1, 2, 3, 4, 5]
+    match process_items(items.to_vec()) {
+        Ok(results) => println!("处理结果: {:?}", results),
+        Err(e) => println!("处理失败: {:?}", e),
+    }
+}
+
+// ==================== Actor 模型 ====================
+
+fn actor_demo() {
+    println!("\n=== Actor 模型 ===")
+
+    // 定义 Actor
+    actor Counter {
+        count: i32,
+
+        // 消息处理
+        on message => {
+            match message {
+                CounterMessage::Increment => {
+                    self.count = self.count + 1
+                    println!("计数: {}", self.count)
+                },
+                CounterMessage::Decrement => {
+                    self.count = self.count - 1
+                    println!("计数: {}", self.count)
+                },
+                CounterMessage::Get(sender) => {
+                    sender.send(self.count)
+                },
+                CounterMessage::Reset => {
+                    self.count = 0
+                    println!("计数重置")
+                },
+            }
+        }
+    }
+
+    enum CounterMessage {
+        Increment,
+        Decrement,
+        Get(Sender<i32>),
+        Reset,
+    }
+
+    // 创建 Actor
+    let counter = spawn_actor(Counter { count: 0 })
+
+    // 发送消息
+    counter.send(CounterMessage::Increment)
+    counter.send(CounterMessage::Increment)
+    counter.send(CounterMessage::Increment)
+    counter.send(CounterMessage::Decrement)
+
+    // 请求状态
+    let (sender, receiver) = channel()
+    counter.send(CounterMessage::Get(sender))
+    let current_count = receiver.recv()
+    println!("当前计数: {}", current_count)
+
+    // 重置
+    counter.send(CounterMessage::Reset)
+
+    // 更复杂的 Actor 示例：地图服务器
+    actor MapServer {
+        data: HashMap<str, i32>,
+
+        on message => {
+            match message {
+                MapMessage::Insert { key, value } => {
+                    self.data.insert(key, value)
+                    println!("插入: {} = {}", key, value)
+                },
+                MapMessage::Get { key, sender } => {
+                    match self.data.get(&key) {
+                        Some(value) => sender.send(Some(*value)),
+                        None => sender.send(None),
+                    }
+                },
+                MapMessage::Remove { key } => {
+                    self.data.remove(&key)
+                    println!("删除: {}", key)
+                },
+                MapMessage::List { sender } => {
+                    let items = self.data.iter().collect()
+                    sender.send(items)
+                },
+            }
+        }
+    }
+
+    enum MapMessage {
+        Insert { key: str, value: i32 },
+        Get { key: str, sender: Sender<Option<i32>> },
+        Remove { key: str },
+        List { sender: Sender<Vec<(str, i32)>> },
+    }
+
+    let map_server = spawn_actor(MapServer {
+        data: HashMap::new()
+    })
+
+    // 插入数据
+    map_server.send(MapMessage::Insert {
+        key: "apple",
+        value: 5
+    })
+
+    map_server.send(MapMessage::Insert {
+        key: "banana",
+        value: 3
+    })
+
+    // 查询数据
+    let (sender, receiver) = channel()
+    map_server.send(MapMessage::Get {
+        key: "apple",
+        sender
+    })
+    match receiver.recv() {
+        Some(value) => println!("apple = {}", value),
+        None => println!("apple 不存在"),
+    }
+
+    // 列出所有数据
+    let (sender, receiver) = channel()
+    map_server.send(MapMessage::List { sender })
+    let all_items = receiver.recv()
+    println!("所有项: {:?}", all_items)
+}
+
+// ==================== Async/Await ====================
+
+fn async_await_demo() {
+    println!("\n=== Async/Await ===")
+
+    // 异步函数
+    async fn fetch_user(id: i32) -> Result<User, HttpError> {
+        let url = format!("https://api.example.com/users/{}", id)
+        let response = http_get(&url).await?
+        return Ok(parse_user(&response)?)
+    }
+
+    async fn fetch_posts(user_id: i32) -> Result<Vec<Post>, HttpError> {
+        let url = format!("https://api.example.com/users/{}/posts", user_id)
+        let response = http_get(&url).await?
+        return Ok(parse_posts(&response)?)
+    }
+
+    // 并发执行多个异步任务
+    async fn fetch_user_data(id: i32) -> Result<(User, Vec<Post>), HttpError> {
+        // 使用 join! 并发执行
+        let (user, posts) = join!(
+            fetch_user(id),
+            fetch_posts(id)
+        )
+
+        return Ok((user?, posts?))
+    }
+
+    // 运行异步任务
+    let runtime = AsyncRuntime::new()
+
+    runtime.block_on(async {
+        match fetch_user_data(1).await {
+            Ok((user, posts)) => {
+                println!("用户: {}", user.name)
+                println!("文章数: {}", posts.len())
+            },
+            Err(e) => println!("获取失败: {:?}", e),
+        }
+    })
+
+    // 异步迭代器
+    async fn process_stream() {
+        let stream = create_number_stream()
+
+        async for number in stream {
+            println!("处理: {}", number)
+            if number > 10 {
+                break
+            }
+        }
+    }
+
+    // 超时处理
+    async fn with_timeout<T>(
+        future: Fut<T>,
+        timeout: Duration
+    ) -> Result<T, TimeoutError> {
+        select {
+            result = future => Ok(result),
+            _ = sleep(timeout) => Err(TimeoutError),
+        }
+    }
+
+    // 异步文件操作
+    async fn read_file_async(path: str) -> Result<String, IoError> {
+        let file = async_open(path).await?
+        let content = file.read_to_string().await?
+        return Ok(content)
+    }
+
+    async fn write_file_async(path: str, content: str) -> Result<(), IoError> {
+        let mut file = async_create(path).await?
+        file.write_all(content.as_bytes()).await?
+        file.flush().await?
+        return Ok(())
+    }
+
+    // 异步 HTTP 服务器
+    async fn run_server() {
+        let server = HttpServer::bind("0.0.0.0:8080")
+
+        server
+            .route("/", handle_index)
+            .route("/api/users", handle_get_users)
+            .route("/api/posts", handle_get_posts)
+            .listen()
+            .await
+    }
+
+    runtime.block_on(async {
+        // 启动服务器（实际不会运行，只是示例）
+        // run_server().await
+    })
+}
+
+// ==================== 并行迭代器 ====================
+
+fn parallel_iterators_demo() {
+    println!("\n=== 并行迭代器 ===")
+
+    // 并行处理数据
+    let numbers = (0..1000).collect::<Vec<i32>>()
+
+    // 并行 map
+    let doubled: Vec<i32> = numbers
+        .par_iter()
+        .map(|x| x * 2)
+        .collect()
+
+    println!("前 10 个: {:?}", &doubled[0..10])
+
+    // 并行 filter
+    let evens: Vec<i32> = numbers
+        .par_iter()
+        .filter(|x| x % 2 == 0)
+        .copied()
+        .collect()
+
+    println!("偶数个数: {}", evens.len())
+
+    // 并行 fold
+    let sum: i32 = numbers
+        .par_iter()
+        .fold(|| 0, |acc, x| acc + x)
+        .sum()
+
+    println!("总和: {}", sum)
+
+    // 并行 for_each
+    numbers.par_iter().for_each(|x| {
+        // 每个元素独立处理
+        process_item(*x)
+    })
+
+    // 复杂的并行管道
+    let result: Vec<i32> = numbers
+        .par_iter()
+        .map(|x| x * 2)        // 并行映射
+        .filter(|x| x > 100)    // 并行过滤
+        .map(|x| x + 10)        // 再次映射
+        .collect()
+
+    println!("结果数量: {}", result.len())
+
+    // 自定义并行度
+    let result2: Vec<i32> = numbers
+        .par_iter()
+        .with_num_threads(4)    // 使用 4 个线程
+        .map(|x| x * x)
+        .collect()
+}
+
+// ==================== 实用辅助函数 ====================
+
+struct User {
+    id: i32,
+    name: str,
+}
+
+struct Post {
+    id: i32,
+    title: str,
+}
+
+enum ProcessError {
+    InvalidInput,
+    NetworkError,
+}
+
+error TimeoutError
+error HttpError
+error IoError
+
+fn download(url: str) -> Result<Vec<u8>, HttpError> {
+    // 模拟下载
+    return Ok(vec![1, 2, 3, 4, 5])
+}
+
+fn process_item(item: i32) -> Result<i32, ProcessError> {
+    return Ok(item * 2)
+}
+
+fn parse_user(response: &str) -> Result<User, HttpError> {
+    return Ok(User { id: 1, name: "Alice" })
+}
+
+fn parse_posts(response: &str) -> Result<Vec<Post>, HttpError> {
+    return Ok(vec![
+        Post { id: 1, title: "文章1" },
+        Post { id: 2, title: "文章2" },
+    ])
+}
+
+async fn http_get(url: &str) -> Result<String, HttpError> {
+    // 模拟 HTTP GET
+    return Ok('{"id": 1, "name": "Alice"}')
+}
+
+async fn handle_index(_req: Request) -> Response {
+    return Response::ok("Hello, World!")
+}
+
+async fn handle_get_users(_req: Request) -> Response {
+    return Response::json(vec![
+        User { id: 1, name: "Alice" },
+        User { id: 2, name: "Bob" },
+    ])
+}
+
+async fn handle_get_posts(_req: Request) -> Response {
+    return Response::json(vec![
+        Post { id: 1, title: "文章1" },
+        Post { id: 2, title: "文章2" },
+    ])
+}
+
+fn create_number_stream() -> AsyncStream<i32> {
+    // 创建异步流
+    return AsyncStream::new()
+}
+
+fn process_item_parallel(x: i32) {
+    // 处理单个项目
+}
+
+// 运行此示例:
+// zc run 05_concurrency.zl

@@ -1,0 +1,17 @@
+[package]
+name = "zulon-lir"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+
+[dependencies]
+zulon-parser = { path = "../zulon-parser" }
+zulon-typeck = { path = "../zulon-typeck" }
+zulon-hir = { path = "../zulon-hir" }
+zulon-mir = { path = "../zulon-mir" }
+thiserror = "2.0"
+
+[dev-dependencies]

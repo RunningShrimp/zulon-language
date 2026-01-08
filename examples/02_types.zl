@@ -1,0 +1,234 @@
+// 02_types.zl
+// ZULON 类型系统示例
+// 演示结构体、枚举、trait 和泛型
+
+fn main() {
+    struct_demo()
+    enum_demo()
+    trait_demo()
+    generic_demo()
+}
+
+// 结构体定义
+struct Person {
+    name: str,
+    age: i32,
+    email: str,
+}
+
+// 结构体方法
+impl Person {
+    // 构造函数
+    fn new(name: str, age: i32, email: str) -> Person {
+        return Person { name, age, email }
+    }
+
+    // 成员方法
+    fn greet(&self) {
+        println!("你好，我是 {}，今年 {} 岁", self.name, self.age)
+    }
+
+    fn get_email(&self) -> str {
+        return self.email
+    }
+}
+
+// 结构体示例
+fn struct_demo() {
+    println!("=== 结构体 ===")
+
+    // 创建结构体实例
+    let person = Person {
+        name: "张三",
+        age: 25,
+        email: "zhangsan@example.com",
+    }
+
+    // 使用方法
+    person.greet()
+    println!("邮箱: {}", person.get_email())
+
+    // 可变结构体
+    let mut person2 = Person::new("李四", 30, "lisi@example.com")
+    person2.age = 31
+    person2.greet()
+
+    // 解构赋值
+    let Person { name, age, .. } = person
+    println!("解构: 姓名={}, 年龄={}", name, age)
+}
+
+// 枚举定义
+enum Direction {
+    North,
+    South,
+    East,
+    West,
+}
+
+// 带数据的枚举
+enum Shape {
+    Circle { radius: f64 },
+    Rectangle { width: f64, height: f64 },
+    Triangle { base: f64, height: f64 },
+}
+
+// 枚举方法
+impl Shape {
+    fn area(&self) -> f64 {
+        match self {
+            Shape::Circle { radius } => {
+                return 3.14159265359 * radius * radius
+            },
+            Shape::Rectangle { width, height } => {
+                return width * height
+            },
+            Shape::Triangle { base, height } => {
+                return 0.5 * base * height
+            },
+        }
+    }
+
+    fn describe(&self) -> str {
+        match self {
+            Shape::Circle { radius } => {
+                return format!("圆形，半径={}", radius)
+            },
+            Shape::Rectangle { width, height } => {
+                return format!("矩形，宽={}，高={}", width, height)
+            },
+            Shape::Triangle { base, height } => {
+                return format!("三角形，底={}，高={}", base, height)
+            },
+        }
+    }
+}
+
+// 枚举示例
+fn enum_demo() {
+    println!("\n=== 枚举 ===")
+
+    // 简单枚举
+    let direction = Direction::North
+    match direction {
+        Direction::North => println!("向北走"),
+        Direction::South => println!("向南走"),
+        Direction::East => println!("向东走"),
+        Direction::West => println!("向西走"),
+    }
+
+    // 带数据的枚举
+    let circle = Shape::Circle { radius: 5.0 }
+    println!("形状: {}", circle.describe())
+    println!("面积: {}", circle.area())
+
+    let rect = Shape::Rectangle { width: 10.0, height: 20.0 }
+    println!("形状: {}", rect.describe())
+    println!("面积: {}", rect.area())
+
+    // Option 类型示例
+    let maybe_number: Option<i32> = Some(42)
+    match maybe_number {
+        Some(n) => println!("数字: {}", n),
+        None => println!("没有数字"),
+    }
+}
+
+// Trait 定义
+trait Drawable {
+    fn draw(&self)
+}
+
+trait Resizable {
+    fn resize(&mut self, scale: f64)
+}
+
+// 为类型实现 Trait
+impl Drawable for Shape {
+    fn draw(&self) {
+        println!("绘制形状: {}", self.describe())
+    }
+}
+
+// Trait 示例
+fn trait_demo() {
+    println!("\n=== Trait ===")
+
+    let circle = Shape::Circle { radius: 5.0 }
+    circle.draw()
+
+    let rect = Shape::Rectangle { width: 10.0, height: 20.0 }
+    rect.draw()
+}
+
+// 泛型函数
+fn print_value<T: Display>(value: T) {
+    println!("值: {}", value.fmt())
+}
+
+// 泛型结构体
+struct Container<T> {
+    items: Vec<T>,
+}
+
+impl<T> Container<T> {
+    fn new() -> Container<T> {
+        return Container { items: vec![] }
+    }
+
+    fn add(&mut self, item: T) {
+        self.items.push(item)
+    }
+
+    fn get(&self, index: usize) -> Option<&T> {
+        return self.items.get(index)
+    }
+
+    fn len(&self) -> usize {
+        return self.items.len()
+    }
+}
+
+// Display Trait
+trait Display {
+    fn fmt(&self) -> str
+}
+
+impl Display for i32 {
+    fn fmt(&self) -> str {
+        return format!("{}", *self)
+    }
+}
+
+impl Display for str {
+    fn fmt(&self) -> str {
+        return *self
+    }
+}
+
+// 泛型示例
+fn generic_demo() {
+    println!("\n=== 泛型 ===")
+
+    // 泛型函数
+    print_value(42)
+    print_value("Hello")
+
+    // 泛型结构体
+    let mut numbers = Container::<i32>::new()
+    numbers.add(1)
+    numbers.add(2)
+    numbers.add(3)
+
+    println!("容器长度: {}", numbers.len())
+    println!("第一个元素: {:?}", numbers.get(0))
+
+    let mut strings = Container::<str>::new()
+    strings.add("Hello")
+    strings.add("World")
+
+    println!("字符串容器长度: {}", strings.len())
+}
+
+// 运行此示例:
+// zc run 02_types.zl

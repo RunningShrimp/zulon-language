@@ -1,0 +1,19 @@
+[package]
+name = "zulon-build"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+
+[dependencies]
+zulon-lir = { path = "../zulon-lir" }
+zulon-codegen-llvm = { path = "../zulon-codegen-llvm" }
+zulon-runtime-core = { path = "../zulon-runtime-core" }
+zulon-std-core = { path = "../zulon-std-core" }
+thiserror = "2.0.0"
+tempfile = "3.14.0"
+glob = "0.3"
+
+[dev-dependencies]

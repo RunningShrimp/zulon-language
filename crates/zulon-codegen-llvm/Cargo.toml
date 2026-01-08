@@ -2,7 +2,17 @@
 name = "zulon-codegen-llvm"
 version.workspace = true
 edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
 
 [dependencies]
-zulon-air = { path = "../zulon-air" }
-zulon-std-core = { path = "../zulon-std-core" }
+zulon-parser = { path = "../zulon-parser" }
+zulon-typeck = { path = "../zulon-typeck" }
+zulon-hir = { path = "../zulon-hir" }
+zulon-mir = { path = "../zulon-mir" }
+zulon-lir = { path = "../zulon-lir" }
+thiserror = "2.0"
+
+[dev-dependencies]

@@ -1,0 +1,244 @@
+// error_question_mark_demo.zl
+// Demonstrates ? operator error propagation
+//
+// This example shows how to use the ? operator for ergonomic error propagation.
+
+// ============================================================================
+// Example 1: Basic ? operator usage
+// ============================================================================
+
+fn divide(a: i32, b: i32) -> Outcome<i32, DivideError> {
+    if b == 0 {
+        throw DivideError::Zero;
+    }
+    Outcome::Ok(a / b)
+}
+
+fn calculate() -> Outcome<i32, DivideError> {
+    // ? automatically propagates errors
+    let x = divide(10, 2)?;
+    Outcome::Ok(x * 2)
+}
+
+// ============================================================================
+// Example 2: Chained ? operators
+// ============================================================================
+
+fn pipeline() -> Outcome<i32, DivideError> {
+    // Each ? can potentially return early with an error
+    let step1 = divide(100, 2)?;
+    let step2 = divide(step1, 5)?;
+    let step3 = divide(step2, 2)?;
+    Outcome::Ok(step3)
+}
+
+// ============================================================================
+// Example 3: ? in different positions
+// ============================================================================
+
+fn in_expression() -> Outcome<i32, DivideError> {
+    // ? can be used in expression position
+    let result = divide(20, 4)? + divide(10, 2)?;
+    Outcome::Ok(result)
+}
+
+fn in_calculation() -> Outcome<i32, DivideError> {
+    // ? works within calculations
+    let base = divide(100, 10)?;
+    let multiplier = divide(5, 1)?;
+    Outcome::Ok(base * multiplier)
+}
+
+// ============================================================================
+// Example 4: ? with match expressions
+// ============================================================================
+
+fn conditional_divide(a: i32, b: i32, use_alt: bool) -> Outcome<i32, DivideError> {
+    let result = if use_alt {
+        divide(a, b)?
+    } else {
+        divide(b, a)?
+    };
+    Outcome::Ok(result)
+}
+
+// ============================================================================
+// Example 5: Nested ? operators
+// ============================================================================
+
+fn outer() -> Outcome<i32, DivideError> {
+    // ? works through nested function calls
+    inner(divide(10, 2)?)?
+}
+
+fn inner(x: i32) -> Outcome<i32, DivideError> {
+    Outcome::Ok(x * 2)
+}
+
+// ============================================================================
+// Example 6: ? with error type conversion
+// ============================================================================
+
+fn divide_with_io(a: i32, b: i32) -> Outcome<i32, DivideError> {
+    if b == 0 {
+        throw DivideError::Zero;
+    }
+    Outcome::Ok(a / b)
+}
+
+fn calculate_with_io() -> Outcome<i32, IoError> {
+    // Note: This would require error type conversion
+    // For now, it demonstrates the syntax
+    let result = divide_with_io(10, 2)?;
+    // In real implementation, would convert DivideError to IoError
+    Outcome::Ok(result)
+}
+
+// ============================================================================
+// Example 7: ? in let statements with patterns
+// ============================================================================
+
+fn tuple_divide((a, b): (i32, i32)) -> Outcome<i32, DivideError> {
+    divide(a, b)?
+}
+
+fn process_tuple(data: (i32, i32)) -> Outcome<i32, DivideError> {
+    let result = tuple_divide(data)?;
+    Outcome::Ok(result * 2)
+}
+
+// ============================================================================
+// Example 8: Multiple sequential operations
+// ============================================================================
+
+fn complex_pipeline() -> Outcome<i32, DivideError> {
+    // Read config (placeholder)
+    let config = 100;
+
+    // Validate config
+    let validated = if config < 0 {
+        throw DivideError::Negative
+    } else {
+        config
+    };
+
+    // Perform calculations
+    let step1 = divide(validated, 2)?;
+    let step2 = divide(step1, 5)?;
+    let step3 = divide(step2, 3)?;
+
+    // Return final result
+    Outcome::Ok(step3 + 1)
+}
+
+// ============================================================================
+// Example 9: ? with early returns
+// ============================================================================
+
+fn validate_and_compute(a: i32, b: i32) -> Outcome<i32, DivideError> {
+    // Early validation
+    if a < 0 {
+        throw DivideError::Negative;
+    }
+    if b <= 0 {
+        throw DivideError::Zero;
+    }
+
+    // Main computation with error propagation
+    let quotient = divide(a, b)?;
+    let remainder = divide(a, quotient + 1)?;
+
+    Outcome::Ok(remainder)
+}
+
+// ============================================================================
+// Example 10: ? in loop-like structures
+// ============================================================================
+
+fn process_list(items: [i32; 3]) -> Outcome<i32, DivideError> {
+    let mut sum = 0;
+    let mut i = 0;
+
+    while i < 3 {
+        let value = divide(items[i], 2)?;
+        sum = sum + value;
+        i = i + 1;
+    }
+
+    Outcome::Ok(sum)
+}
+
+// ============================================================================
+// Error type definitions
+// ============================================================================
+
+enum DivideError {
+    Zero,
+    Negative,
+    Overflow,
+}
+
+enum IoError {
+    NotFound,
+    PermissionDenied,
+    InvalidInput,
+}
+
+// ============================================================================
+// Main function demonstrating ? operator
+// ============================================================================
+
+fn main() -> i32 {
+    // Test 1: Basic ? operator
+    let result1 = calculate();
+    match result1 {
+        Outcome::Ok(value) => {
+            // Success: (10 / 2) * 2 = 10
+            let _ = value;
+        },
+        Outcome::Err(_) => {}
+    }
+
+    // Test 2: Chained ?
+    let result2 = pipeline();
+    match result2 {
+        Outcome::Ok(value) => {
+            // Success: ((100 / 2) / 5) / 2 = 5
+            let _ = value;
+        },
+        Outcome::Err(_) => {}
+    }
+
+    // Test 3: ? in expression
+    let result3 = in_expression();
+    match result3 {
+        Outcome::Ok(value) => {
+            // Success: (20 / 4) + (10 / 2) = 7
+            let _ = value;
+        },
+        Outcome::Err(_) => {}
+    }
+
+    // Test 4: Nested ?
+    let result4 = outer();
+    match result4 {
+        Outcome::Ok(value) => {
+            // Success: (10 / 2) * 2 = 20
+            let _ = value;
+        },
+        Outcome::Err(_) => {}
+    }
+
+    // Test 5: ? in loop
+    let items = [10, 20, 30];
+    let result5 = process_list(items);
+    match result5 {
+        Outcome::Ok(value) => {
+            // Success: (10/2) + (20/2) + (30/2) = 5 + 10 + 15 = 30
+            let _ = value;
+        },
+        Outcome::Err(_) => {}
+    }
+
+    0  // Return success
+}

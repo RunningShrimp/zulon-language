@@ -1,0 +1,194 @@
+// ZULON Lexer 演示程序
+// 这个文件展示各种 Token 类型，用于测试词法分析器
+
+// 1. 关键字演示
+fn demo_keywords() {
+    // 控制流
+    if condition {
+        loop {
+            while true {
+                for item in items {
+                    break;
+                    continue;
+                }
+                return;
+            }
+        }
+    } else {
+        match value {
+            _ => {}
+        }
+    }
+
+    // 声明
+    fn function() {}
+    struct Point {}
+    enum Option {}
+    trait Display {}
+    impl Type for Trait {}
+    type Alias = i32;
+
+    let mut variable = 42;
+    const CONSTANT: i32 = 100;
+    static STATIC: i32 = 200;
+
+    // 修饰符
+    pub fn public_function() {}
+    use std::collections;
+    mod my_module {}
+    where T: Display;
+
+    // 错误和效应
+    error MyError {}
+    effect IO {}
+    throw MyError::Invalid;
+    perform IO::write();
+    try {
+        risky_operation()
+    }
+}
+
+// 2. 运算符演示
+fn demo_operators() {
+    // 算术运算符
+    let a = 10 + 20;
+    let b = 30 - 15;
+    let c = 5 * 6;
+    let d = 100 / 4;
+    let e = 17 % 5;
+    let f = 2 ^ 10;
+
+    // 赋值运算符
+    a += 10;
+    b -= 5;
+    c *= 2;
+    d /= 3;
+    e %= 4;
+    f ^= 5;
+
+    // 比较运算符
+    let eq = (x == y);
+    let ne = (x != y);
+    let lt = (x < y);
+    let le = (x <= y);
+    let gt = (x > y);
+    let ge = (x >= y);
+
+    // 逻辑运算符
+    let and_val = (true && false);
+    let or_val = (true || false);
+    let not_val = !true;
+
+    // 位运算符
+    let bit_and = (x & y);
+    let bit_or = (x | y);
+    let left_shift = (x << 2);
+    let right_shift = (x >> 2);
+
+    // 其他运算符
+    let arrow = || -> ReturnType {};
+    let dot = object.method();
+    let range = 0..10;
+    let range_inclusive = 0..=10;
+    let spread = ...args;
+    let path = std::collections::HashMap;
+    let nullable = value?;
+}
+
+// 3. 字面量演示
+fn demo_literals() {
+    // 整数
+    let decimal = 42;
+    let hex = 0xFF;
+    let binary = 0b1010;
+    let octal = 0o755;
+    let with_underscores = 1_000_000;
+
+    // 浮点数
+    let float = 3.14;
+    let scientific = 1.5e10;
+    let with_suffix = 3.14f64;
+
+    // 字符串
+    let string = "Hello, World!";
+    let multiline = "Line 1\nLine 2\nLine 3";
+    let escaped = "Tab:\t, Quote:\", Backslash:\\\\";
+
+    // 模板字符串
+    let name = "Alice";
+    let greeting = `Hello, ${name}!`;
+    let multiline_template = `
+        Dear ${name},
+
+        Welcome to ZULON!
+
+        Best regards,
+        The ZULON Team
+    `;
+
+    // 字符
+    let char = 'a';
+    let newline = '\n';
+    let unicode = '😀';
+    let escape = '\\';
+
+    // 布尔值
+    let true_val = true;
+    let false_val = false;
+
+    // 空值
+    let null_val = null;
+
+    // 数组（语法演示）
+    let arr = [1, 2, 3, 4, 5];
+    let slice = &arr[1..4];
+}
+
+// 4. 注释演示
+// 这是单行注释
+
+/*
+ * 这是
+ * 多行
+ * 注释
+ */
+
+// 5. 分隔符演示
+fn demo_delimiters() {
+    // 括号
+    let tuple = (1, 2, 3);
+    let array = [1, 2, 3];
+    let block = { let x = 42; };
+
+    // 标点
+    let result = function(arg1, arg2);
+    let mut value: Type = 100;
+    let path: module::Type;
+
+    // 属性
+    #[derive(Debug)]
+    struct Example {}
+
+    @attribute
+    fn decorated() {}
+}
+
+// 6. 主函数演示
+fn main() {
+    // 演示各种特性
+    demo_keywords();
+    demo_operators();
+    demo_literals();
+    demo_delimiters();
+
+    // 模板字符串插值
+    let name = "World";
+    println(`Hello, ${name}!`);
+
+    // 错误处理
+    let result = risky_operation()?;
+    match result {
+        Ok(value) => println!("Success: {}", value),
+        Err(e) => println!("Error: {}", e),
+    }
+}

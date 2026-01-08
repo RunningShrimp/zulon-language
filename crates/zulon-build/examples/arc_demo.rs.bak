@@ -1,0 +1,329 @@
+// Copyright 2026 ZULON Language Team
+// SPDX-License-Identifier: Apache-2.0 OR MIT
+
+//! Arc (Atomic Reference Counting) Demonstration
+//!
+//! This example demonstrates manual reference counting using Arc<T>:
+//! - Allocating reference-counted memory
+//! - Incrementing and decrementing reference counts
+//! - Automatic memory management when ref count reaches zero
+
+use std::collections::HashMap;
+use zulon_build::{BuildConfig, BuildPipeline};
+use zulon_lir::{
+    LirBlock, LirConstant, LirExternal, LirFunction, LirInstruction, LirOperand, LirTerminator, LirTy,
+};
+
+fn main() {
+    println!("🚀 ZULON Arc (Reference Counting) Demo\n");
+    println!("Phase 1.5 (Memory Management Foundation) - Manual Reference Counting\n");
+
+    // Create external function declarations
+    let externals = vec![
+        // Output functions
+        LirExternal {
+            name: "zulon_println".to_string(),
+            param_types: vec![LirTy::Ptr(Box::new(LirTy::I8))],
+            return_type: LirTy::Unit,
+        },
+        LirExternal {
+            name: "zulon_println_i32".to_string(),
+            param_types: vec![LirTy::I32],
+            return_type: LirTy::Unit,
+        },
+        // Arc functions
+        LirExternal {
+            name: "zulon_arc_alloc".to_string(),
+            param_types: vec![LirTy::USize], // size_t
+            return_type: LirTy::Ptr(Box::new(LirTy::I8)), // void*
+        },
+        LirExternal {
+            name: "zulon_ref_inc".to_string(),
+            param_types: vec![LirTy::Ptr(Box::new(LirTy::I8))], // void*
+            return_type: LirTy::Unit,
+        },
+        LirExternal {
+            name: "zulon_ref_dec".to_string(),
+            param_types: vec![LirTy::Ptr(Box::new(LirTy::I8))], // void*
+            return_type: LirTy::Unit,
+        },
+    ];
+
+    // Create Arc demonstration function
+    let arc_function = create_arc_demo();
+
+    // Create build configuration
+    let config = BuildConfig {
+        output: "arc_demo".into(),
+        keep_intermediates: true,
+        opt_level: 0,
+        target: None,
+    };
+
+    println!("📦 Building executable...");
+
+    // Create build pipeline
+    let mut pipeline = BuildPipeline::new(config);
+    pipeline.add_externals(externals);
+    pipeline.add_functions(vec![arc_function]);
+
+    // Build!
+    match pipeline.build() {
+        Ok(exe_path) => {
+            println!("✅ Build successful!");
+            println!("   Executable: {}", exe_path.display());
+            println!();
+            println!("💡 This program demonstrates:");
+            println!("   1. Allocating reference-counted memory");
+            println!("   2. Incrementing reference count (creating new reference)");
+            println!("   3. Decrementing reference count (releasing reference)");
+            println!("   4. Automatic memory management");
+            println!();
+            println!("📊 Arc Memory Layout:");
+            println!("   [ref_count: i32][data: ...]");
+            println!("   The ref count is stored immediately before the data");
+            println!();
+            println!("🎯 Key Concept:");
+            println!("   When ref_count reaches 0, memory is automatically freed!");
+        }
+        Err(e) => {
+            eprintln!("❌ Build failed: {}", e);
+            eprintln!();
+            eprintln!("⚠️  Note: This example requires LLVM tools:");
+            eprintln!("   - llvm-as (LLVM assembler)");
+            eprintln!("   - llc (LLVM compiler)");
+            eprintln!("   - ld or lld (linker)");
+        }
+    }
+}
+
+/// Create a function that demonstrates Arc reference counting
+fn create_arc_demo() -> LirFunction {
+    let mut func = LirFunction {
+        name: "zulon_main".to_string(),
+        params: vec![],
+        param_types: vec![],
+        return_type: LirTy::I32,
+        blocks: HashMap::new(),
+        entry_block: 0,
+        next_id: 1,
+        next_vreg: 0,
+        external_funcs: Vec::new(),
+    };
+
+    let block = LirBlock {
+        id: 0,
+        phi_nodes: HashMap::new(),
+        instructions: vec![
+            // ===== TITLE =====
+            LirInstruction::Const {
+                dest: 0,
+                value: LirConstant::String("=== ZULON Arc (Reference Counting) Demo ===".to_string()),
+                ty: LirTy::Ptr(Box::new(LirTy::I8)),
+            },
+            LirInstruction::CallExternal {
+                dest: None,
+                func_name: "zulon_println".to_string(),
+                args: vec![0],
+                arg_types: vec![LirTy::Ptr(Box::new(LirTy::I8))],
+                return_type: LirTy::Unit,
+            },
+            LirInstruction::Const {
+                dest: 1,
+                value: LirConstant::String("".to_string()),
+                ty: LirTy::Ptr(Box::new(LirTy::I8)),
+            },
+            LirInstruction::CallExternal {
+                dest: None,
+                func_name: "zulon_println".to_string(),
+                args: vec![1],
+                arg_types: vec![LirTy::Ptr(Box::new(LirTy::I8))],
+                return_type: LirTy::Unit,
+            },
+
+            // ===== STEP 1: ALLOCATE =====
+            LirInstruction::Const {
+                dest: 2,
+                value: LirConstant::String("Step 1: Allocate Arc<i32> with value 42".to_string()),
+                ty: LirTy::Ptr(Box::new(LirTy::I8)),
+            },
+            LirInstruction::CallExternal {
+                dest: None,
+                func_name: "zulon_println".to_string(),
+                args: vec![2],
+                arg_types: vec![LirTy::Ptr(Box::new(LirTy::I8))],
+                return_type: LirTy::Unit,
+            },
+
+            // Allocate memory for i32 (4 bytes)
+            LirInstruction::Const {
+                dest: 3,
+                value: LirConstant::Integer(4), // sizeof(i32) = 4
+                ty: LirTy::USize,
+            },
+            LirInstruction::CallExternal {
+                dest: Some(4), // ptr1: *mut i32
+                func_name: "zulon_arc_alloc".to_string(),
+                args: vec![3],
+                arg_types: vec![LirTy::USize],
+                return_type: LirTy::Ptr(Box::new(LirTy::I8)),
+            },
+
+            // Store value 42 into the Arc
+            LirInstruction::Const {
+                dest: 5,
+                value: LirConstant::Integer(42),
+                ty: LirTy::I32,
+            },
+            LirInstruction::Store {
+                dest: LirOperand::Reg(4), // *ptr1 = 42
+                src: 5,
+                ty: LirTy::I32,
+            },
+
+            // Current ref count: 1 (initialized by arc_alloc)
+
+            // ===== STEP 2: INCREMENT REF COUNT =====
+            LirInstruction::Const {
+                dest: 6,
+                value: LirConstant::String("Step 2: Increment ref count (clone)".to_string()),
+                ty: LirTy::Ptr(Box::new(LirTy::I8)),
+            },
+            LirInstruction::CallExternal {
+                dest: None,
+                func_name: "zulon_println".to_string(),
+                args: vec![6],
+                arg_types: vec![LirTy::Ptr(Box::new(LirTy::I8))],
+                return_type: LirTy::Unit,
+            },
+
+            // ptr2 = ptr1 (increment ref count - directly use ptr1)
+            LirInstruction::RefInc {
+                ptr: 4, // ptr1 is now "cloned"
+                ty: LirTy::I32,
+            },
+
+            // Current ref count: 2
+
+            // ===== STEP 3: DECREMENT FIRST REF =====
+            LirInstruction::Const {
+                dest: 8,
+                value: LirConstant::String("Step 3: Decrement first ref (drop ptr1)".to_string()),
+                ty: LirTy::Ptr(Box::new(LirTy::I8)),
+            },
+            LirInstruction::CallExternal {
+                dest: None,
+                func_name: "zulon_println".to_string(),
+                args: vec![8],
+                arg_types: vec![LirTy::Ptr(Box::new(LirTy::I8))],
+                return_type: LirTy::Unit,
+            },
+
+            LirInstruction::RefDec {
+                ptr: 4, // ptr1
+                ty: LirTy::I32,
+            },
+
+            // Current ref count: 1
+
+            // ===== STEP 4: DECREMENT SECOND REF =====
+            LirInstruction::Const {
+                dest: 7,
+                value: LirConstant::String("Step 4: Decrement second ref (drop ptr2)".to_string()),
+                ty: LirTy::Ptr(Box::new(LirTy::I8)),
+            },
+            LirInstruction::CallExternal {
+                dest: None,
+                func_name: "zulon_println".to_string(),
+                args: vec![7],
+                arg_types: vec![LirTy::Ptr(Box::new(LirTy::I8))],
+                return_type: LirTy::Unit,
+            },
+
+            LirInstruction::RefDec {
+                ptr: 4, // ptr1 (the same pointer, second ref)
+                ty: LirTy::I32,
+            },
+
+            // Current ref count: 0
+            // Memory is automatically freed!
+
+            // ===== SUMMARY =====
+            LirInstruction::Const {
+                dest: 10,
+                value: LirConstant::String("".to_string()),
+                ty: LirTy::Ptr(Box::new(LirTy::I8)),
+            },
+            LirInstruction::CallExternal {
+                dest: None,
+                func_name: "zulon_println".to_string(),
+                args: vec![10],
+                arg_types: vec![LirTy::Ptr(Box::new(LirTy::I8))],
+                return_type: LirTy::Unit,
+            },
+
+            LirInstruction::Const {
+                dest: 11,
+                value: LirConstant::String("Arc Status: Memory automatically freed!".to_string()),
+                ty: LirTy::Ptr(Box::new(LirTy::I8)),
+            },
+            LirInstruction::CallExternal {
+                dest: None,
+                func_name: "zulon_println".to_string(),
+                args: vec![11],
+                arg_types: vec![LirTy::Ptr(Box::new(LirTy::I8))],
+                return_type: LirTy::Unit,
+            },
+
+            LirInstruction::Const {
+                dest: 12,
+                value: LirConstant::String("".to_string()),
+                ty: LirTy::Ptr(Box::new(LirTy::I8)),
+            },
+            LirInstruction::CallExternal {
+                dest: None,
+                func_name: "zulon_println".to_string(),
+                args: vec![12],
+                arg_types: vec![LirTy::Ptr(Box::new(LirTy::I8))],
+                return_type: LirTy::Unit,
+            },
+
+            LirInstruction::Const {
+                dest: 13,
+                value: LirConstant::String("Foundation: Manual reference counting complete!".to_string()),
+                ty: LirTy::Ptr(Box::new(LirTy::I8)),
+            },
+            LirInstruction::CallExternal {
+                dest: None,
+                func_name: "zulon_println".to_string(),
+                args: vec![13],
+                arg_types: vec![LirTy::Ptr(Box::new(LirTy::I8))],
+                return_type: LirTy::Unit,
+            },
+
+            LirInstruction::Const {
+                dest: 14,
+                value: LirConstant::String("Next: Automatic ARC in compiler (future)".to_string()),
+                ty: LirTy::Ptr(Box::new(LirTy::I8)),
+            },
+            LirInstruction::CallExternal {
+                dest: None,
+                func_name: "zulon_println".to_string(),
+                args: vec![14],
+                arg_types: vec![LirTy::Ptr(Box::new(LirTy::I8))],
+                return_type: LirTy::Unit,
+            },
+
+            // Return success
+            LirInstruction::Const {
+                dest: 15,
+                value: LirConstant::Integer(0),
+                ty: LirTy::I32,
+            },
+        ],
+        terminator: Some(LirTerminator::Return(Some(15))),
+    };
+
+    func.blocks.insert(0, block);
+    func
+}

@@ -1,0 +1,7 @@
+example,metric,o0,o2,improvement
+hello_world,binary_size,36504,36504,0%
+hello_world,runtime,84,24,71%
+println_demo,binary_size,36512,36512,0%
+println_demo,runtime,40,18,55%
+arc_demo,binary_size,36504,36504,0%
+arc_demo,runtime,47,41,12%

@@ -1,0 +1,163 @@
+// 01_basics.zl
+// ZULON 基础语法示例
+// 演示变量、常量、基本类型和运算
+
+fn main() {
+    basics_demo()
+    operators_demo()
+    control_flow_demo()
+}
+
+// 变量和常量
+fn basics_demo() {
+    println!("=== 变量和常量 ===")
+
+    // 不可变变量
+    let name = "Alice"
+    println!("Name: {}", name)
+
+    // 可变变量
+    let mut age = 30
+    println!("Initial age: {}", age)
+    age = 31
+    println!("Updated age: {}", age)
+
+    // 常量
+    const MAX_SCORE = 100
+    println!("Max score: {}", MAX_SCORE)
+
+    // 类型标注（可选）
+    let pi: f64 = 3.14159265359
+    println!("Pi: {}", pi)
+
+    // 整数类型
+    let byte: u8 = 255
+    let small: i16 = 1000
+    let medium: i32 = 100000
+    let big: i64 = 10000000000
+
+    println!("整数类型: {}, {}, {}, {}", byte, small, medium, big)
+
+    // 浮点类型
+    let float_val: f32 = 3.14
+    let double_val: f64 = 2.718281828459045
+
+    println!("浮点类型: {}, {}", float_val, double_val)
+
+    // 布尔类型
+    let is_valid: bool = true
+    let is_empty: bool = false
+
+    println!("布尔类型: {}, {}", is_valid, is_empty)
+
+    // 字符类型
+    let letter: char = 'A'
+    let emoji: char = '😀'
+    let chinese: char = '中'
+
+    println!("字符类型: {}, {}, {}", letter, emoji, chinese)
+
+    // 字符串类型
+    let greeting: str = "Hello, ZULON!"
+    println!("{}", greeting)
+}
+
+// 运算符
+fn operators_demo() {
+    println!("\n=== 运算符 ===")
+
+    // 算术运算
+    let a = 10
+    let b = 3
+
+    println!("{} + {} = {}", a, b, a + b)
+    println!("{} - {} = {}", a, b, a - b)
+    println!("{} * {} = {}", a, b, a * b)
+    println!("{} / {} = {}", a, b, a / b)
+    println!("{} % {} = {}", a, b, a % b)
+
+    // 比较运算
+    let x = 5
+    let y = 10
+
+    println!("{} < {} = {}", x, y, x < y)
+    println!("{} > {} = {}", x, y, x > y)
+    println!("{} == {} = {}", x, y, x == y)
+    println!("{} != {} = {}", x, y, x != y)
+    println!("{} <= {} = {}", x, y, x <= y)
+    println!("{} >= {} = {}", x, y, x >= y)
+
+    // 逻辑运算
+    let p = true
+    let q = false
+
+    println!("{} && {} = {}", p, q, p && q)
+    println!("{} || {} = {}", p, q, p || q)
+    println!("!{} = {}", p, !p)
+
+    // 位运算
+    let m = 0b1100  // 12
+    let n = 0b1010  // 10
+
+    println!("{} & {} = {}", m, n, m & n)
+    println!("{} | {} = {}", m, n, m | n)
+    println!("{} ^ {} = {}", m, n, m ^ n)
+    println!("{} << 1 = {}", m, m << 1)
+    println!("{} >> 1 = {}", m, m >> 1)
+}
+
+// 控制流
+fn control_flow_demo() {
+    println!("\n=== 控制流 ===")
+
+    // if-else 语句
+    let number = 42
+
+    if number > 50 {
+        println!("{} 大于 50", number)
+    } else if number > 40 {
+        println!("{} 在 40-50 之间", number)
+    } else {
+        println!("{} 小于等于 40", number)
+    }
+
+    // loop 循环
+    println!("\n--- Loop 循环 ---")
+    let mut i = 0
+    loop {
+        println!("Loop: {}", i)
+        i = i + 1
+        if i >= 3 {
+            break
+        }
+    }
+
+    // while 循环
+    println!("\n--- While 循环 ---")
+    let mut j = 0
+    while j < 3 {
+        println!("While: {}", j)
+        j = j + 1
+    }
+
+    // for 循环
+    println!("\n--- For 循环 ---")
+    for k in 0..3 {
+        println!("For: {}", k)
+    }
+
+    // 遍历数组
+    let fruits = ["Apple", "Banana", "Cherry"]
+    println!("\n--- 遍历数组 ---")
+    for fruit in fruits {
+        println!("水果: {}", fruit)
+    }
+
+    // 使用索引
+    for index in 0..fruits.len() {
+        println!("水果[{}]: {}", index, fruits[index])
+    }
+}
+
+// 运行此示例:
+// zc run 01_basics.zl

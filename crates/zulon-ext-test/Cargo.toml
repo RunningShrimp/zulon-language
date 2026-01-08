@@ -2,6 +2,12 @@
 name = "zulon-ext-test"
 version.workspace = true
 edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
 
+# TODO: Add dependencies when needed
 [dependencies]
-zulon-std-std = { path = "../zulon-std-std" }
+
+[dev-dependencies]

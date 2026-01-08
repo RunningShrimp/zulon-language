@@ -1,0 +1,12 @@
+// Working example: sum using recursion (works today!)
+fn sum_to_n(n: i32) -> i32 {
+    if n <= 0 {
+        0
+    } else {
+        n + sum_to_n(n - 1)
+    }
+}
+
+fn main() -> i32 {
+    sum_to_n(10)
+}

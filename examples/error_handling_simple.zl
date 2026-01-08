@@ -1,0 +1,154 @@
+// error_handling_simple.zl
+// Demonstrates basic error handling with Outcome<T, E>
+//
+// NOTE: This uses the explicit Outcome<T, E> type from zulon-std-core.
+// The throw and ? syntax sugar is implemented in the compiler but
+// codegen support is still in progress.
+
+// ============================================================================
+// Example 1: Basic Outcome usage - success case
+// ============================================================================
+
+fn divide_success(a: i32, b: i32) -> Outcome<i32, DivideError> {
+    if b == 0 {
+        Outcome::Err(DivideError::Zero)
+    } else {
+        Outcome::Ok(a / b)
+    }
+}
+
+// ============================================================================
+// Example 2: Basic Outcome usage - error case
+// ============================================================================
+
+fn divide_error(a: i32, b: i32) -> Outcome<i32, DivideError> {
+    if b == 0 {
+        Outcome::Err(DivideError::Zero)
+    } else {
+        Outcome::Ok(a / b)
+    }
+}
+
+// ============================================================================
+// Example 3: Manual error propagation (before ? operator codegen)
+// ============================================================================
+
+fn calculate_manual(a: i32, b: i32, c: i32) -> Outcome<i32, DivideError> {
+    // Manually handle Outcome from first division
+    let step1 = match divide_success(a, b) {
+        Outcome::Ok(value) => value,
+        Outcome::Err(err) => Outcome::Err(err),
+    };
+
+    // Manually handle Outcome from second division
+    let step2 = match divide_success(step1, c) {
+        Outcome::Ok(value) => value,
+        Outcome::Err(err) => Outcome::Err(err),
+    };
+
+    Outcome::Ok(step2)
+}
+
+// ============================================================================
+// Example 4: Using Outcome methods
+// ============================================================================
+
+fn check_division(a: i32, b: i32) -> i32 {
+    let result = divide_success(a, b);
+
+    // Use unwrap_or to provide default value
+    result.unwrap_or(0)
+}
+
+fn is_division_ok(a: i32, b: i32) -> bool {
+    let result = divide_success(a, b);
+
+    // Use is_ok to check if successful
+    result.is_ok()
+}
+
+// ============================================================================
+// Example 5: Chaining operations with and_then
+// ============================================================================
+
+fn divide_and_multiply(a: i32, b: i32, multiplier: i32) -> Outcome<i32, DivideError> {
+    divide_success(a, b)
+        .and_then(|quotient| Outcome::Ok(quotient * multiplier))
+}
+
+// ============================================================================
+// Example 6: Mapping errors
+// ============================================================================
+
+fn divide_with_custom_error(a: i32, b: i32) -> Outcome<i32, String> {
+    divide_success(a, b)
+        .map_err(|err| match err {
+            DivideError::Zero => "Division by zero".to_string(),
+        })
+}
+
+// ============================================================================
+// Example 7: Combining multiple Outcomes
+// ============================================================================
+
+fn sum_results(a: i32, b: i32, c: i32, d: i32) -> Outcome<i32, DivideError> {
+    // Divide a by b and c by d, then sum results
+    let result1 = divide_success(a, b);
+    let result2 = divide_success(c, d);
+
+    match (result1, result2) {
+        (Outcome::Ok(x), Outcome::Ok(y)) => Outcome::Ok(x + y),
+        (Outcome::Err(e), _) => Outcome::Err(e),
+        (_, Outcome::Err(e)) => Outcome::Err(e),
+    }
+}
+
+// ============================================================================
+// Error types
+// ============================================================================
+
+enum DivideError {
+    Zero,
+    Negative,
+}
+
+// ============================================================================
+// Main function demonstrating usage
+// ============================================================================
+
+fn main() -> i32 {
+    // Test 1: Successful division
+    let result1 = divide_success(10, 2);
+    if result1.is_ok() {
+        // Should print: "10 / 2 = 5"
+        // (println not yet implemented, so we just use the value)
+        let _ = result1.unwrap();
+    }
+
+    // Test 2: Division by zero
+    let result2 = divide_error(10, 0);
+    if result2.is_err() {
+        // Handle error
+        1
+    } else {
+        0
+    }
+
+    // Test 3: Using unwrap_or
+    let value = check_division(10, 2);  // Returns 5
+    let _ = value;
+
+    // Test 4: Using and_then for chaining
+    let chained = divide_and_multiply(10, 2, 3);  // Outcome::Ok(15)
+    if chained.is_ok() {
+        let _ = chained.unwrap();
+    }
+
+    // Test 5: Combining multiple results
+    let combined = sum_results(10, 2, 20, 4);  // Outcome::Ok(15)
+    if combined.is_ok() {
+        let _ = combined.unwrap();
+    }
+
+    0  // Return success
+}

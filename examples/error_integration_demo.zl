@@ -1,0 +1,327 @@
+// error_integration_demo.zl
+// Demonstrates complete error handling integration
+//
+// This example combines throw statements, ? operator, and Outcome<T, E>
+// to show real-world error handling patterns.
+
+// ============================================================================
+// Example 1: Complete error handling workflow
+// ============================================================================
+
+fn safe_divide(a: i32, b: i32) -> Outcome<i32, MathError> {
+    // Validate inputs
+    if b == 0 {
+        throw MathError::DivisionByZero;
+    }
+    if a < 0 || b < 0 {
+        throw MathError::NegativeOperand;
+    }
+
+    // Perform calculation
+    Outcome::Ok(a / b)
+}
+
+fn process_division(a: i32, b: i32) -> Outcome<i32, MathError> {
+    // Use ? to propagate errors from safe_divide
+    let quotient = safe_divide(a, b)?;
+
+    // Do additional processing
+    let result = quotient * 2;
+
+    Outcome::Ok(result)
+}
+
+// ============================================================================
+// Example 2: Multi-stage validation and computation
+// ============================================================================
+
+fn validate_input(x: i32) -> Outcome<i32, ValidationError> {
+    if x < 0 {
+        throw ValidationError::Negative;
+    }
+    if x > 1000 {
+        throw ValidationError::TooLarge;
+    }
+    Outcome::Ok(x)
+}
+
+fn transform_input(x: i32) -> Outcome<i32, MathError> {
+    if x == 0 {
+        throw MathError::DivisionByZero;
+    }
+    Outcome::Ok(1000 / x)
+}
+
+fn complete_workflow(x: i32) -> Outcome<i32, ProcessError> {
+    // Stage 1: Validate input
+    let validated = validate_input(x)?;
+
+    // Stage 2: Transform
+    let transformed = transform_input(validated)?;
+
+    // Stage 3: Final result
+    Outcome::Ok(transformed)
+}
+
+// ============================================================================
+// Example 3: Error handling with data structures
+// ============================================================================
+
+struct Point {
+    x: i32,
+    y: i32,
+}
+
+fn parse_point(x_str: string, y_str: string) -> Outcome<Point, ParseError> {
+    // Placeholder: In real implementation, would parse strings
+    // For now, demonstrate error handling
+    throw ParseError::InvalidFormat;
+}
+
+fn scale_point(point: Point, factor: i32) -> Outcome<Point, MathError> {
+    if factor == 0 {
+        throw MathError::InvalidScale;
+    }
+
+    Outcome::Ok(Point {
+        x: point.x * factor,
+        y: point.y * factor
+    })
+}
+
+fn process_point(x_str: string, y_str: string, scale: i32) -> Outcome<Point, ProcessError> {
+    // Parse point (could fail)
+    let point = parse_point(x_str, y_str)?;
+
+    // Scale point (could fail)
+    let scaled = scale_point(point, scale)?;
+
+    Outcome::Ok(scaled)
+}
+
+// ============================================================================
+// Example 4: Error handling in collection processing
+// ============================================================================
+
+fn process_index(items: [i32; 5], index: i32) -> Outcome<i32, IndexError> {
+    if index < 0 {
+        throw IndexError::Negative;
+    }
+    if index >= 5 {
+        throw IndexError::OutOfBounds;
+    }
+
+    // Safe to access (in real implementation, would access array)
+    Outcome::Ok(items[0])  // Placeholder
+}
+
+fn safe_divide_item(item: i32) -> Outcome<i32, MathError> {
+    if item == 0 {
+        throw MathError::DivisionByZero;
+    }
+    Outcome::Ok(100 / item)
+}
+
+fn process_collection(items: [i32; 5], index: i32) -> Outcome<i32, ProcessError> {
+    // Get item (could fail)
+    let item = process_index(items, index)?;
+
+    // Process item (could fail)
+    let result = safe_divide_item(item)?;
+
+    Outcome::Ok(result)
+}
+
+// ============================================================================
+// Example 5: Nested error handling with different error types
+// ============================================================================
+
+fn read_config() -> Outcome<i32, IoError> {
+    // Placeholder: Would read from file
+    throw IoError::NotFound;
+}
+
+fn validate_config(config: i32) -> Outcome<i32, ValidationError> {
+    if config < 0 {
+        throw ValidationError::Negative;
+    }
+    Outcome::Ok(config)
+}
+
+fn apply_config(config: i32) -> Outcome<i32, MathError> {
+    if config == 0 {
+        throw MathError::DivisionByZero;
+    }
+    Outcome::Ok(1000 / config)
+}
+
+fn full_config_pipeline() -> Outcome<i32, ProcessError> {
+    // Stage 1: Read (IoError)
+    let config = match read_config() {
+        Outcome::Ok(c) => c,
+        Outcome::Err(_) => 100  // Default config
+    };
+
+    // Stage 2: Validate (ValidationError)
+    let validated = validate_config(config)?;
+
+    // Stage 3: Apply (MathError)
+    let result = apply_config(validated)?;
+
+    Outcome::Ok(result)
+}
+
+// ============================================================================
+// Example 6: Error handling with conditional logic
+// ============================================================================
+
+fn conditional_divide(a: i32, b: i32, allow_zero: bool) -> Outcome<i32, MathError> {
+    if !allow_zero && b == 0 {
+        throw MathError::DivisionByZero;
+    }
+
+    if b == 0 {
+        Outcome::Ok(0)  // Special case
+    } else {
+        Outcome::Ok(a / b)
+    }
+}
+
+fn complex_computation(a: i32, b: i32, c: i32) -> Outcome<i32, MathError> {
+    // First division
+    let step1 = conditional_divide(a, b, false)?;
+
+    // Second division
+    let step2 = conditional_divide(step1, c, true)?;
+
+    // Final result
+    Outcome::Ok(step2 + 1)
+}
+
+// ============================================================================
+// Example 7: Error accumulation and reporting
+// ============================================================================
+
+fn divide_all(values: [i32; 3], divisor: i32) -> Outcome<[i32; 3], MathError> {
+    if divisor == 0 {
+        throw MathError::DivisionByZero;
+    }
+
+    // In real implementation, would divide all values
+    // For now, return placeholder
+    Outcome::Ok([0, 0, 0])
+}
+
+fn sum_divided(values: [i32; 3], divisor: i32) -> Outcome<i32, MathError> {
+    let divided = divide_all(values, divisor)?;
+
+    let mut sum = 0;
+    let i = 0;
+    while i < 3 {
+        sum = sum + divided[i];
+        i = i + 1;
+    }
+
+    Outcome::Ok(sum)
+}
+
+// ============================================================================
+// Error type definitions
+// ============================================================================
+
+enum MathError {
+    DivisionByZero,
+    NegativeOperand,
+    InvalidScale,
+    Overflow,
+}
+
+enum ValidationError {
+    Negative,
+    TooLarge,
+    InvalidFormat,
+}
+
+enum ParseError {
+    InvalidFormat,
+    TooLong,
+    Empty,
+}
+
+enum IndexError {
+    Negative,
+    OutOfBounds,
+}
+
+enum IoError {
+    NotFound,
+    PermissionDenied,
+    InvalidData,
+}
+
+enum ProcessError {
+    Math(MathError),
+    Validation(ValidationError),
+    Parse(ParseError),
+    Index(IndexError),
+    Io(IoError),
+}
+
+// ============================================================================
+// Main function demonstrating integration
+// ============================================================================
+
+fn main() -> i32 {
+    // Test 1: Complete workflow
+    let result1 = complete_workflow(100);
+    match result1 {
+        Outcome::Ok(value) => {
+            // Success: validate(100) → transform(1000/100) → 10
+            let _ = value;
+        },
+        Outcome::Err(_) => {}
+    }
+
+    // Test 2: Point processing
+    let result2 = process_point("10", "20", 2);
+    match result2 {
+        Outcome::Ok(point) => {
+            // Success: Point { x: 20, y: 40 }
+            let _ = point;
+        },
+        Outcome::Err(_) => {}
+    }
+
+    // Test 3: Collection processing
+    let items = [100, 50, 20];
+    let result3 = process_collection(items, 0);
+    match result3 {
+        Outcome::Ok(value) => {
+            // Success: items[0] = 100, 100/100 = 1
+            let _ = value;
+        },
+        Outcome::Err(_) => {}
+    }
+
+    // Test 4: Config pipeline
+    let result4 = full_config_pipeline();
+    match result4 {
+        Outcome::Ok(value) => {
+            // Success: default config validated and applied
+            let _ = value;
+        },
+        Outcome::Err(_) => {}
+    }
+
+    // Test 5: Conditional division
+    let result5 = complex_computation(100, 10, 2);
+    match result5 {
+        Outcome::Ok(value) => {
+            // Success: (100/10)/2 + 1 = 6
+            let _ = value;
+        },
+        Outcome::Err(_) => {}
+    }
+
+    0  // Return success
+}

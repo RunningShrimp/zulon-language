@@ -2,7 +2,12 @@
 name = "zulon-runtime-net"
 version.workspace = true
 edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
 
+# TODO: Add dependencies when needed
 [dependencies]
-zulon-runtime-core = { path = "../zulon-runtime-core" }
-smallvec = { workspace = true }
+
+[dev-dependencies]

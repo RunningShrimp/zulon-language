@@ -2,9 +2,13 @@
 name = "zulon-std-core"
 version.workspace = true
 edition.workspace = true
-description = "ZULON Core Library (no_std)"
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
 
-[features]
-default = []
-
+# TODO: Add dependencies when needed
 [dependencies]
+zulon-runtime-core = { path = "../zulon-runtime-core" }
+
+[dev-dependencies]

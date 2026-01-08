@@ -4,11 +4,10 @@ version.workspace = true
 edition.workspace = true
 authors.workspace = true
 license.workspace = true
+repository.workspace = true
+homepage.workspace = true
 
+# TODO: Add dependencies when needed
 [dependencies]
-zulon-std-core = { path = "../zulon-std-core" }
-serde = { workspace = true }
-thiserror = { workspace = true }
 
 [dev-dependencies]
-zulon-ext-test = { path = "../zulon-ext-test" }

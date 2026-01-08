@@ -1,0 +1,23 @@
+// 00_hello_world.zl
+// ZULON Hello World 示例
+// 这是学习 ZULON 的第一个程序
+
+fn main() {
+    println!("Hello, World!")
+    println!("欢迎来到 ZULON 编程语言的世界！")
+
+    // 打印当前信息
+    print_system_info()
+}
+
+// 打印系统信息
+fn print_system_info() {
+    println!("========================================")
+    println!("ZULON 编程语言示例程序")
+    println!("版本: 1.0.0")
+    println!("========================================")
+}
+
+// 运行方式:
+// zc 00_hello_world.zl -o hello
+// ./hello

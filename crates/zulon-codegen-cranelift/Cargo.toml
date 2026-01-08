@@ -2,7 +2,12 @@
 name = "zulon-codegen-cranelift"
 version.workspace = true
 edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
 
+# TODO: Add dependencies when needed
 [dependencies]
-zulon-air = { path = "../zulon-air" }
-zulon-std-core = { path = "../zulon-std-core" }
+
+[dev-dependencies]

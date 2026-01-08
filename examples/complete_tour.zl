@@ -1,0 +1,398 @@
+// ZULON语言完整功能演示
+// 这个文件展示了ZULON语言Phase 1 MVP的所有核心功能
+
+// ====================
+// 1. 基础类型和字面量
+// ====================
+
+fn literals_demo() -> i32 {
+    // 整数
+    let int_val = 42;
+    // 浮点数
+    let float_val = 3.14;
+    // 布尔值
+    let bool_val = true;
+    // 字符
+    let char_val = 'A';
+    // 字符串
+    let string_val = "Hello, ZULON!";
+    // 单元类型
+    let unit_val = ();
+
+    0
+}
+
+// ====================
+// 2. 算术和逻辑运算
+// ====================
+
+fn arithmetic_demo() -> i32 {
+    let a = 10;
+    let b = 3;
+
+    // 基础算术
+    let sum = a + b;        // 13
+    let diff = a - b;       // 7
+    let product = a * b;    // 30
+    let quotient = a / b;   // 3
+    let remainder = a % b;  // 1
+
+    sum + diff + product + quotient + remainder
+}
+
+fn logical_demo() -> bool {
+    let a = true;
+    let b = false;
+
+    // 逻辑运算
+    let and_result = a && b;   // false
+    let or_result = a || b;    // true
+    let not_result = !a;       // false
+
+    or_result && not_result
+}
+
+// ====================
+// 3. 条件分支
+// ====================
+
+fn conditional_demo(x: i32) -> i32 {
+    // if表达式
+    if x < 0 {
+        -1
+    } else if x == 0 {
+        0
+    } else {
+        1
+    }
+}
+
+fn nested_if_demo(x: i32, y: i32) -> i32 {
+    if x > 0 {
+        if y > 0 {
+            1  // 两者都正
+        } else {
+            2  // x正,y非正
+        }
+    } else {
+        3  // x非正
+    }
+}
+
+// ====================
+// 4. 循环
+// ====================
+
+fn while_loop_demo() -> i32 {
+    let mut sum = 0;
+    let mut i = 1;
+
+    // while循环
+    while i <= 10 {
+        sum = sum + i;
+        i = i + 1
+    };
+
+    sum  // 1+2+...+10 = 55
+}
+
+fn nested_loop_demo() -> i32 {
+    let mut count = 0;
+    let mut i = 0;
+
+    // 嵌套循环
+    while i < 3 {
+        let mut j = 0;
+        while j < 4 {
+            count = count + 1;
+            j = j + 1
+        };
+        i = i + 1
+    };
+
+    count  // 3 * 4 = 12
+}
+
+fn factorial(n: i32) -> i32 {
+    let mut result = 1;
+    let mut i = 2;
+
+    while i <= n {
+        result = result * i;
+        i = i + 1
+    };
+
+    result
+}
+
+// ====================
+// 5. 函数
+// ====================
+
+fn add(a: i32, b: i32) -> i32 {
+    a + b
+}
+
+fn multiply(a: i32, b: i32) -> i32 {
+    a * b
+}
+
+fn function_demo() -> i32 {
+    // 函数调用
+    let x = add(10, 20);        // 30
+    let y = multiply(3, 4);     // 12
+
+    add(x, y)  // 30 + 12 = 42
+}
+
+// 递归函数
+fn fibonacci(n: i32) -> i32 {
+    if n <= 1 {
+        n
+    } else {
+        fibonacci(n - 1) + fibonacci(n - 2)
+    }
+}
+
+// 高阶函数演示 (简化版)
+fn apply_twice(f: fn(i32) -> i32, x: i32) -> i32 {
+    f(f(x))
+}
+
+fn double(x: i32) -> i32 {
+    x * 2
+}
+
+fn higher_order_demo() -> i32 {
+    apply_twice(double, 5)  // double(double(5)) = double(10) = 20
+}
+
+// ====================
+// 6. 结构体
+// ====================
+
+struct Point {
+    x: i32,
+    y: i32
+}
+
+fn Point_new(x: i32, y: i32) -> Point {
+    Point { x: x, y: y }
+}
+
+fn Point_distance(p1: Point, p2: Point) -> i32 {
+    let dx = p2.x - p1.x;
+    let dy = p2.y - p1.y;
+    dx * dx + dy * dy
+}
+
+fn struct_demo() -> i32 {
+    let p1 = Point { x: 0, y: 0 };
+    let p2 = Point { x: 3, y: 4 };
+
+    Point_distance(p1, p2)  // 3*3 + 4*4 = 25
+}
+
+// 嵌套结构体
+struct Rectangle {
+    top_left: Point,
+    width: i32,
+    height: i32
+}
+
+fn Rectangle_area(r: Rectangle) -> i32 {
+    r.width * r.height
+}
+
+fn nested_struct_demo() -> i32 {
+    let rect = Rectangle {
+        top_left: Point { x: 0, y: 10 },
+        width: 5,
+        height: 3
+    };
+
+    Rectangle_area(rect)  // 5 * 3 = 15
+}
+
+// ====================
+// 7. 枚举
+// ====================
+
+enum Color {
+    Red,
+    Green,
+    Blue
+}
+
+enum Option {
+    Some(i32),
+    None
+}
+
+fn enum_demo() -> i32 {
+    let color = Color::Red;
+
+    match color {
+        Color::Red => 1,
+        Color::Green => 2,
+        Color::Blue => 3
+    }
+}
+
+fn option_demo(opt: Option) -> i32 {
+    match opt {
+        Option::Some(val) => val,
+        Option::None => 0
+    }
+}
+
+// ====================
+// 8. 元组
+// ====================
+
+fn tuple_demo() -> i32 {
+    // 元组创建
+    let pair = (10, 20);
+    let triple = (1, 2, 3);
+
+    // 元组访问 (通过模式匹配)
+    let (x, y) = pair;
+    x + y  // 10 + 20 = 30
+}
+
+fn tuple_nested_demo() -> i32 {
+    // 嵌套元组
+    let nested = ((1, 2), (3, 4));
+    let ((a, b), (c, d)) = nested;
+
+    a + b + c + d  // 1+2+3+4 = 10
+}
+
+// ====================
+// 9. 数组
+// ====================
+
+fn array_demo() -> i32 {
+    // 固定大小数组
+    let arr = [1, 2, 3, 4, 5];
+
+    // 数组访问 (简化版,暂不支持索引)
+    let first = 1;  // arr[0]
+    let last = 5;   // arr[4]
+
+    first + last  // 6
+}
+
+// ====================
+// 10. 块表达式和作用域
+// ====================
+
+fn block_expr_demo() -> i32 {
+    // 块表达式可以返回值
+    let x = {
+        let a = 10;
+        let b = 20;
+        a + b  // 块的返回值 (没有分号)
+    };
+
+    x  // 30
+}
+
+fn scope_demo() -> i32 {
+    let x = 10;
+
+    {
+        // 内部作用域
+        let x = 20;  // 遮蔽外层x
+        x  // 20
+    }
+
+    x  // 外层x仍然是10
+}
+
+// ====================
+// 11. 复杂组合示例
+// ====================
+
+// 计算数组平均值
+fn average(arr: [i32; 5]) -> i32 {
+    let mut sum = 0;
+    let mut i = 0;
+
+    while i < 5 {
+        // 注意: 这里需要手动索引访问
+        // 实际实现需要数组索引语法
+        i = i + 1
+    };
+
+    sum / 5
+}
+
+// 查找最大值
+fn max_three(a: i32, b: i32, c: i32) -> i32 {
+    let mut max = a;
+
+    if b > max {
+        max = b
+    };
+
+    if c > max {
+        max = c
+    };
+
+    max
+}
+
+// 阶乘求和
+fn sum_of_factorials(n: i32) -> i32 {
+    let mut sum = 0;
+    let mut i = 1;
+
+    while i <= n {
+        sum = sum + factorial(i);
+        i = i + 1
+    };
+
+    sum
+}
+
+// ====================
+// 12. 主函数入口
+// ====================
+
+fn main() -> i32 {
+    // 演示各种功能
+    let result1 = arithmetic_demo();
+    let result2 = while_loop_demo();
+    let result3 = nested_loop_demo();
+    let result4 = factorial(5);
+    let result5 = fibonacci(10);
+    let result6 = struct_demo();
+    let result7 = nested_struct_demo();
+    let result8 = enum_demo();
+    let result9 = tuple_demo();
+    let result10 = block_expr_demo();
+    let result11 = max_three(10, 20, 15);
+    let result12 = sum_of_factorials(5);
+
+    // 返回一个组合结果
+    result1 + result2 + result3 + result4 + result5 +
+    result6 + result7 + result8 + result9 + result10 +
+    result11 + result12
+}
+
+// 预期输出:
+// - arithmetic_demo: 54
+// - while_loop_demo: 55
+// - nested_loop_demo: 12
+// - factorial(5): 120
+// - fibonacci(10): 55
+// - struct_demo: 25
+// - nested_struct_demo: 15
+// - enum_demo: 1
+// - tuple_demo: 30
+// - block_expr_demo: 30
+// - max_three(10, 20, 15): 20
+// - sum_of_factorials(5): 1!+2!+3!+4!+5! = 1+2+6+24+120 = 153
+//
+// 总计: 570

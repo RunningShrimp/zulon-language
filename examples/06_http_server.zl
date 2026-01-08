@@ -1,0 +1,479 @@
+// 06_http_server.zl
+// ZULON HTTP 服务器示例
+// 演示如何构建一个生产级 RESTful API 服务器
+
+use std::net::{TcpListener, TcpStream}
+use std::io::{BufRead, BufReader, BufWriter, Write}
+use std::collections::HashMap
+use std::sync::Arc
+
+// ==================== HTTP 类型定义 ====================
+
+enum Method {
+    GET,
+    POST,
+    PUT,
+    DELETE,
+    PATCH,
+}
+
+struct Request {
+    method: Method,
+    path: str,
+    headers: HashMap<str, str>,
+    body: str,
+}
+
+struct Response {
+    status_code: u16,
+    status_text: str,
+    headers: HashMap<str, str>,
+    body: str,
+}
+
+impl Response {
+    fn ok(body: str) -> Response {
+        return Response {
+            status_code: 200,
+            status_text: "OK",
+            headers: HashMap::new(),
+            body,
+        }
+    }
+
+    fn not_found() -> Response {
+        return Response {
+            status_code: 404,
+            status_text: "Not Found",
+            headers: HashMap::new(),
+            body: '{"error": "Not Found"}',
+        }
+    }
+
+    fn json<T: Serialize>(data: T) -> Response {
+        let json = serde_json::to_string(&data)
+        let mut response = Response::ok(json)
+        response.headers.insert("Content-Type", "application/json")
+        return response
+    }
+
+    fn to_http_string(&self) -> str {
+        let mut lines = vec![]
+
+        // 状态行
+        lines.push(format!(
+            "HTTP/1.1 {} {}",
+            self.status_code, self.status_text
+        ))
+
+        // 头部
+        for (key, value) in &self.headers {
+            lines.push(format!("{}: {}", key, value))
+        }
+
+        // Content-Length
+        lines.push(format!("Content-Length: {}", self.body.len()))
+
+        // 空行
+        lines.push("")
+
+        // 主体
+        lines.push(self.body.clone())
+
+        return lines.join("\r\n")
+    }
+}
+
+// ==================== 路由定义 ====================
+
+type Handler = fn(Request) -> Response
+
+struct Route {
+    method: Method,
+    path: str,
+    handler: Handler,
+}
+
+struct Router {
+    routes: Vec<Route>,
+}
+
+impl Router {
+    fn new() -> Router {
+        return Router { routes: vec![] }
+    }
+
+    fn add_route(&mut self, method: Method, path: str, handler: Handler) {
+        self.routes.push(Route {
+            method,
+            path,
+            handler,
+        })
+    }
+
+    fn get(&mut self, path: str, handler: Handler) {
+        self.add_route(Method::GET, path, handler)
+    }
+
+    fn post(&mut self, path: str, handler: Handler) {
+        self.add_route(Method::POST, path, handler)
+    }
+
+    fn put(&mut self, path: str, handler: Handler) {
+        self.add_route(Method::PUT, path, handler)
+    }
+
+    fn delete(&mut self, path: str, handler: Handler) {
+        self.add_route(Method::DELETE, path, handler)
+    }
+
+    fn match_route(&self, request: &Request) -> Option<Handler> {
+        for route in &self.routes {
+            if route.method == request.method && route.path == request.path {
+                return Some(route.handler)
+            }
+        }
+        return None
+    }
+}
+
+// ==================== 服务器 ====================
+
+struct Server {
+    address: str,
+    router: Router,
+}
+
+impl Server {
+    fn new(address: str) -> Server {
+        return Server {
+            address,
+            router: Router::new(),
+        }
+    }
+
+    fn get(&mut self, path: str, handler: Handler) {
+        self.router.get(path, handler)
+    }
+
+    fn post(&mut self, path: str, handler: Handler) {
+        self.router.post(path, handler)
+    }
+
+    fn put(&mut self, path: str, handler: Handler) {
+        self.router.put(path, handler)
+    }
+
+    fn delete(&mut self, path: str, handler: Handler) {
+        self.router.delete(path, handler)
+    }
+
+    fn run(&self) | IoError {
+        let listener = TcpListener::bind(self.address)?
+        println!("服务器运行在: {}", self.address)
+
+        for stream in listener.incoming() {
+            match stream {
+                Ok(stream) => {
+                    // 处理连接
+                    self.handle_connection(stream)
+                },
+                Err(e) => {
+                    eprintln!("连接错误: {:?}", e)
+                },
+            }
+        }
+
+        return Ok(())
+    }
+
+    fn handle_connection(&self, mut stream: TcpStream) {
+        defer {
+            stream.flush()
+        }
+
+        // 读取请求
+        let request = match self.parse_request(&stream) {
+            Ok(req) => req,
+            Err(e) => {
+                eprintln!("解析请求失败: {:?}", e)
+                return
+            },
+        }
+
+        println!("{} {}", request.method, request.path)
+
+        // 匹配路由
+        let handler = match self.router.match_route(&request) {
+            Some(h) => h,
+            None => return Self::handle_not_found,
+        }
+
+        // 执行处理器
+        let response = handler(request)
+
+        // 发送响应
+        self.send_response(&stream, response)
+    }
+
+    fn parse_request(&self, stream: &TcpStream) -> Result<Request, ParseError> {
+        let mut reader = BufReader::new(stream)
+
+        // 读取请求行
+        let mut line = String::new()
+        reader.read_line(&mut line)?
+
+        let parts: Vec<&str> = line.trim().split_whitespace().collect()
+        if parts.len() < 2 {
+            return Err(ParseError::InvalidRequest)
+        }
+
+        let method = match parts[0] {
+            "GET" => Method::GET,
+            "POST" => Method::POST,
+            "PUT" => Method::PUT,
+            "DELETE" => Method::DELETE,
+            "PATCH" => Method::PATCH,
+            _ => return Err(ParseError::InvalidMethod),
+        }
+
+        let path = parts[1]
+
+        // 读取头部
+        let mut headers = HashMap::new()
+        loop {
+            let mut header_line = String::new()
+            reader.read_line(&mut header_line)?
+
+            if header_line.trim() == "" {
+                break
+            }
+
+            let header_parts: Vec<&str> = header_line
+                .trim()
+                .splitn(2, ":")
+                .collect()
+
+            if header_parts.len() == 2 {
+                headers.insert(
+                    header_parts[0].trim(),
+                    header_parts[1].trim()
+                )
+            }
+        }
+
+        // 读取主体（如果有 Content-Length）
+        let body = ""
+        if let Some(content_length) = headers.get("Content-Length") {
+            let len = content_length.parse::<usize>()?
+            let mut body_bytes = vec![0u8; len]
+            reader.read_exact(&mut body_bytes)?
+            body = String::from_utf8(body_bytes)?
+        }
+
+        return Ok(Request {
+            method,
+            path,
+            headers,
+            body,
+        })
+    }
+
+    fn send_response(&self, stream: &TcpStream, response: Response) {
+        let mut writer = BufWriter::new(stream)
+        let http_string = response.to_http_string()
+        writer.write_all(http_string.as_bytes())?
+        writer.flush()?
+    }
+
+    fn handle_not_found(_request: Request) -> Response {
+        return Response::not_found()
+    }
+}
+
+// ==================== 数据模型 ====================
+
+#[derive(Serialize, Deserialize)]
+struct User {
+    id: i32,
+    name: str,
+    email: str,
+}
+
+#[derive(Serialize, Deserialize)]
+struct CreateUserRequest {
+    name: str,
+    email: str,
+}
+
+// ==================== 内存数据库 ====================
+
+struct Database {
+    users: Arc<Mutex<HashMap<i32, User>>>,
+    next_id: Arc<Mutex<i32>>,
+}
+
+impl Database {
+    fn new() -> Database {
+        return Database {
+            users: Arc::new(Mutex::new(HashMap::new())),
+            next_id: Arc::new(Mutex::new(1)),
+        }
+    }
+
+    fn get_user(&self, id: i32) -> Option<User> {
+        let users = self.users.lock()
+        return users.get(&id).cloned()
+    }
+
+    fn get_all_users(&self) -> Vec<User> {
+        let users = self.users.lock()
+        return users.values().cloned().collect()
+    }
+
+    fn create_user(&self, request: CreateUserRequest) -> Result<User, DbError> {
+        let mut next_id = self.next_id.lock()
+        let id = *next_id
+        *next_id = *next_id + 1
+        drop(next_id)
+
+        let user = User {
+            id,
+            name: request.name,
+            email: request.email,
+        }
+
+        let mut users = self.users.lock()
+        users.insert(id, user.clone())
+
+        return Ok(user)
+    }
+
+    fn update_user(&self, id: i32, request: CreateUserRequest) -> Result<User, DbError> {
+        let mut users = self.users.lock()
+
+        match users.get(&id) {
+            Some(_) => {
+                let user = User {
+                    id,
+                    name: request.name,
+                    email: request.email,
+                };
+                users.insert(id, user.clone());
+                return Ok(user)
+            },
+            None => return Err(DbError::NotFound),
+        }
+    }
+
+    fn delete_user(&self, id: i32) -> Result<(), DbError> {
+        let mut users = self.users.lock()
+
+        match users.remove(&id) {
+            Some(_) => return Ok(()),
+            None => return Err(DbError::NotFound),
+        }
+    }
+}
+
+// ==================== API 处理器 ====================
+
+fn main() | IoError {
+    let db = Arc::new(Database::new())
+    let mut server = Server::new("0.0.0.0:8080")
+
+    // 健康检查
+    server.get("/health", fn(_req: Request) -> Response {
+        return Response::ok('{"status": "healthy"}')
+    })
+
+    // 获取所有用户
+    let db1 = db.clone()
+    server.get("/api/users", fn(_req: Request) -> Response {
+        let users = db1.get_all_users()
+        return Response::json(users)
+    })
+
+    // 获取单个用户
+    let db2 = db.clone()
+    server.get("/api/users/:id", fn(req: Request) -> Response {
+        let id = extract_id(&req.path)
+        match db2.get_user(id) {
+            Some(user) => Response::json(user),
+            None => Response::not_found(),
+        }
+    })
+
+    // 创建用户
+    let db3 = db.clone()
+    server.post("/api/users", fn(req: Request) -> Response {
+        match serde_json::from_str::<CreateUserRequest>(&req.body) {
+            Ok(request) => {
+                match db3.create_user(request) {
+                    Ok(user) => Response::json(user),
+                    Err(e) => Response::internal_error(&format!("{:?}", e)),
+                }
+            },
+            Err(_) => Response::bad_request('{"error": "Invalid JSON"}'),
+        }
+    })
+
+    // 更新用户
+    let db4 = db.clone()
+    server.put("/api/users/:id", fn(req: Request) -> Response {
+        let id = extract_id(&req.path)
+        match serde_json::from_str::<CreateUserRequest>(&req.body) {
+            Ok(request) => {
+                match db4.update_user(id, request) {
+                    Ok(user) => Response::json(user),
+                    Err(_) => Response::not_found(),
+                }
+            },
+            Err(_) => Response::bad_request('{"error": "Invalid JSON"}'),
+        }
+    })
+
+    // 删除用户
+    let db5 = db.clone()
+    server.delete("/api/users/:id", fn(req: Request) -> Response {
+        let id = extract_id(&req.path)
+        match db5.delete_user(id) {
+            Ok(()) => Response::ok('{"status": "deleted"}'),
+            Err(_) => Response::not_found(),
+        }
+    })
+
+    // 启动服务器
+    server.run()
+}
+
+fn extract_id(path: str) -> i32 {
+    // 从路径中提取 ID: /api/users/:id -> id
+    let parts: Vec<&str> = path.split("/").collect()
+    if parts.len() >= 4 {
+        return parts[3].parse::<i32>().unwrap_or(0)
+    }
+    return 0
+}
+
+error ParseError {
+    InvalidRequest,
+    InvalidMethod,
+}
+
+error DbError {
+    NotFound,
+}
+
+// ==================== 使用示例 ====================
+
+// 测试服务器:
+// curl http://localhost:8080/health
+// curl http://localhost:8080/api/users
+// curl -X POST http://localhost:8080/api/users -H "Content-Type: application/json" -d '{"name":"Alice","email":"alice@example.com"}'
+// curl http://localhost:8080/api/users/1
+// curl -X PUT http://localhost:8080/api/users/1 -H "Content-Type: application/json" -d '{"name":"Alice Smith","email":"alice@newdomain.com"}'
+// curl -X DELETE http://localhost:8080/api/users/1
+
+// 运行此示例:
+// zc run 06_http_server.zl

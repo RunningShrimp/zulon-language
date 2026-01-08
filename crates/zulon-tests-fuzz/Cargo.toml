@@ -2,10 +2,12 @@
 name = "zulon-tests-fuzz"
 version.workspace = true
 edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
 
+# TODO: Add dependencies when needed
 [dependencies]
-libfuzzer-sys = "0.4"
 
-[[bin]]
-name = "fuzz_parser"
-path = "fuzz_targets/parse.rs"
+[dev-dependencies]

@@ -1,0 +1,12 @@
+[package]
+name = "test_zulon_project"
+version = "0.1.0"
+edition = "2021"
+authors = ["Your Name <you@example.com>"]
+
+# ZULON dependencies
+zulon-std-core = { path = "../zulon-std-core" }
+
+[[bin]]
+name = "test_zulon_project"
+path = "src/main.zl"

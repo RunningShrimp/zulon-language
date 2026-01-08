@@ -1,0 +1,11 @@
+[package]
+name = "zulon-hir"
+version = "0.1.0"
+edition = "2021"
+description = "High-Level Intermediate Representation for ZULON compiler"
+license = "Apache-2.0 OR MIT"
+
+[dependencies]
+zulon-parser = { path = "../zulon-parser" }
+zulon-typeck = { path = "../zulon-typeck" }
+thiserror = "2.0"

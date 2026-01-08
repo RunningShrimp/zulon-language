@@ -1,0 +1,484 @@
+// 04_advanced_features.zl
+// ZULON 高级特性示例
+// 演示多返回值、结构体解构、模板字符串、defer、命名空间和 trait 组合
+
+fn main() {
+    multi_return_demo()
+    destructuring_demo()
+    template_string_demo()
+    defer_demo()
+    namespace_demo()
+    trait_composition_demo()
+}
+
+// ==================== 多返回值 ====================
+
+fn multi_return_demo() {
+    println!("=== 多返回值 ===")
+
+    // 返回多个值
+    fn divide_and_remainder(a: i32, b: i32) -> (i32, i32) {
+        return (a / b, a % b)
+    }
+
+    // 接收多个返回值
+    let (quotient, remainder) = divide_and_remainder(10, 3)
+    println!("10 ÷ 3 = {} 余 {}", quotient, remainder)
+
+    // 命名返回值
+    fn calculate_statistics(numbers: &[i32]) -> (min: i32, max: i32, avg: f64) {
+        if numbers.len() == 0 {
+            return (0, 0, 0.0)
+        }
+
+        let mut min = numbers[0]
+        let mut max = numbers[0]
+        let mut sum = 0
+
+        for num in numbers {
+            if num < min {
+                min = num
+            }
+            if num > max {
+                max = num
+            }
+            sum = sum + num
+        }
+
+        return (min, max, sum as f64 / numbers.len() as f64)
+    }
+
+    let numbers = [5, 2, 8, 1, 9, 3]
+    let (min, max, avg) = calculate_statistics(&numbers)
+    println!("统计: 最小={}, 最大={}, 平均={}", min, max, avg)
+
+    // 忽略某些返回值
+    let (_, remainder2) = divide_and_remainder(20, 3)
+    println!("只需要余数: {}", remainder2)
+}
+
+// ==================== 结构体解构 ====================
+
+struct Point {
+    x: f64,
+    y: f64,
+    z: f64,
+}
+
+struct Rectangle {
+    top_left: Point,
+    bottom_right: Point,
+}
+
+fn destructuring_demo() {
+    println!("\n=== 结构体解构 ===")
+
+    // 基础解构
+    let point = Point { x: 10.0, y: 20.0, z: 30.0 }
+    let Point { x, y, z } = point
+    println!("点坐标: x={}, y={}, z={}", x, y, z)
+
+    // 重命名字段
+    let Point { x: horizontal, y: vertical, .. } = point
+    println!("水平位置: {}, 垂直位置: {}", horizontal, vertical)
+
+    // 嵌套解构
+    let rect = Rectangle {
+        top_left: Point { x: 0.0, y: 10.0, z: 0.0 },
+        bottom_right: Point { x: 10.0, y: 0.0, z: 0.0 },
+    }
+
+    let Rectangle {
+        top_left: Point { x: x1, y: y1, .. },
+        bottom_right: Point { x: x2, y: y2, .. },
+    } = rect
+
+    println!("矩形: ({}, {}) 到 ({}, {})", x1, y1, x2, y2)
+
+    // 函数参数解构
+    fn print_point(Point { x, y, z }: Point) {
+        println!("3D 点: ({}, {}, {})", x, y, z)
+    }
+
+    print_point(point)
+
+    // match 中解构
+    let maybe_point = Some(Point { x: 1.0, y: 2.0, z: 3.0 })
+    match maybe_point {
+        Some(Point { x, y, z }) => {
+            println!("匹配到点: ({}, {}, {})", x, y, z)
+        },
+        None => println!("没有点"),
+    }
+}
+
+// ==================== 模板字符串 ====================
+
+fn template_string_demo() {
+    println!("\n=== 模板字符串 ===")
+
+    // 基础插值
+    let name = "Alice"
+    let age = 25
+    let greeting = `你好，${name}！你今年 ${age} 岁了。`
+    println!("{}", greeting)
+
+    // 表达式插值
+    let a = 10
+    let b = 20
+    let result = `${a} + ${b} = ${a + b}`
+    println!("{}", result)
+
+    // 多行字符串
+    let sql = `
+        SELECT id, name, email
+        FROM users
+        WHERE age > ${18}
+          AND status = 'active'
+        ORDER BY name
+    `
+    println!("SQL 查询:\n{}", sql)
+
+    // 复杂表达式
+    fn calculate_discount(price: f64, discount: f64) -> f64 {
+        return price * (1.0 - discount / 100.0)
+    }
+
+    let original_price = 100.0
+    let discount_rate = 20.0
+    let final_price = calculate_discount(original_price, discount_rate)
+
+    let receipt = `
+        ====================
+        收据
+        ====================
+        原价: $${original_price}
+        折扣: ${discount_rate}%
+        实付: $${final_price}
+        ====================
+    `
+    println!("{}", receipt)
+
+    // 转义
+    let template = `这是 $${name} 的钱`  // 输出: 这是 $Alice 的钱
+    println!("{}", template)
+
+    // 嵌套结构
+    struct User {
+        name: str,
+        email: str,
+    }
+
+    let user = User {
+        name: "Bob",
+        email: "bob@example.com",
+    }
+
+    let profile = `
+        用户配置
+        --------
+        姓名: ${user.name}
+        邮箱: ${user.email}
+    `
+    println!("{}", profile)
+}
+
+// ==================== Defer 语句 ====================
+
+fn defer_demo() {
+    println!("\n=== Defer 语句 ===")
+
+    // 基础 defer
+    fn process_file(path: str) -> Result | IoError {
+        let file = open(path)?
+        defer {
+            println!("关闭文件: {}", path)
+            file.close()
+        }
+
+        println!("处理文件中...")
+        return Ok(())
+    }
+
+    match process_file("test.txt") {
+        Ok(()) => println!("文件处理成功"),
+        Err(e) => println!("文件处理失败: {:?}", e),
+    }
+
+    // 多个 defer（LIFO 顺序）
+    fn multiple_defers() {
+        defer {
+            println!("Defer 3: 最后执行")
+        }
+        defer {
+            println!("Defer 2: 其次执行")
+        }
+        defer {
+            println!("Defer 1: 首先执行")
+        }
+
+        println!("函数主体")
+    }
+
+    multiple_defers()
+
+    // Defer 带变量捕获
+    fn defer_with_capture() {
+        let mut counter = 0
+        defer {
+            println!("最终计数: {}", counter)
+        }
+
+        counter = counter + 1
+        println!("中间计数: {}", counter)
+        counter = counter + 1
+    }
+
+    defer_with_capture()
+
+    // 实际应用：锁管理
+    struct Lock {
+        locked: bool,
+    }
+
+    impl Lock {
+        fn new() -> Lock {
+            return Lock { locked: false }
+        }
+
+        fn acquire(&mut self) {
+            self.locked = true
+            println!("获取锁")
+        }
+
+        fn release(&mut self) {
+            self.locked = false
+            println!("释放锁")
+        }
+    }
+
+    fn critical_section(lock: &mut Lock) {
+        lock.acquire()
+        defer {
+            lock.release()
+        }
+
+        println!("执行临界区代码")
+        // 即使发生 panic，defer 也会执行
+    }
+
+    let mut lock = Lock::new()
+    critical_section(&mut lock)
+}
+
+// ==================== 命名空间 ====================
+
+// 定义命名空间
+namespace math {
+    pub const PI = 3.14159265359
+
+    pub fn square(x: f64) -> f64 {
+        return x * x
+    }
+
+    pub fn cube(x: f64) -> f64 {
+        return x * x * x
+    }
+
+    // 嵌套命名空间
+    namespace geometry {
+        pub fn circle_area(radius: f64) -> f64 {
+            return super::PI * radius * radius
+        }
+
+        pub fn rectangle_area(width: f64, height: f64) -> f64 {
+            return width * height
+        }
+    }
+}
+
+// 使用命名空间
+use math::{PI, square}
+use math::geometry::{circle_area, rectangle_area}
+
+fn namespace_demo() {
+    println!("\n=== 命名空间 ===")
+
+    // 使用 use 导入
+    println!("π = {}", PI)
+    println!("5² = {}", square(5.0))
+
+    // 完整路径
+    println!("5³ = {}", math::cube(5.0))
+
+    // 嵌套命名空间
+    println!("圆面积 (r=3) = {}", circle_area(3.0))
+    println!("矩形面积 (4×5) = {}", rectangle_area(4.0, 5.0))
+
+    // 别名
+    use math::geometry as geo
+    println!("矩形面积 (6×7) = {}", geo::rectangle_area(6.0, 7.0))
+
+    // 多个命名空间
+    namespace string {
+        pub fn repeat(s: str, count: i32) -> str {
+            let mut result = ""
+            for _ in 0..count {
+                result = result + s
+            }
+            return result
+        }
+    }
+
+    namespace array {
+        pub fn repeat<T>(item: T, count: i32) -> Vec<T> {
+            let mut result = vec![]
+            for _ in 0..count {
+                result.push(item)
+            }
+            return result
+        }
+    }
+
+    println!("字符串重复: {}", string::repeat("ha", 3))
+    println!("数组重复: {:?}", array::repeat(42, 3))
+}
+
+// ==================== Trait 组合 ====================
+
+// 定义基础 traits
+trait Printable {
+    fn print(&self)
+}
+
+trait Serializable {
+    fn serialize(&self) -> str
+}
+
+trait Loggable {
+    fn log(&self) {
+        println!("默认日志实现")
+    }
+}
+
+// Trait 组合
+type Display = Printable + Serializable + Loggable
+
+// 实现所有 traits
+struct User {
+    id: i32,
+    name: str,
+}
+
+impl Printable for User {
+    fn print(&self) {
+        println!("用户[{}]: {}", self.id, self.name)
+    }
+}
+
+impl Serializable for User {
+    fn serialize(&self) -> str {
+        return `{"id":${self.id},"name":"${self.name}"}`
+    }
+}
+
+impl Loggable for User {
+    fn log(&self) {
+        println!("[LOG] 用户 {} 执行操作", self.id)
+    }
+}
+
+// 使用组合 trait
+fn display_item<T: Display>(item: T) {
+    item.print()
+    let json = item.serialize()
+    item.log()
+    println!("序列化: {}", json)
+}
+
+// 更多的 trait 组合示例
+trait Iterator {
+    type Item
+    fn next(&mut self) -> Option<Self::Item>
+}
+
+trait ExactSizeIterator: Iterator {
+    fn len(&self) -> usize
+}
+
+// 自动实现
+trait Collect<T> {
+    fn collect<Vec<T>>(self) -> Vec<T>
+}
+
+fn trait_composition_demo() {
+    println!("\n=== Trait 组合 ===")
+
+    let user = User { id: 1, name: "Alice" }
+    display_item(user)
+
+    // 条件 trait 约束
+    fn compare_and_print<T: Printable + Serializable>(a: T, b: T) {
+        println!("=== 比较 ===")
+        a.print()
+        b.print()
+        println!("A: {}", a.serialize())
+        println!("B: {}", b.serialize())
+    }
+
+    let user1 = User { id: 2, name: "Bob" }
+    let user2 = User { id: 3, name: "Charlie" }
+    compare_and_print(user1, user2)
+
+    // where 子句
+    fn process<T>(item: T)
+    where
+        T: Printable + Serializable,
+    {
+        item.print()
+        let data = item.serialize()
+        println!("处理数据: {}", data)
+    }
+
+    let user3 = User { id: 4, name: "David" }
+    process(user3)
+
+    // Trait 对象
+    fn print_any(item: Box<dyn Display>) {
+        item.print()
+    }
+
+    print_any(Box::new(User { id: 5, name: "Eve" }))
+}
+
+// ==================== 综合示例 ====================
+
+struct Config {
+    database_url: str,
+    max_connections: i32,
+    timeout: i32,
+}
+
+fn load_config(path: str) -> Config | IoError | ParseError {
+    let file = open(path)?
+    defer {
+        file.close()
+    }
+
+    let content = file.read_to_string()?
+    let (url, conn, timeout) = parse_config(&content)?
+
+    return Ok(Config {
+        database_url: url,
+        max_connections: conn,
+        timeout: timeout,
+    })
+}
+
+fn parse_config(content: &str) -> (str, i32, i32) | ParseError {
+    // 解析逻辑...
+    return ("localhost:5432", 100, 30)
+}
+
+// 运行此示例:
+// zc run 04_advanced_features.zl

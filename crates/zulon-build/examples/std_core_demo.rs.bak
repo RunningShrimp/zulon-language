@@ -1,0 +1,248 @@
+// Copyright 2026 ZULON Language Team
+// SPDX-License-Identifier: Apache-2.0 OR MIT
+
+//! Comprehensive demonstration of zulon-std-core library
+//!
+//! This example demonstrates:
+//! - Core traits: Clone, Copy, PartialEq, Eq, PartialOrd, Ord
+//! - Optional<T>: Optional values
+//! - Outcome<T, E>: Error handling
+
+use zulon_std_core::{Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Ordering};
+use zulon_std_core::{Optional, None, Some};
+use zulon_std_core::{Outcome, Ok, Err};
+
+fn main() {
+    println!("=== ZULON Standard Library Core Demo ===\n");
+
+    // =========================================================================
+    // Part 1: Trait Demonstrations
+    // =========================================================================
+    println!("1. CORE TRAITS DEMONSTRATION");
+    println!("   --------------------------\n");
+
+    // Clone and Copy traits
+    println!("   a) Clone and Copy Traits:");
+    let x = 42i32;
+    let y = x.clone(); // Clone
+    let z = x;         // Copy (implicit)
+    println!("      Original: {}, Clone: {}, Copy: {}", x, y, z);
+
+    // PartialEq trait
+    println!("\n   b) PartialEq Trait:");
+    println!("      42 == 42: {}", 42_i32.eq(&42));
+    println!("      42 != 43: {}", 42_i32.ne(&43));
+
+    // PartialOrd trait
+    println!("\n   c) PartialOrd Trait:");
+    println!("      42 < 43: {}", 42_i32.lt(&43));
+    println!("      42 <= 42: {}", 42_i32.le(&42));
+    println!("      43 > 42: {}", 43_i32.gt(&42));
+    println!("      42 >= 42: {}", 42_i32.ge(&42));
+    println!("      partial_cmp(42, 43): {:?}", 42_i32.partial_cmp(&43));
+
+    // Ord trait
+    println!("\n   d) Ord Trait:");
+    println!("      cmp(42, 43): {:?}", 42_i32.cmp(&43));
+    println!("      cmp(43, 42): {:?}", 43_i32.cmp(&42));
+    println!("      cmp(42, 42): {:?}", 42_i32.cmp(&42));
+
+    // Ordering enum
+    println!("\n   e) Ordering Enum:");
+    println!("      Ordering::Less: {:?}", Ordering::Less);
+    println!("      Ordering::Equal: {:?}", Ordering::Equal);
+    println!("      Ordering::Greater: {:?}", Ordering::Greater);
+
+    // =========================================================================
+    // Part 2: Optional<T> Demonstrations
+    // =========================================================================
+    println!("\n2. OPTIONAL<T> TYPE DEMONSTRATION");
+    println!("   ------------------------------\n");
+
+    // Creating Optional values
+    println!("   a) Creating Optional Values:");
+    let some_value: Optional<i32> = Some(42);
+    let no_value: Optional<i32> = None;
+    println!("      Some(42) = {:?}", some_value);
+    println!("      None = {:?}", no_value);
+
+    // Checking Optional state
+    println!("\n   b) Checking Optional State:");
+    println!("      Some(42).is_some(): {}", some_value.is_some());
+    println!("      Some(42).is_none(): {}", some_value.is_none());
+    println!("      None.is_some(): {}", no_value.is_some());
+    println!("      None.is_none(): {}", no_value.is_none());
+
+    // Unwrapping Optional values
+    println!("\n   c) Unwrapping Optional Values:");
+    println!("      Some(42).unwrap(): {}", some_value.unwrap());
+    println!("      Some(42).unwrap_or(100): {}", Some(42).unwrap_or(100));
+    println!("      None.unwrap_or(100): {}", no_value.unwrap_or(100));
+    println!("      Some(42).unwrap_or_else(|| 100): {}", Some(42).unwrap_or_else(|| 100));
+    println!("      None.unwrap_or_else(|| 100): {}", no_value.unwrap_or_else(|| 100));
+
+    // Mapping Optional values
+    println!("\n   d) Mapping Optional Values:");
+    let doubled = Some(42).map(|x| x * 2);
+    println!("      Some(42).map(|x| x * 2) = {:?}", doubled);
+    let nothing_doubled = None::<i32>.map(|x| x * 2);
+    println!("      None.map(|x| x * 2) = {:?}", nothing_doubled);
+
+    // Chaining Optional operations
+    println!("\n   e) Chaining Optional Operations:");
+    fn maybe_divide(x: i32, y: i32) -> Optional<i32> {
+        if y == 0 {
+            None
+        } else {
+            Some(x / y)
+        }
+    }
+    let result = Some(100).and_then(|x| maybe_divide(x, 2)).and_then(|x| maybe_divide(x, 5));
+    println!("      100 / 2 / 5 = {:?}", result);
+    let failed = Some(100).and_then(|x| maybe_divide(x, 0)).and_then(|x| maybe_divide(x, 5));
+    println!("      100 / 0 / 5 = {:?}", failed);
+
+    // Optional combinators
+    println!("\n   f) Optional Combinators:");
+    println!("      Some(42).or(Some(100)) = {:?}", Some(42).or(Some(100)));
+    println!("      None.or(Some(100)) = {:?}", None::<i32>.or(Some(100)));
+    println!("      Some(42).filter(|&x| x > 40) = {:?}", Some(42).filter(|&x| x > 40));
+    println!("      Some(42).filter(|&x| x > 50) = {:?}", Some(42).filter(|&x| x > 50));
+
+    // Zipping Optionals
+    println!("\n   g) Zipping Optionals:");
+    let person = Some(30).zip(Some("Alice"));
+    println!("      Some(30).zip(Some(\"Alice\")) = {:?}", person);
+
+    // =========================================================================
+    // Part 3: Outcome<T, E> Demonstrations
+    // =========================================================================
+    println!("\n3. OUTCOME<T, E> TYPE DEMONSTRATION");
+    println!("   -------------------------------\n");
+
+    // Creating Outcome values
+    println!("   a) Creating Outcome Values:");
+    let success: Outcome<i32, &str> = Ok(42);
+    let failure: Outcome<i32, &str> = Err("Something went wrong");
+    println!("      Ok(42) = {:?}", success);
+    println!("      Err(\"error\") = {:?}", failure);
+
+    // Checking Outcome state
+    println!("\n   b) Checking Outcome State:");
+    println!("      Ok(42).is_ok(): {}", success.is_ok());
+    println!("      Ok(42).is_err(): {}", success.is_err());
+    println!("      Err(\"error\").is_ok(): {}", failure.is_ok());
+    println!("      Err(\"error\").is_err(): {}", failure.is_err());
+
+    // Unwrapping Outcome values
+    println!("\n   c) Unwrapping Outcome Values:");
+    println!("      Ok(42).unwrap(): {}", success.unwrap());
+    println!("      Ok(42).unwrap_or(100): {}", Ok(42).unwrap_or(100));
+    println!("      Err(\"error\").unwrap_or(100): {}", failure.unwrap_or(100));
+
+    // Mapping Outcome values
+    println!("\n   d) Mapping Outcome Values:");
+    let doubled = Ok(42).map(|x| x * 2);
+    println!("      Ok(42).map(|x| x * 2) = {:?}", doubled);
+    let no_change = Err("error").map(|x| x * 2);
+    println!("      Err(\"error\").map(|x| x * 2) = {:?}", no_change);
+
+    // Chaining Outcome operations
+    println!("\n   e) Chaining Outcome Operations:");
+    fn divide_and_square(x: i32, y: i32) -> Outcome<i32, &'static str> {
+        if y == 0 {
+            Err("Division by zero")
+        } else {
+            Ok((x / y) * (x / y))
+        }
+    }
+    let chained = Ok(100).and_then(|x| divide_and_square(x, 5));
+    println!("      divide_and_square(100, 5) = {:?}", chained);
+    let failed_chain = Ok(100).and_then(|x| divide_and_square(x, 0));
+    println!("      divide_and_square(100, 0) = {:?}", failed_chain);
+
+    // Outcome combinators
+    println!("\n   f) Outcome Combinators:");
+    println!("      Ok(42).or_else(|_| Err(\"backup\")) = {:?}",
+             Ok(42).or_else(|_| Err("backup")));
+    println!("      Err(\"error\").or_else(|_| Err(\"backup\")) = {:?}",
+             Err("error").or_else(|_| Err("backup")));
+
+    // =========================================================================
+    // Part 4: Real-World Example - Safe Division
+    // =========================================================================
+    println!("\n4. REAL-WORLD EXAMPLE: SAFE DIVISION");
+    println!("   ------------------------------------\n");
+
+    fn safe_divide(a: i32, b: i32) -> Outcome<i32, String> {
+        if b == 0 {
+            Err(format!("Cannot divide {} by {}", a, b))
+        } else {
+            Ok(a / b)
+        }
+    }
+
+    fn calculate(a: i32, b: i32, c: i32) -> Outcome<i32, String> {
+        let step1 = safe_divide(a, b)?;
+        let step2 = safe_divide(step1, c)?;
+        Ok(step2)
+    }
+
+    println!("   Calculating (100 / 5) / 2:");
+    match calculate(100, 5, 2) {
+        Ok(result) => println!("      Success! Result = {}\n", result),
+        Err(e) => println!("      Error: {}\n", e),
+    }
+
+    println!("   Calculating (100 / 0) / 2:");
+    match calculate(100, 0, 2) {
+        Ok(result) => println!("      Success! Result = {}\n", result),
+        Err(e) => println!("      Error: {}\n", e),
+    }
+
+    // =========================================================================
+    // Part 5: User Validation Example
+    // =========================================================================
+    println!("5. ERROR HANDLING EXAMPLE: USER VALIDATION");
+    println!("   -----------------------------------------\n");
+
+    #[derive(Clone, Debug, PartialEq)]
+    enum ValidationError {
+        TooShort,
+        TooLong,
+        InvalidChar,
+    }
+
+    fn validate_username(username: &str) -> Outcome<(), ValidationError> {
+        if username.len() < 3 {
+            return Err(ValidationError::TooShort);
+        }
+        if username.len() > 20 {
+            return Err(ValidationError::TooLong);
+        }
+        if username.contains('@') || username.contains(' ') {
+            return Err(ValidationError::InvalidChar);
+        }
+        Ok(())
+    }
+
+    let usernames = vec!["ab", "alice", "this_username_is_way_too_long", "bob@home", "charlie"];
+
+    for username in usernames {
+        match validate_username(username) {
+            Ok(_) => println!("      '{}' is valid ✓", username),
+            Err(ValidationError::TooShort) => println!("      '{}' is too short ✗", username),
+            Err(ValidationError::TooLong) => println!("      '{}' is too long ✗", username),
+            Err(ValidationError::InvalidChar) => println!("      '{}' has invalid characters ✗", username),
+        }
+    }
+
+    // =========================================================================
+    // Summary
+    // =========================================================================
+    println!("\n=== SUMMARY ===");
+    println!("✓ Core Traits: Clone, Copy, PartialEq, Eq, PartialOrd, Ord");
+    println!("✓ Optional<T>: Optional values without null pointers");
+    println!("✓ Outcome<T, E>: Error handling with Result types");
+    println!("\nZULON Standard Library Core is fully functional! 🎉\n");
+}

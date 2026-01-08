@@ -4,11 +4,13 @@ version.workspace = true
 edition.workspace = true
 authors.workspace = true
 license.workspace = true
+repository.workspace = true
+homepage.workspace = true
 
 [dependencies]
-zulon-std-core = { path = "../zulon-std-core" }
-serde = { workspace = true }
-thiserror = { workspace = true }
+zulon-parser = { path = "../zulon-parser" }
+zulon-typeck = { path = "../zulon-typeck" }
+zulon-hir = { path = "../zulon-hir" }
+thiserror = "2.0"
 
 [dev-dependencies]
-zulon-ext-test = { path = "../zulon-ext-test" }

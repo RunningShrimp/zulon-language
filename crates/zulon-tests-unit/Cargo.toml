@@ -2,6 +2,12 @@
 name = "zulon-tests-unit"
 version.workspace = true
 edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
 
+# TODO: Add dependencies when needed
 [dependencies]
-zulon-ext-test = { path = "../zulon-ext-test" }
+
+[dev-dependencies]

@@ -350,23 +350,186 @@ fn get_street_address(user: User?) -> str? {
 
 基于 **Effect Handlers** (POPL 2025 Distinguished Paper) 的代数效应系统：
 
+##### 自动 Trait 实现
+
+**错误类型自动实现 Error trait**:
+
+```go
+// 所有错误类型自动实现 Error trait
+error DivideError {
+    DivisionByZero,
+    InvalidResult(f64),
+}
+
+// 自动实现，无需手动编写 impl
+// 编译器自动为 DivideError 生成:
+// - display() 方法用于格式化错误消息
+// - source() 方法返回错误链
+// - debug() 方法用于调试输出
+```
+
+**效应类型自动实现 Effect trait**:
+
+```go
+// 所有效应类型自动实现 Effect trait
+effect IO {
+    fn read_line() -> str
+    fn print_line(line: str)
+}
+
+effect Database {
+    fn query(sql: str) -> Result<Vec<User>, DbError>
+    fn execute(sql: str) -> Result<usize, DbError>
+}
+
+// 编译器自动为效应类型实现 Effect trait
+// 包括效应处理器的必要方法
+```
+
+##### 新的错误和效应语法
+
+**使用 `|` 分隔符表示效应和错误**:
+
+```go
+// 语法: 返回类型 | 错误类型 | 效应类型
+fn divide(a: f64, b: f64) -> f64 | DivideError {
+    if b == 0.0 {
+        throw DivideError::DivisionByZero
+    }
+    return a / b
+}
+
+// 多个错误类型
+fn process(input: str) -> Result | ParseError | ValidationError | IoError {
+    let parsed = parse(input)?
+    let validated = validate(parsed)?
+    return save(validated)?
+}
+
+// 返回值 + 错误 + 效应
+fn greet_user() -> str | IoError | IO {
+    perform print_line("Enter your name:")
+    let name = perform read_line()
+    return format!("Hello, {}!", name)
+}
+
+// 多个效应
+fn process_data() -> Result | IoError | IO | Database | Logging {
+    perform Logging::log_info("Starting...")
+    let data = perform Database::query("SELECT * FROM users")?
+    perform IO::write_file("output.json", data)
+    return Ok(data)
+}
+```
+
+##### throw 和 perform 关键字
+
+**throw 关键字抛出错误**:
+
+```go
+fn validate_age(age: i32) -> () | ValidationError {
+    if age < 0 {
+        throw ValidationError::NegativeAge
+    }
+    if age > 150 {
+        throw ValidationError::UnrealisticAge
+    }
+    return ()
+}
+
+// throw 可以在任何返回错误的函数中使用
+fn calculate_discount(price: f64, customer_type: str) -> f64 | Error {
+    match customer_type {
+        "vip" => return price * 0.8,
+        "regular" => return price * 0.95,
+        _ => throw Error::InvalidCustomerType,
+    }
+}
+
+// throw 支持携带上下文信息
+fn process_file(path: str) -> Result | Error {
+    if !std::fs::exists(path) {
+        throw Error::FileNotFound {
+            path,
+            hint: "Check if the file path is correct",
+        }
+    }
+    // ...
+}
+```
+
+**perform 关键字执行效应**:
+
+```go
+effect IO {
+    fn read_line() -> str
+    fn print_line(line: str)
+}
+
+effect Database {
+    fn get_user(id: i32) -> User | DbError
+}
+
+fn greet_user() -> str | IoError | IO {
+    perform print_line("Enter your name:")
+    let name = perform read_line()
+    return format!("Hello, {}!", name)
+}
+
+// 效应处理器
+fn main() {
+    let result = try {
+        greet_user()
+    } with IO {
+        fn read_line() -> str {
+            return std::io::stdin().read_line()
+        }
+
+        fn print_line(line: str) {
+            println!("{}", line)
+        }
+    }
+
+    match result {
+        Ok(msg) => println!("{}", msg),
+        Err(e) => println!("Error: {}", e),
+    }
+}
+
+// 嵌套效应处理器
+fn handle_with_logging() {
+    let result = try {
+        process_data()
+    } with IO | Database {
+        // IO 效应处理
+        fn read_line() -> str { /* ... */ }
+        fn print_line(line: str) { /* ... */ }
+
+        // Database 效应处理
+        fn get_user(id: i32) -> User | DbError { /* ... */ }
+    }
+}
+```
+
+##### 错误处理和效应处理示例
+
 ```go
 // Result 类型（核心）
 type Result<T, E> =
     | Ok(T)
     | Err(E)
 
-// 使用 ! 标记可能抛出的错误
-fn divide(a: f64, b: f64) -> f64 ! DivideError {
+// 使用 throw 和 |
+fn divide(a: f64, b: f64) -> f64 | DivideError {
     if b == 0.0 {
-        return DivideError::DivisionByZero
+        throw DivideError::DivisionByZero
     }
     return a / b
 }
 
 // ? 运算符（错误传播）
-fn calculate() -> f64 ! Error {
-    let a = read_number()?  // 如果失败，提前返回
+fn calculate() -> f64 | Error {
+    let a = read_number()?
     let b = read_number()?
     return divide(a, b)?
 }
@@ -404,6 +567,7 @@ fn calculate_alt() -> f64 {
 - **可组合性**: 效应可以精确组合和分离
 - **性能**: 零成本抽象，编译为状态机
 - **错误诊断**: 清晰的错误追踪和堆栈信息
+- **类型安全**: `|` 分隔符提供清晰的类型签名
 
 ### 2.3 并发与所有权类型注记
 
@@ -1637,6 +1801,554 @@ fn memoize(args: TokenStream, input: TokenStream) -> TokenStream {
 }
 ```
 
+#### 5.1.4 多返回值函数（类似 Go）
+
+基于 **Go 语言**的成功经验，ZULON 原生支持多返回值，简化错误处理和值返回：
+
+```go
+// 基本多返回值
+fn divide_and_remainder(a: i32, b: i32) -> (i32, i32) {
+    return (a / b, a % b)
+}
+
+// 使用多返回值
+fn example() {
+    let (quotient, remainder) = divide_and_remainder(10, 3)
+    println!("10 / 3 = {} 余 {}", quotient, remainder)
+    // 输出: 10 / 3 = 3 余 1
+}
+
+// 多返回值 + 错误处理
+fn parse_user(input: str) -> Result<(User, bool), ParseError> {
+    let parts = input.split(",")
+    if parts.len() != 2 {
+        return Err(ParseError::InvalidFormat)
+    }
+
+    let name = parts[0].trim()
+    let age = parts[1].trim().parse::<i32>()?
+
+    let is_valid = name.len() > 0 && age > 0
+    let user = User { name, age }
+
+    return Ok((user, is_valid))
+}
+
+// 使用带错误处理的多返回值
+fn process_user(input: str) ! Error {
+    let (user, is_valid) = parse_user(input)?
+
+    if is_valid {
+        println!("Valid user: {}", user.name)
+    } else {
+        println!("Invalid user data")
+    }
+
+    return Ok(())
+}
+
+// 忽略不需要的返回值
+fn example_ignore() {
+    let (_, remainder) = divide_and_remainder(10, 3)
+    println!("余数: {}", remainder)
+
+    let (quotient, _) = divide_and_remainder(10, 3)
+    println!("商: {}", quotient)
+}
+```
+
+**设计优势**:
+- **清晰**: 明确返回多个值，无需包装类型
+- **高效**: 编译器优化，零成本抽象
+- **类型安全**: 每个返回值都有明确的类型
+- **与错误处理协同**: 完美配合 Result 类型
+
+**与 Go 的改进**:
+```go
+// Go: 需要显式处理错误
+value, err := someFunction()
+if err != nil {
+    // 处理错误
+}
+
+// ZULON: 可以使用 ? 运算符
+let value = someFunction()?
+```
+
+#### 5.1.5 结构体解构赋值（类似 JavaScript）
+
+基于 **JavaScript ES6** 的解构语法，ZULON 支持结构体和元组的解构赋值：
+
+```go
+// 结构体定义
+struct Point {
+    x: f64,
+    y: f64,
+}
+
+struct User {
+    name: str,
+    age: i32,
+    email: str,
+}
+
+// 基本解构
+fn example() {
+    let point = Point { x: 10.0, y: 20.0 }
+
+    // 解构字段
+    let Point { x, y } = point
+    println!("x: {}, y: {}", x, y)
+
+    // 解构并重命名
+    let Point { x: horizontal, y: vertical } = point
+    println!("horizontal: {}, vertical: {}", horizontal, vertical)
+}
+
+// 函数参数解构
+fn print_coordinates(Point { x, y }: Point) {
+    println!("Coordinates: ({}, {})", x, y)
+}
+
+fn example_func_param() {
+    let p = Point { x: 5.0, y: 15.0 }
+    print_coordinates(p)
+    // 输出: Coordinates: (5.0, 15.0)
+}
+
+// 嵌套解构
+struct Rectangle {
+    top_left: Point,
+    bottom_right: Point,
+}
+
+fn nested_destruct() {
+    let rect = Rectangle {
+        top_left: Point { x: 0.0, y: 10.0 },
+        bottom_right: Point { x: 10.0, y: 0.0 },
+    }
+
+    let Rectangle {
+        top_left: Point { x: x1, y: y1 },
+        bottom_right: Point { x: x2, y: y2 }
+    } = rect
+
+    println!("Rectangle: ({}, {}) to ({}, {})", x1, y1, x2, y2)
+}
+
+// 部分解构（使用默认值）
+struct Config {
+    host: str,
+    port: i32,
+    timeout: i32,
+    max_connections: i32,
+}
+
+fn partial_destruct() {
+    let config = Config {
+        host: "localhost",
+        port: 8080,
+        timeout: 30,
+        max_connections: 100,
+    }
+
+    // 只解构需要的字段
+    let Config { host, port, .. } = config
+    println!("Server: {}:{}", host, port)
+}
+
+// 解构 + 模式匹配
+fn match_user(user: User) {
+    match user {
+        User { name, age: 0..=18, .. } => {
+            println!("Minor: {}", name)
+        },
+        User { name, age: 19..=60, .. } => {
+            println!("Adult: {}", name)
+        },
+        User { name, age: 61.., .. } => {
+            println!("Senior: {}", name)
+        },
+    }
+}
+
+// 元组解构（已支持）
+fn tuple_destruct() {
+    let tuple = (1, "hello", 3.14)
+    let (a, b, c) = tuple
+    println!("{} {} {}", a, b, c)
+}
+
+// 数组解构
+fn array_destruct() {
+    let arr = [1, 2, 3, 4, 5]
+
+    let [first, second, .., last] = arr
+    println!("First: {}, Second: {}, Last: {}", first, second, last)
+}
+
+// 在循环中解构
+fn loop_destruct() {
+    let users = vec![
+        User { name: "Alice", age: 30, email: "alice@example.com" },
+        User { name: "Bob", age: 25, email: "bob@example.com" },
+    ]
+
+    for User { name, age, .. } in users {
+        println!("{} is {} years old", name, age)
+    }
+}
+```
+
+**设计优势**:
+- **简洁**: 减少中间变量，代码更清晰
+- **类型安全**: 编译期检查字段名称和类型
+- **灵活**: 支持部分解构、重命名、嵌套解构
+- **可组合**: 与模式匹配、循环等特性完美结合
+
+#### 5.1.6 模板字符串（跨行支持）
+
+基于 **JavaScript ES6** 模板字符串，ZULON 支持强大的字符串插值和跨行字符串：
+
+```go
+// 基本字符串插值
+fn basic_interpolation() {
+    let name = "Alice"
+    let age = 30
+
+    // 使用 ${} 插值
+    let message = `Hello, ${name}! You are ${age} years old.`
+    println!("{}", message)
+    // 输出: Hello, Alice! You are 30 years old.
+}
+
+// 跨行字符串
+fn multiline_string() {
+    let text = `
+        This is a multiline string.
+        It preserves whitespace and newlines.
+        You can write paragraphs easily.
+
+            This line is indented.
+    `
+
+    println!("{}", text)
+}
+
+// 模板字符串 + 表达式
+fn expression_interpolation() {
+    let x = 10
+    let y = 20
+
+    // 支持任意表达式
+    let message = `The sum of ${x} and ${y} is ${x + y}.`
+    println!("{}", message)
+    // 输出: The sum of 10 and 20 is 30.
+
+    // 调用函数
+    fn get_name() -> str {
+        return "Bob"
+    }
+
+    let greeting = `Hello, ${get_name()}!`
+    println!("{}", greeting)
+    // 输出: Hello, Bob!
+}
+
+// 格式化选项
+fn formatted_interpolation() {
+    let pi = 3.14159265359
+    let value = 42
+
+    // 格式化精度
+    let message = `Pi is approximately ${pi:.2}`
+    println!("{}", message)
+    // 输出: Pi is approximately 3.14
+
+    // 填充和对齐
+    let padded = `Value: ${value:05}`
+    println!("{}", padded)
+    // 输出: Value: 00042
+
+    // 十六进制
+    let hex = `Hex: ${value:#x}`
+    println!("{}", hex)
+    // 输出: Hex: 0x2a
+}
+
+// SQL 查询示例
+fn sql_example() {
+    let table = "users"
+    let columns = ["id", "name", "email"]
+
+    let query = `
+        SELECT ${columns.join(", ")}
+        FROM ${table}
+        WHERE age > ${18}
+        ORDER BY name ASC
+        LIMIT ${10}
+    `
+
+    println!("{}", query)
+}
+
+// HTML 模板示例
+fn html_template() {
+    let title = "My Page"
+    let content = "Hello, World!"
+
+    let html = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>${title}</title>
+        </head>
+        <body>
+            <h1>${title}</h1>
+            <p>${content}</p>
+        </body>
+        </html>
+    `
+
+    println!("{}", html)
+}
+
+// JSON 构建（辅助）
+fn json_build() {
+    let name = "Alice"
+    let age = 30
+
+    // 注意：生产环境建议使用 json 序列化库
+    let json = `{
+        "name": "${name}",
+        "age": ${age},
+        "active": true
+    }`
+
+    println!("{}", json)
+}
+
+// 原始字符串（不转义）
+fn raw_string() {
+    // 使用 r#"..."# 或 r##"..."## 等表示原始字符串
+    let regex = r#"\d+\.\d+\.\d+\.\d+"#
+    println!("{}", regex)
+    // 输出: \d+\.\d+\.\d+\.\d+
+
+    // 多个 # 号可以包含 " 字符
+    let quote = r##"This is a "quoted" string"##
+    println!("{}", quote)
+    // 输出: This is a "quoted" string
+}
+
+// 模板字符串 + 方法链
+fn method_chain() {
+    let name = "alice"
+    let email = "ALICE@EXAMPLE.COM"
+
+    let message = `
+        User: ${name.to_uppercase()}
+        Email: ${email.to_lowercase()}
+    `.trim()
+
+    println!("{}", message)
+    // 输出:
+    // User: ALICE
+    // Email: alice@example.com
+}
+
+// 条件插值
+fn conditional_interpolation() {
+    let user = Some("Alice")
+    let guest: Option<str> = None
+
+    let message = `
+        Welcome, ${user.unwrap_or("Guest")}!
+        ${guest.map(|g| format!("Special guest: {}", g)).unwrap_or("".to_string())}
+    `.trim()
+
+    println!("{}", message)
+    // 输出: Welcome, Alice!
+}
+```
+
+**设计优势**:
+- **直观**: 类似自然语言的字符串构建
+- **跨行**: 原生支持多行文本，无需换行符
+- **类型安全**: 插值表达式在编译期检查
+- **格式化**: 支持丰富的格式化选项
+- **原始字符串**: 支持正则表达式等不转义场景
+
+**与 JavaScript 的改进**:
+- **类型检查**: 编译期验证插值表达式类型
+- **格式化**: 内置格式化支持（无需额外库）
+- **安全性**: 自动转义敏感字符（可配置）
+
+**使用场景**:
+- SQL 查询构建
+- HTML/XML 模板
+- 配置文件生成
+- 日志输出
+- 代码生成
+- 文本报告
+
+#### 5.1.7 智能 defer 语句
+
+基于 **Go 语言**的 defer 和 **Swift**的 defer，ZULON 提供更智能的资源清理机制：
+
+```go
+// 基本 defer 用法
+fn process_file() -> Result | IoError {
+    let file = std::fs::open("data.txt")?
+
+    // defer 确保函数返回前关闭文件
+    defer file.close()
+
+    // 处理文件...
+    let content = file.read()?
+
+    return Ok(content)
+    // file.close() 在这里自动执行
+}
+
+// 多个 defer 语句（LIFO 顺序）
+fn multiple_defer() {
+    defer println!("First defer")
+    defer println!("Second defer")
+    defer println!("Third defer")
+
+    println!("Main function body")
+}
+
+// 输出顺序:
+// Main function body
+// Third defer
+// Second defer
+// First defer
+
+// defer 捕获变量
+fn defer_with_capture() {
+    let mut counter = 0
+
+    defer {
+        println!("Final counter value: {}", counter)
+        // counter 在 defer 声明时的值，或者引用捕获
+    }
+
+    counter = 10
+    counter = 20
+    // defer 输出: Final counter value: 20
+}
+
+// defer 带参数
+fn defer_with_params() {
+    let resource = acquire_resource()
+    defer release_resource(resource)
+
+    // 使用 resource...
+}
+
+// 条件 defer
+fn conditional_defer(success: bool) -> Result | Error {
+    let connection = connect_database()?
+
+    // 只在成功时提交事务
+    if success {
+        defer connection.commit()
+    } else {
+        defer connection.rollback()
+    }
+
+    // 执行操作...
+    return Ok(())
+}
+
+// defer 处理错误
+fn defer_with_error_handling() -> Result | Error {
+    let file = open_file()?
+
+    defer {
+        // defer 块中的错误会被记录但不会中断函数
+        if let Err(e) = file.close() {
+            eprintln!("Warning: failed to close file: {}", e)
+        }
+    }
+
+    // 处理文件...
+    return Ok(())
+}
+
+// 智能资源管理
+fn smart_resource_management() -> Result | Error {
+    // 自动管理多个资源
+    let file = open_file()?
+    defer file.close()
+
+    let lock = acquire_lock()?
+    defer lock.release()
+
+    let connection = connect_db()?
+    defer connection.close()
+
+    // 即使中间发生错误，所有资源都会被正确清理
+    process_data(file, lock, connection)?
+    return Ok(())
+}
+
+// defer 与 panic/异常
+fn defer_with_panic() {
+    let resource = acquire_resource()
+    defer resource.cleanup()
+
+    panic!("Something went wrong!")
+    // resource.cleanup() 仍然会执行
+}
+
+// defer 与返回值（高级）
+fn defer_with_return_value() -> i32 {
+    let mut result = 0
+
+    defer {
+        println!("Function returning: {}", result)
+    }
+
+    result = calculate()
+    return result
+}
+```
+
+**智能 defer 特性**:
+
+1. **LIFO 执行顺序**: 多个 defer 按后进先出顺序执行
+2. **变量捕获**: defer 块可以捕获外部变量
+3. **错误处理**: defer 中的错误不会中断主函数
+4. **panic 安全**: 即使发生 panic，defer 仍会执行
+5. **性能优化**: 编译器优化 defer 的开销
+
+**与 Go 的改进**:
+```go
+// Go: defer 会在函数结束时执行，可能有性能问题
+func process() {
+    defer expensiveCleanup()
+    // ...
+}
+
+// ZULON: 编译器优化延迟执行
+fn process() {
+    defer expensive_cleanup()
+    // ...
+}
+// 编译器可能优化为在最后一个使用点之后立即执行
+```
+
+**使用场景**:
+- 文件句柄关闭
+- 数据库连接释放
+- 锁的释放
+- 内存清理
+- 事务提交/回滚
+- 计时器停止
+
 ### 5.2 标准库设计哲学与架构
 
 #### 5.2.1 标准库组织
@@ -1681,9 +2393,469 @@ fn consistent_errors() -> Result<Value, Error> {
 }
 ```
 
-### 5.3 脚本与系统编程统一模型
+### 5.3 命名空间系统
 
-#### 5.3.1 三级编程模式
+基于 **C++ namespaces** 和 **Python modules**，ZULON 提供强大的命名空间系统：
+
+#### 5.3.1 基本命名空间
+
+```go
+// 定义命名空间
+namespace math {
+    fn add(a: f64, b: f64) -> f64 {
+        return a + b
+    }
+
+    fn multiply(a: f64, b: f64) -> f64 {
+        return a * b
+    }
+
+    const PI: f64 = 3.14159265359
+}
+
+// 使用命名空间
+fn usage() {
+    // 完全限定名
+    let result = math::add(1.0, 2.0)
+    println!("{}", math::PI)
+
+    // 使用 use 语句引入
+    use math::add, multiply
+
+    let sum = add(1.0, 2.0)
+    let product = multiply(3.0, 4.0)
+}
+```
+
+#### 5.3.2 嵌套命名空间
+
+```go
+// 嵌套定义
+namespace database {
+    namespace postgresql {
+        fn connect(url: str) -> Connection | DbError {
+            // PostgreSQL 连接逻辑
+        }
+    }
+
+    namespace mysql {
+        fn connect(url: str) -> Connection | DbError {
+            // MySQL 连接逻辑
+        }
+    }
+}
+
+// 使用嵌套命名空间
+fn nested_usage() {
+    let pg_conn = database::postgresql::connect("postgres://...")?
+    let mysql_conn = database::mysql::connect("mysql://...")?
+}
+
+// 简化嵌套引用
+fn nested_use() {
+    use database::postgresql::connect
+    use database::mysql::{connect as mysql_connect}
+
+    let conn1 = connect("postgres://...")?
+    let conn2 = mysql_connect("mysql://...")?
+}
+```
+
+#### 5.3.3 命名空间别名
+
+```go
+// 创建别名
+fn alias_usage() {
+    use database::postgresql as pg
+    use database::mysql as db
+
+    let conn1 = pg::connect("postgres://...")?
+    let conn2 = db::connect("mysql://...")?
+}
+
+// 避免命名冲突
+namespace myapp {
+    fn connect() -> Connection {
+        // 应用特定的连接逻辑
+    }
+}
+
+fn avoid_conflict() {
+    use database::postgresql::connect as db_connect
+    use myapp::connect
+
+    let db_conn = db_connect("postgres://...")?
+    let app_conn = connect()
+}
+```
+
+#### 5.3.4 模块化和文件组织
+
+```
+// 项目结构
+src/
+├── main.zl
+├── utils/
+│   ├── mod.zl          // 模块声明文件
+│   ├── string.zl
+│   └── math.zl
+└── database/
+    ├── mod.zl
+    ├── postgres.zl
+    └── mysql.zl
+```
+
+```go
+// utils/mod.zl
+pub mod string
+pub mod math
+
+// utils/string.zl
+pub fn to_uppercase(s: str) -> str {
+    // ...
+}
+
+// utils/math.zl
+pub fn add(a: f64, b: f64) -> f64 {
+    return a + b
+}
+
+// main.zl
+use utils::string::to_uppercase
+use utils::math
+
+fn main() {
+    println!("{}", to_uppercase("hello"))
+    println!("{}", math::add(1.0, 2.0))
+}
+```
+
+#### 5.3.5 可见性控制
+
+```go
+// 默认私有，pub 使其公开
+namespace mylib {
+    // 公开函数
+    pub fn public_function() {
+        println!("This is public")
+    }
+
+    // 私有函数（默认）
+    fn private_function() {
+        println!("This is private")
+    }
+
+    // 公开子命名空间
+    pub namespace internal {
+        pub fn helper() {
+            // ...
+        }
+    }
+}
+
+// 使用
+fn visibility_example() {
+    // ✅ 可以访问公开函数
+    mylib::public_function()
+
+    // ❌ 编译错误: 私有函数无法访问
+    // mylib::private_function()
+
+    // ✅ 可以访问公开的子命名空间
+    mylib::internal::helper()
+}
+```
+
+#### 5.3.6 命名空间最佳实践
+
+```go
+// 按功能组织
+namespace auth {
+    pub fn login(user: str, pass: str) -> Result<Session, AuthError> {
+        // ...
+    }
+
+    pub fn logout(session: Session) {
+        // ...
+    }
+
+    pub fn verify_token(token: str) -> bool {
+        // ...
+    }
+}
+
+namespace database {
+    pub fn query(sql: str) -> Result<Vec<User>, DbError> {
+        // ...
+    }
+
+    pub fn execute(sql: str) -> Result<usize, DbError> {
+        // ...
+    }
+}
+
+// 使用
+fn organized_code() {
+    use auth::{login, logout}
+    use database::{query, execute}
+
+    let session = login("user", "pass")?
+    let users = query("SELECT * FROM users")?
+    logout(session)
+}
+```
+
+**命名空间设计优势**:
+- **避免冲突**: 同名类型/函数可以存在于不同命名空间
+- **模块化**: 清晰的代码组织和边界
+- **可读性**: 代码的来源和用途一目了然
+- **灵活性**: 支持别名和选择性导入
+- **性能**: 编译期解析，零运行时开销
+
+### 5.4 Trait 组合式继承
+
+基于 **Go 接口**的组合模式，ZULON 支持 trait 的组合式继承：
+
+#### 5.4.1 基本 Trait 组合
+
+```go
+// 定义基础 trait
+trait Read {
+    fn read(&mut self, buf: &mut [u8]) -> Result<usize, IoError>
+}
+
+trait Write {
+    fn write(&mut self, buf: &[u8]) -> Result<usize, IoError>
+    fn flush(&mut self) -> Result<(), IoError>
+}
+
+trait Close {
+    fn close(&mut self) -> Result<(), IoError>
+}
+
+// 组合多个 trait
+trait ReadWrite : Read + Write {
+    // 自动继承 Read 和 Write 的所有方法
+}
+
+// 组合更多 trait
+trait ReadWriteClose : Read + Write + Close {
+    // 自动继承所有三个 trait 的方法
+}
+
+// 为类型实现组合 trait
+struct File {
+    fd: i32,
+}
+
+impl Read for File {
+    fn read(&mut self, buf: &mut [u8]) -> Result<usize, IoError> {
+        // 读取实现
+    }
+}
+
+impl Write for File {
+    fn write(&mut self, buf: &[u8]) -> Result<usize, IoError> {
+        // 写入实现
+    }
+
+    fn flush(&mut self) -> Result<(), IoError> {
+        // 刷新实现
+    }
+}
+
+impl Close for File {
+    fn close(&mut self) -> Result<(), IoError> {
+        // 关闭实现
+    }
+}
+
+// File 自动满足 ReadWriteClose
+fn process_file(f: &mut impl ReadWriteClose) -> Result<(), IoError> {
+    let mut buf = [0u8; 1024]
+    let n = f.read(&mut buf)?
+    f.write(&buf[..n])?
+    f.flush()?;
+    f.close()?;
+    return Ok(())
+}
+```
+
+#### 5.4.2 类型级别的 Trait 组合
+
+```go
+// 直接在类型约束中组合 trait
+fn process<T: Read + Write>(io: &mut T) -> Result<(), IoError> {
+    let mut buf = [0u8; 1024]
+    let n = io.read(&mut buf)?
+    io.write(&buf[..n])?
+    return Ok(())
+}
+
+// 使用 where 子句更清晰
+fn process_alternative<T>(io: &mut T) -> Result<(), IoError>
+where
+    T: Read + Write,
+{
+    let mut buf = [0u8; 1024]
+    let n = io.read(&mut buf)?
+    io.write(&buf[..n])?
+    return Ok(())
+}
+
+// 复杂组合
+fn complex_process<T>(io: &mut T) -> Result<(), IoError>
+where
+    T: Read + Write + Close + Clone,
+{
+    let mut cloned = io.clone();
+    // ...
+    return Ok(())
+}
+```
+
+#### 5.4.3 Trait 对象组合
+
+```go
+// Trait 对象也支持组合
+fn dynamic_io(io: &mut dyn ReadWrite) -> Result<(), IoError> {
+    let mut buf = [0u8; 1024]
+    let n = io.read(&mut buf)?
+    io.write(&buf[..n])?
+    return Ok(())
+}
+
+// 使用
+fn trait_object_usage() {
+    let mut file = File { fd: 1 };
+    dynamic_io(&mut file)?;  // File 实现了 Read 和 Write
+}
+```
+
+#### 5.4.4 嵌套组合
+
+```go
+// 多层组合
+trait Copyable : Clone {
+    // 可能添加额外方法
+}
+
+trait Serializable {
+    fn serialize(&self) -> Vec<u8>
+}
+
+trait Deserializable {
+    fn deserialize(data: &[u8]) -> Result<Self, Error>
+        where Self: Sized
+}
+
+// 组合所有
+trait Value : Copyable + Serializable + Deserializable {
+    // 继承所有方法
+}
+
+// 使用组合 trait
+fn process_value<T: Value>(value: T) -> Result<(), Error> {
+    let cloned = value.clone();  // 来自 Clone
+    let data = value.serialize();  // 来自 Serializable
+    let restored = T::deserialize(&data)?;  // 来自 Deserializable
+    return Ok(())
+}
+```
+
+#### 5.4.5 组合与实现
+
+```go
+// 一旦类型实现了所有必需的 trait，就自动满足组合 trait
+struct MyStruct {
+    data: Vec<u8>,
+}
+
+impl Clone for MyStruct {
+    fn clone(&self) -> MyStruct {
+        return MyStruct {
+            data: self.data.clone(),
+        }
+    }
+}
+
+impl Serializable for MyStruct {
+    fn serialize(&self) -> Vec<u8> {
+        return self.data.clone()
+    }
+}
+
+impl Deserializable for MyStruct {
+    fn deserialize(data: &[u8]) -> Result<MyStruct, Error> {
+        return Ok(MyStruct {
+            data: data.to_vec(),
+        })
+    }
+}
+
+// MyStruct 现在自动满足 Value trait
+fn use_my_struct() {
+    let s = MyStruct { data: vec![1, 2, 3] }
+    process_value(s)?  // ✅ 有效
+}
+```
+
+#### 5.4.6 Trait 组合最佳实践
+
+```go
+// 定义小而专注的 trait
+trait Hashable {
+    fn hash(&self) -> u64
+}
+
+trait Equatable {
+    fn equals(&self, other: &Self) -> bool
+}
+
+trait Comparable : Equatable {
+    fn compare(&self, other: &Self) -> Ordering
+}
+
+// 组合使用
+fn find_item<T: Hashable + Equatable>(items: &[T], target: &T) -> Option<usize> {
+    for (i, item) in items.iter().enumerate() {
+        if item.equals(target) {
+            return Some(i)
+        }
+    }
+    return None
+}
+
+// 更高级的组合
+fn sort_items<T: Comparable + Clone>(items: &mut [T]) {
+    // 排序逻辑
+}
+```
+
+**Trait 组合优势**:
+- **灵活性**: 按需组合所需能力
+- **可复用**: 小 trait 可以在多个组合中重用
+- **类型安全**: 编译期检查所有必需的 trait
+- **零成本**: 编译期单态化，无运行时开销
+- **清晰性**: 代码的依赖关系明确
+
+**与 Go 接口的对比**:
+```go
+// Go: 隐式满足
+type ReadWriter interface {
+    io.Reader
+    io.Writer
+}
+
+// ZULON: 显式组合但更灵活
+trait ReadWrite : Read + Write {
+    // 可以添加额外方法或约束
+}
+```
+
+### 5.5 脚本与系统编程统一模型
+
+#### 5.5.1 三级编程模式
 
 ```go
 // Script 模式: 快速原型
@@ -2007,6 +3179,404 @@ fn no_panic() {
     }
 }
 ```
+
+### 7.5 关键字与保留字
+
+ZULON 保留了一组关键字用于当前和未来的语言特性，确保语言的稳定性和可扩展性。
+
+#### 7.5.1 核心关键字（当前使用）
+
+```go
+// 控制流关键字
+fn        // 函数定义
+return    // 返回语句
+if        // 条件语句
+else      // 条件分支
+match     // 模式匹配
+loop      // 循环
+while     // while 循环
+for       // for 循环
+in        // 迭代器
+break     // 跳出循环
+continue  // 继续循环
+
+// 变量和常量
+let       // 变量声明
+mut       // 可变标记
+const     // 常量声明
+static    // 静态变量
+
+// 类型关键字
+struct    // 结构体
+enum      // 枚举
+trait     // 特征
+impl      // 实现
+type      // 类型别名
+where     // 约束子句
+mod       // 模块
+use       // 导入
+pub       // 可见性
+
+// 错误和效应
+error     // 错误类型
+effect    // 效应类型
+throw     // 抛出错误
+perform   // 执行效应
+try       // try 块
+?         // 错误传播运算符（作为关键字使用）
+
+// 函数和闭包
+fn        // 函数定义
+closure   // 闭包类型（未来）
+async     // 异步函数（未来）
+await     // 等待异步（未来）
+
+// 并发关键字
+spawn     // 生成任务
+actor     // Actor 模型
+channel   // 通道
+sync      // 同步
+
+// 内存管理
+move      // 移动语义
+copy      // 复制语义
+clone     // 克隆
+ref       // 引用
+deref     // 解引用
+
+// 生命周期和所有权
+lifetime  // 生命周期参数（标注使用）
+owned     // 所有权标记
+borrowed  // 借用标记
+
+// 模式匹配
+match      // 模式匹配
+case       // 模式分支（未来）
+wildcard   // 通配符（_ 运算符）
+
+// 命名空间
+namespace // 命名空间
+as        // 别名
+
+// 资源管理
+defer     // 延迟执行
+
+// 可见性
+pub       // 公开
+priv      // 私有（未来）
+
+// 布尔和空值
+true      // 布尔真
+false     // 布尔假
+null      // 空值（上下文相关）
+
+// 大小和类型
+Self      // 当前类型
+self      // 自身引用
+super     // 父级（未来）
+
+// 效应处理
+with      // 效应处理器
+handler   // 处理器（未来）
+
+// 宏和元编程
+macro     // 宏定义
+macro_rules // 宏规则
+
+// 属性和标注
+#[]       // 属性语法
+#[derive] // 派生属性
+#[inline] // 内联属性
+
+// 测试
+test      // 测试标记
+benchmark // 性能测试
+
+// 编译条件
+cfg       // 条件编译
+target    // 编译目标
+
+// 不安全代码
+unsafe    // 不安全块
+
+// 泛型
+<T>       // 泛型参数
+impl      // impl Trait
+
+// 运算符重载（保留）
+op        // 运算符定义（未来）
+```
+
+#### 7.5.2 保留关键字（未来使用）
+
+```go
+// 并发扩展
+parallel  // 并行执行
+pipeline  // 管道
+stream    // 流处理
+async     // 异步
+await     // 等待
+future    // Future 类型
+promise   // Promise 类型
+
+// 类型系统扩展
+union     // 联合类型（未来）
+intersection // 交叉类型（未来）
+variant   // 变体类型（未来）
+existential // 存在类型（未来）
+universal // 全称类型（未来）
+
+// 依赖类型（未来）
+dependent // 依赖类型
+const     // const 泛型
+
+// 线性类型（未来）
+linear    // 线性类型
+unique    // 唯一性
+consumed  // 消费标记
+
+// 协程和生成器（未来）
+generator // 生成器
+yield     // 产出值
+coroutine // 协程
+
+// SIMD 和向量化（未来）
+simd      // SIMD 类型
+vector    // 向量
+parallel  // 并行
+
+// GPU 计算（未来）
+kernel    // GPU 内核
+device    // 设备
+host      // 主机
+
+// 网络和分布式（未来）
+remote    // 远程调用
+message   // 消息传递
+protocol  // 协议
+
+// 反射和元数据（未来）
+reflect   // 反射
+metadata  // 元数据
+info      // 类型信息
+
+// 约束求解器（未来）
+requires  // 约束
+ensures   // 保证
+invariant // 不变量
+
+// 资源和所有权扩展（未来）
+region    // 区域
+scope     // 作用域
+arena     // 内存区域
+pool      // 对象池
+
+// 模式匹配扩展（未来）
+guard     // 守卫
+when      // 条件模式
+unless    // 否则条件
+
+// 接口和抽象（未来）
+interface // 接口（可能的别名）
+abstract  // 抽象
+virtual   // 虚函数
+override  // 重写
+
+// 合约和规范（未来）
+contract  // 契约
+spec      // 规范
+verify    // 验证
+
+// 编译器指令（未来）
+volatile  // 易变
+optimize  // 优化提示
+noinline  // 禁止内联
+always_inline // 强制内联
+
+// 调试和分析（未来）
+assert    // 断言
+assume    // 假设
+debug     // 调试
+trace     // 追踪
+
+// 内存模型扩展（未来）
+atomic    // 原子操作
+fence     // 内存屏障
+ordered   // 有序
+relaxed   // 松散
+
+// 异常处理扩展（未来）
+catch     // 捕获（与 throw 配合）
+finally   // 最终块
+
+// 格式化和序列化（未来）
+format    // 格式化
+serialize // 序列化
+deserialize // 反序列化
+
+// 类型构造器（未来）
+Box       // 堆分配包装
+Rc        // 引用计数
+Arc       // 原子引用计数
+Cell      // 可变单元格
+RefCell   // 运行时可变借用
+
+// 迭代器和集合（未来）
+Iterator  // 迭代器 trait
+Iterable  // 可迭代 trait
+Collection // 集合 trait
+Sequence  // 序列 trait
+
+// 比较和排序（未来）
+Compare   // 比较 trait
+Ord       // 排序 trait
+Eq        // 相等 trait
+Hash      // 哈希 trait
+
+// 转换和转换（未来）
+From      // From trait
+Into      // Into trait
+As        // As trait
+TryFrom   // TryFrom trait
+TryInto   // TryInto trait
+
+// 数值和算术（未来）
+Num       // 数值 trait
+Float     // 浮点 trait
+Int       // 整数 trait
+Signed    // 有符号 trait
+Unsigned  // 无符号 trait
+```
+
+#### 7.5.3 上下文关键字
+
+以下关键字在特定上下文中具有特殊含义，但可以用作标识符：
+
+```go
+// 可以用作标识符的上下文关键字
+mode      // 编译模式（script/app/system）
+dyn       // 动态分发（dyn Trait）
+impl      // impl Trait（在参数位置）
+become    // 可能的未来特性
+unchecked // 不检查模式
+sized     // 大小约束
+aligned   // 对齐约束
+
+// 示例：可以作为标识符使用
+fn mode() -> i32 {  // ✅ 有效：函数名
+    return 42
+}
+
+let dyn = 100  // ✅ 有效：变量名
+```
+
+#### 7.5.4 运算符和标点符号
+
+```go
+// 算术运算符
++  -  *  /  %  // 加减乘除取模
+**             // 幂运算（未来）
+
+// 位运算符
+&  |  ^  ~     // 与或非异或
+<<  >>         // 移位
+
+// 比较运算符
+==  !=  <  >  <=  >=  // 比较
+
+// 逻辑运算符
+&&  ||  !  // 与或非
+
+// 赋值运算符
+=  +=  -=  *=  /=  %=  // 赋值
+&=  |=  ^=  <<=  >>=   // 位运算赋值
+
+// 类型相关
+::   // 命名空间访问
+:    // 类型标注
+->   // 返回类型
+=>   // match 分支（未来）
+?    // 错误传播/可选类型
+!    // 效应标记/never 类型
+|    // trait 组合/错误/效应分隔符
+&    // 引用/借用
+*    // 指针/解引用
+
+// 结构和模式
+{}   // 代码块/结构体
+[]   // 数组/切片/索引
+()   // 元组/分组
+.    // 成员访问
+..   // 范围/部分解构
+...  // 扩展范围（未来）
+..=  // 包含范围（未来）
+
+// 宏和属性
+$    // 宏变量（未来）
+#    // 属性
+
+// 注释
+//   // 单行注释
+///  // 文档注释（外层）
+//!  // 文档注释（内层）
+/**/ // 块注释（未来）
+```
+
+#### 7.5.5 字面量和标识符
+
+```go
+// 字面量
+42           // 整数
+3.14         // 浮点数
+"hello"      // 字符串
+`multiline`  // 模板字符串
+'c'          // 字符
+true         // 布尔真
+false        // 布尔假
+null         // 空值
+
+// 标识符规则
+myVariable       // 驼峰命名
+my_function      // snake_case
+MyType           // PascalCase
+MY_CONSTANT      // SCREAMING_SNAKE_CASE
+
+// 特殊标识符
+_                // 通配符/忽略
+__builtin        // 编译器内置（保留前缀）
+__custom         // 自定义属性（保留前缀）
+```
+
+#### 7.5.6 关键字使用建议
+
+```go
+// ✅ 推荐：使用有意义的名称
+fn calculate_total(price: f64, tax: f64) -> f64 {
+    return price + tax
+}
+
+// ❌ 避免：使用关键字作为标识符（即使某些上下文允许）
+let return = 42  // 不推荐
+
+// ✅ 推荐：使用描述性名称替代
+let result = 42
+
+// ✅ 推荐：使用前缀或后缀避免关键字冲突
+fn fn_wrapper() {  // 可读但不太优雅
+    // ...
+}
+
+fn wrap_fn() {     // 更好
+    // ...
+}
+```
+
+**关键字设计原则**:
+- **最小化**: 只保留必要的关键字
+- **一致性**: 关键字命名风格统一
+- **可扩展**: 预留关键字支持未来特性
+- **可读性**: 关键字含义清晰明确
+- **兼容性**: 避免与常见编程语言冲突
 
 ---
 

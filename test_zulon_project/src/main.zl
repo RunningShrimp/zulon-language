@@ -1,0 +1,6 @@
+// test_zulon_project - A ZULON Project
+
+fn main() {
+    println!("Hello, ZULON!");
+    println!("Welcome to your new project: test_zulon_project");
+}
