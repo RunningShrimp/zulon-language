@@ -221,6 +221,7 @@ impl LirLoweringContext {
                     MirInstruction::Call { dest: Some(d), .. } => Some(*d),
                     MirInstruction::Load { dest, .. } => Some(*dest),
                     MirInstruction::BinaryOp { dest, .. } => Some(*dest),
+                    MirInstruction::UnaryOp { dest, .. } => Some(*dest),
                     MirInstruction::Const { dest, .. } => Some(*dest),
                     _ => None,
                 };
