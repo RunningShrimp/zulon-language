@@ -316,8 +316,9 @@ impl LirLoweringContext {
                     zulon_mir::MirConstant::Bool(b) => LirConstant::Bool(*b),
                     zulon_mir::MirConstant::Integer(i) => LirConstant::Integer(*i as u64),
                     zulon_mir::MirConstant::Float(f) => LirConstant::Float(*f),
+                    zulon_mir::MirConstant::String(s) => LirConstant::String(s.clone()),
+                    zulon_mir::MirConstant::Char(c) => LirConstant::Integer(*c as u64),
                     zulon_mir::MirConstant::Unit => LirConstant::Unit,
-                    _ => LirConstant::Integer(0), // Placeholder
                 };
 
                 Ok(vec![LirInstruction::Const {
@@ -362,6 +363,27 @@ impl LirLoweringContext {
                         ty: ty.clone().into(),
                     }])
                 }
+            }
+
+            MirInstruction::UnaryOp { dest, op, operand, ty } => {
+                let dest_vreg = func.alloc_vreg();
+                let operand_vreg = self.temp_map.get(operand).copied().unwrap_or_else(|| *operand as VReg);
+
+                self.temp_map.insert(*dest, dest_vreg);
+
+                // Convert MIR unary op to LIR unary op
+                let lir_op = match op {
+                    zulon_mir::MirUnaryOp::Neg => LirUnaryOp::Neg,
+                    zulon_mir::MirUnaryOp::Not => LirUnaryOp::Not,
+                    _ => LirUnaryOp::Neg, // Default to Neg for other ops (Ref, Deref, etc.)
+                };
+
+                Ok(vec![LirInstruction::UnaryOp {
+                    dest: dest_vreg,
+                    op: lir_op,
+                    operand: operand_vreg,
+                    ty: ty.clone().into(),
+                }])
             }
 
             MirInstruction::Copy { dest, src } => {
@@ -463,6 +485,12 @@ impl LirLoweringContext {
                     _ => "unknown".to_string(),
                 };
 
+                // Get argument types from the places
+                let arg_types: Vec<LirTy> = args
+                    .iter()
+                    .map(|arg| self.get_place_type(arg))
+                    .collect();
+
                 // Track external function
                 if !func.external_funcs.contains(&func_name) {
                     func.external_funcs.push(func_name.clone());
@@ -472,7 +500,7 @@ impl LirLoweringContext {
                     dest: dest_vreg,
                     func_name,
                     args: arg_vregs,
-                    arg_types: vec![return_type.clone().into()], // Placeholder
+                    arg_types,
                     return_type: return_type.clone().into(),
                 }])
             }
@@ -658,6 +686,28 @@ impl LirLoweringContext {
                 }
             }
             _ => func.alloc_vreg(), // Placeholder for other places
+        }
+    }
+
+    /// Get the type of a MirPlace
+    fn get_place_type(&self, place: &zulon_mir::MirPlace) -> LirTy {
+        match place {
+            zulon_mir::MirPlace::Temp(_) => {
+                // Look up the type from temp_types map if available
+                // For now, default to I32
+                LirTy::I32
+            }
+            zulon_mir::MirPlace::Param(_name) => {
+                // TODO: Look up parameter type from function signature
+                // For now, default to I32
+                LirTy::I32
+            }
+            zulon_mir::MirPlace::Local(_name) => {
+                // TODO: Look up local variable type
+                // For now, default to I32
+                LirTy::I32
+            }
+            _ => LirTy::I32, // Placeholder for other places
         }
     }
 
