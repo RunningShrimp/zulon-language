@@ -39,3 +39,77 @@ crates/zulon-tests-fuzz/corpus/
 *~
 **/target/**
 .claude/*
+
+# ZULON 编译产物
+*.o
+*.ll
+*.s
+*.bc
+*.debug
+*.out
+a.out
+
+# ZULON 临时二进制
+hello_world
+println_demo
+arc_demo
+comprehensive_io_demo
+greeting_demo
+getchar_demo
+string_utils_demo
+print_call_example
+print_all_example
+print_demo
+
+# ZULON 测试临时文件
+test_*.zl
+test_*.o
+test_*.ll
+
+# 会话和报告文档（临时）
+SESSION_2025_*.md
+SESSION_2026_01_07_*.md
+CAPTURE_*.md
+CLOSURE_*.md
+CODEBASE_*.md
+COLLECTIONS_*.md
+COMPREHENSIVE_*.md
+DEVELOPMENT_*.md
+FOR_LOOP_*.md
+IMPLEMENTATION_PLAN.md
+LASAN_*.md
+LEXER_*.md
+LOOP_*.md
+NESTED_*.md
+PARSER_*.md
+PHASE1_*.md
+PHASE4_*.md
+PROGRESS_*.md
+RALPH_*.md
+TESTING_*.md
+TODOLIST.md
+TYPE_*.md
+VARIABLE_*.md
+
+# 保留的重要文档（不要忽略）
+!README.md
+!QUICKSTART.md
+!CHANGELOG.md
+!DOCUMENTATION_INDEX.md
+!ZULON_MVP_V0.1.0_PROJECT_STATUS_REPORT.md
+!MVP_V0.1.0_RELEASE_CHECKLIST.md
+!MVP_V0.1.0_FINAL_RELEASE_ACTION.md
+!SESSION_2026_01_08_*.md
+
+# 性能测试脚本
+benchmark_*.sh
+compare_*.sh
+quick_*.sh
+verify_*.sh
+simple_*.sh
+test_*.sh
+
+# 其他临时文件
+.serena/
+.arc_demo/
+IMPLEMENTATION_PLAN.md
