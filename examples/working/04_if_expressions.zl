@@ -1,0 +1,14 @@
+// 04_if_expressions.zl - If-expressions
+// Demonstrates conditional logic with if-expressions
+
+fn abs(x: i32) -> i32 {
+    if x < 0 {
+        -x
+    } else {
+        x
+    }
+}
+
+fn main() -> i32 {
+    abs(-42)
+}

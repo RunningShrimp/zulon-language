@@ -1,0 +1,17 @@
+// 09_struct_definition.zl - Struct definitions
+// Demonstrates that struct definitions are supported
+
+struct Point {
+    x: i32,
+    y: i32
+}
+
+struct Color {
+    red: i32,
+    green: i32,
+    blue: i32
+}
+
+fn main() -> i32 {
+    0
+}

@@ -1,0 +1,6 @@
+// 01_hello.zl - Simple hello world
+// Demonstrates the simplest possible ZULON program
+
+fn main() -> i32 {
+    42
+}

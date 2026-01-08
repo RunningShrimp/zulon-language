@@ -1,0 +1,11 @@
+// 03_arithmetic.zl - Arithmetic operations
+// Demonstrates basic arithmetic and operators
+
+fn main() -> i32 {
+    let a = 10;
+    let b = 20;
+    let sum = a + b;
+    let product = a * b;
+    let difference = b - a;
+    sum + product + difference
+}

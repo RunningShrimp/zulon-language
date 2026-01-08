@@ -1,0 +1,13 @@
+// 10_return.zl - Return statements
+// Demonstrates explicit return statements
+
+fn early_return(x: i32) -> i32 {
+    if x < 0 {
+        return 0
+    }
+    x
+}
+
+fn main() -> i32 {
+    early_return(42)
+}

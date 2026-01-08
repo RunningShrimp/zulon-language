@@ -1,0 +1,15 @@
+// 06_functions.zl - Multiple functions
+// Demonstrates function definitions and calls
+
+fn square(x: i32) -> i32 {
+    x * x
+}
+
+fn double(x: i32) -> i32 {
+    x + x
+}
+
+fn main() -> i32 {
+    let x = 5;
+    square(x) + double(x)
+}

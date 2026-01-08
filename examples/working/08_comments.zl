@@ -1,0 +1,18 @@
+// 08_comments.zl - Code comments
+// Demonstrates that comments work everywhere
+
+// Top-level comment
+
+// Function comment
+fn add(a: i32, b: i32) -> i32 {
+    a + b
+}
+
+// Another function comment
+fn main() -> i32 {
+    let x = 10;
+    let y = 20;
+    add(x, y)
+}
+
+// Trailing comment
