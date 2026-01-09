@@ -1,0 +1,299 @@
+// Copyright 2026 ZULON Language Team
+// SPDX-License-Identifier: Apache-2.0 OR MIT
+
+//! Effect System Demonstration
+//!
+//! This example demonstrates the practical use of ZULON's effect system
+//! for tracking and managing function side effects.
+
+// ========== Effect Declarations ==========
+
+/// IO effect for input/output operations
+effect IO {
+    /// Read from standard input
+    fn read_stdin() -> i32
+
+    /// Write to standard output
+    fn write_stdout(data: i32)
+
+    /// Read from file
+    fn read_file(path: string) -> string
+
+    /// Write to file
+    fn write_file(path: string, data: string)
+}
+
+/// Allocation effect for heap operations
+effect Alloc {
+    /// Allocate memory on heap
+    fn allocate(size: i32) -> i32
+}
+
+/// Database effect for data persistence
+effect Database {
+    /// Query database
+    fn query(sql: string) -> i32
+
+    /// Execute transaction
+    fn execute(sql: string) -> i32
+}
+
+// ========== Pure Functions (No Effects) ==========
+
+/// Pure function: adds two integers
+/// No effects, guaranteed to be side-effect free
+fn add(x: i32, y: i32) -> i32 {
+    x + y
+}
+
+/// Pure function: calculates factorial recursively
+fn factorial(n: i32) -> i32 {
+    if n <= 1 {
+        1
+    } else {
+        n * factorial(n - 1)
+    }
+}
+
+/// Pure function: maps over values
+fn square(x: i32) -> i32 {
+    x * x
+}
+
+// ========== Functions with IO Effect ==========
+
+/// Read user input from stdin
+fn get_user_input() -> i32 | IO {
+    read_stdin()
+}
+
+/// Write data to stdout
+fn display_result(data: i32) | IO {
+    write_stdout(data)
+}
+
+/// Read configuration file
+fn load_config(path: string) -> string | IO {
+    read_file(path)
+}
+
+/// Save data to file
+fn save_data(path: string, data: string) | IO {
+    write_file(path, data)
+}
+
+// ========== Functions with Multiple Effects ==========
+
+/// Process file: read, transform, and write
+/// Has IO effect for file operations
+fn process_file(input_path: string, output_path: string) -> i32 | IO {
+    let contents = read_file(input_path);
+    let transformed = transform_data(contents);
+    write_file(output_path, transformed);
+    42
+}
+
+/// Data processing with allocation
+/// Has both IO and Alloc effects
+fn process_large_data(size: i32) -> i32 | IO + Alloc {
+    let data = read_file("data.txt");
+    let buffer = allocate(size);
+    write_stdout(buffer);
+    buffer
+}
+
+// ========== Database Operations ==========
+
+/// Query database with IO effect
+fn fetch_user(user_id: i32) -> i32 | Database + IO {
+    query("SELECT * FROM users WHERE id = {user_id}")
+}
+
+/// Execute database transaction
+fn update_user(user_id: i32, name: string) -> i32 | Database {
+    execute("UPDATE users SET name = '{name}' WHERE id = {user_id}")
+}
+
+// ========== Effect Propagation Examples ==========
+
+/// Example 1: Single level propagation
+/// caller() inherits IO effect from helper()
+fn helper() -> i32 | IO {
+    read_stdin()
+}
+
+fn caller() -> i32 | IO {
+    helper()
+}
+
+/// Example 2: Multi-level propagation
+/// Effects propagate through the call chain
+fn level3() -> i32 | IO {
+    read_stdin()
+}
+
+fn level2() -> i32 | IO {
+    level3()
+}
+
+fn level1() -> i32 | IO {
+    level2()
+}
+
+/// Example 3: Multiple effect sources
+/// Effects accumulate from multiple function calls
+fn read_data() -> i32 | IO {
+    read_stdin()
+}
+
+fn write_data(data: i32) | IO {
+    write_stdout(data)
+}
+
+fn process_all() -> i32 | IO {
+    let input = read_data();
+    let result = add(input, 10);
+    write_data(result);
+    result
+}
+
+// ========== Pure Function Composition ==========
+
+/// Compose pure functions
+/// All functions are pure, so no effects needed
+fn compose_pure(x: i32) -> i32 {
+    let squared = square(x);
+    let added = add(squared, 5);
+    factorial(added)
+}
+
+/// Pure function processing
+fn process_number(x: i32) -> i32 {
+    let step1 = square(x);
+    let step2 = add(step1, 10);
+    let step3 = square(step2);
+    step3
+}
+
+// ========== Mixed Pure and Impure ==========
+
+/// Process data with pure transformation
+/// IO effect from read/write, but transformation is pure
+fn process_data() -> i32 | IO {
+    let input = read_stdin();
+    let result = compose_pure(input);
+    write_stdout(result);
+    result
+}
+
+/// Read-validate-save pattern
+fn read_validate_save(path: string) -> i32 | IO {
+    let data = read_file(path);
+    let validated = validate_data(data);
+    write_file(path + ".validated", validated);
+    0
+}
+
+// ========== Real-World Scenarios ==========
+
+/// Scenario 1: Configuration Management
+/// Read config, validate, and use
+fn load_and_validate_config(path: string) -> i32 | IO {
+    let config = load_config(path);
+    let is_valid = validate_config(config);
+    if is_valid {
+        1
+    } else {
+        0
+    }
+}
+
+/// Scenario 2: Data Pipeline
+/// Multiple stages with effect propagation
+fn data_pipeline() -> i32 | Database + IO {
+    let user_id = get_user_input();
+    let user_data = fetch_user(user_id);
+    let processed = process_record(user_data);
+    save_record(processed)
+}
+
+/// Scenario 3: Batch Processing
+/// Process multiple items with accumulated effects
+fn process_batch(items: i32) -> i32 | IO {
+    let mut i = 0;
+    while i < items {
+        let data = read_stdin();
+        write_stdout(data);
+        i = i + 1
+    }
+    items
+}
+
+// ========== Helper Functions ==========
+
+/// Pure validation function
+fn validate_data(data: string) -> string {
+    if data.len() > 0 {
+        data
+    } else {
+        "default"
+    }
+}
+
+/// Pure config validation
+fn validate_config(config: string) -> bool {
+    config.len() > 0
+}
+
+/// Pure record processing
+fn process_record(data: i32) -> i32 {
+    data * 2
+}
+
+/// Save record (placeholder - would have IO/Database effects)
+fn save_record(data: i32) -> i32 {
+    data
+}
+
+/// Transform data (pure function)
+fn transform_data(data: string) -> string {
+    data.to_uppercase()
+}
+
+// ========== Main Entry Point ==========
+
+/// Main function with IO effect
+/// Demonstrates a complete workflow
+fn main() -> i32 | IO {
+    // Get user input
+    let input = get_user_input();
+
+    // Process with pure functions
+    let result = compose_pure(input);
+
+    // Display result
+    display_result(result);
+
+    // Return success
+    0
+}
+
+// ========== Summary ==========
+
+// This example demonstrates:
+//
+// 1. **Effect Declarations**: IO, Alloc, Database effects
+// 2. **Pure Functions**: add, factorial, square (no effects)
+// 3. **Single Effect**: IO operations (read, write)
+// 4. **Multiple Effects**: IO + Alloc combinations
+// 5. **Effect Propagation**: Automatic through call chains
+// 6. **Pure Composition**: Combining pure functions
+// 7. **Mixed Scenarios**: Pure and impure functions together
+// 8. **Real-World Patterns**: Config, pipelines, batch processing
+//
+// Effect System Benefits:
+// - Compile-time effect checking
+// - Automatic effect propagation
+// - Purity guarantees
+// - Better code documentation
+// - Safer refactoring

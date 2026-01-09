@@ -6,7 +6,7 @@
 //! This module implements automatic effect inference for functions,
 //! allowing functions to inherit effects from the code they call.
 
-use crate::effect::{Effect, EffectSet};
+use crate::effect::EffectSet;
 use crate::ty::Ty;
 
 /// Effect inference engine
