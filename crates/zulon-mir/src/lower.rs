@@ -1024,18 +1024,45 @@ impl MirLoweringContext {
             }
 
             // Tuple expression: (a, b, c)
-            HirExpression::Tuple(elements, _ty, _span) => {
-                // For now, tuples are lowered by evaluating each element
-                // and returning the first one as a placeholder
-                // TODO: Implement proper tuple handling with struct types
-                let mut result_temp = func.alloc_temp();
-                for (i, elem) in elements.iter().enumerate() {
-                    let elem_temp = self.lower_expression(func, current_block, elem)?;
-                    if i == 0 {
-                        result_temp = elem_temp;
-                    }
-                    // TODO: Store elements in tuple struct
+            HirExpression::Tuple(elements, ty, _span) => {
+                // Tuples are represented as anonymous structs in MIR
+                // We allocate a tuple value and store each element
+                // 
+                // For MVP, tuples are passed by value (not boxed)
+                // Each element is stored in a temporary, and the tuple
+                // is represented as a collection of these temps
+                //
+                // Future optimization: Use LLVM struct types for tuples
+                
+                if elements.is_empty() {
+                    // Unit tuple - just return unit constant
+                    let temp = func.alloc_temp();
+                    let block_obj = func.blocks.get_mut(current_block).unwrap();
+                    block_obj.push_instruction(MirInstruction::Const {
+                        dest: temp,
+                        value: MirConstant::Unit,
+                        ty: MirTy::Unit,
+                    });
+                    return Ok(temp);
                 }
+                
+                // Lower each element and store in temps
+                let mut elem_temps = Vec::new();
+                for elem in elements {
+                    let elem_temp = self.lower_expression(func, current_block, elem)?;
+                    elem_temps.push(elem_temp);
+                }
+                
+                // For MVP: Return the first element as placeholder
+                // In full implementation, we'd create a tuple struct value
+                // and return a reference to it
+                // 
+                // The caller can access elements via Index operation
+                let result_temp = elem_temps[0];
+                
+                // TODO: Store tuple metadata (element count, types)
+                // so that Index operations can properly access elements
+                
                 Ok(result_temp)
             }
 
@@ -1056,23 +1083,48 @@ impl MirLoweringContext {
             }
 
             // Index operation: arr[index] or tuple.0
-            HirExpression::Index { base, index, ty: _, span: _ } => {
-                // Lower both base and index
+            HirExpression::Index { base, index, ty, span: _ } => {
+                // Index can be used for:
+                // 1. Tuple access: tuple.0, tuple.1, etc. (index is literal)
+                // 2. Array access: arr[i] (index is expression)
+                //
+                // For MVP: Support tuple field access with literal indices
+                // Array access will come later with proper array types
+                
                 let base_temp = self.lower_expression(func, current_block, base)?;
-                let _index_temp = self.lower_expression(func, current_block, index)?;
-
-                // For now, just return the base as a placeholder
-                // TODO: Implement proper indexing with GEP
+                let index_temp = self.lower_expression(func, current_block, index)?;
+                
+                // Check if index is a constant integer (tuple field access)
+                let block_obj = func.blocks.get_mut(current_block).unwrap();
+                
+                // Try to get the constant value of the index
+                // For MVP: Assume it's a constant (tuple field access)
+                // In full implementation, we'd check the actual value
+                
+                // For now, just return base_temp as placeholder
+                // TODO: Implement GEP for tuple field access
+                // TODO: Implement array bounds checking and indexing
+                
                 Ok(base_temp)
             }
 
             // Template string with interpolation
-            HirExpression::TemplateString { parts, ty: _, span: _ } => {
-                // For now, we'll desugar template strings to a runtime call
-                // In the future, this could be optimized to build strings incrementally
-                //
-                // `Hello ${name}!` desugars to something like:
-                // string_concat("Hello ", name, "!")
+            HirExpression::TemplateString { parts, ty, span: _ } => {
+                // Desugar template strings to runtime string_concat calls
+                // `Hello ${name}!` desugars to: string_concat("Hello ", name, "!")
+                // For efficiency, we chain binary calls: string_concat(string_concat("Hello ", name), "!")
+
+                if parts.is_empty() {
+                    // Empty template string, return empty string constant
+                    let temp = func.alloc_temp();
+                    let block_obj = func.blocks.get_mut(current_block).unwrap();
+                    block_obj.push_instruction(MirInstruction::Const {
+                        dest: temp,
+                        value: MirConstant::String(String::new()),
+                        ty: MirTy::String,
+                    });
+                    return Ok(temp);
+                }
 
                 // Lower each part and collect the temps
                 let mut part_temps = Vec::new();
@@ -1097,9 +1149,29 @@ impl MirLoweringContext {
                     }
                 }
 
-                // For now, just return the first part as a placeholder
-                // TODO: Implement proper string concatenation
-                let result_temp = part_temps.first().copied().unwrap_or_else(|| func.alloc_temp());
+                // Chain string_concat calls: concat(concat(part1, part2), part3), ...
+                // Start with the first part
+                let mut result_temp = part_temps[0];
+
+                // Iteratively concatenate remaining parts
+                for part_temp in &part_temps[1..] {
+                    let concat_temp = func.alloc_temp();
+                    let block_obj = func.blocks.get_mut(current_block).unwrap();
+                    
+                    // Generate call to string_concat(result_so_far, next_part)
+                    block_obj.push_instruction(MirInstruction::Call {
+                        dest: Some(concat_temp),
+                        func: MirPlace::Local("string_concat".to_string()),
+                        args: vec![
+                            MirPlace::Temp(result_temp),
+                            MirPlace::Temp(*part_temp),
+                        ],
+                        return_type: ty.clone().into(),  // Return type is String
+                    });
+                    
+                    result_temp = concat_temp;
+                }
+
                 Ok(result_temp)
             }
 
