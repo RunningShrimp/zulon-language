@@ -502,10 +502,26 @@ impl Parser {
                 StatementKind::Local(local)
             }
             Some(TokenKind::Defer) => {
-                // Defer statement: defer expr_or_statement;
+                // Defer statement: defer expr_or_statement
                 self.advance();
-                let stmt = Box::new(self.parse_statement()?);
-                StatementKind::Defer(stmt)
+
+                // Check if this is a block statement: defer { ... }
+                let stmt = if self.check(&TokenKind::LeftBrace) {
+                    // Block statement
+                    let block = self.parse_block()?;
+                    Statement {
+                        span: block.span.clone(),
+                        kind: StatementKind::Expr(Expression {
+                            span: block.span.clone(),
+                            kind: ExpressionKind::Block(block),
+                        }),
+                    }
+                } else {
+                    // Single expression statement
+                    self.parse_statement()?
+                };
+
+                StatementKind::Defer(Box::new(stmt))
             }
             Some(TokenKind::Fn | TokenKind::Struct | TokenKind::Enum | TokenKind::Trait |
                  TokenKind::Impl | TokenKind::Type | TokenKind::Const | TokenKind::Static |
