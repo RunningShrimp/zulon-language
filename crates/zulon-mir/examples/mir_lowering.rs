@@ -154,6 +154,12 @@ fn format_instruction(inst: &zulon_mir::MirInstruction, _func: &zulon_mir::MirFu
         zulon_mir::MirInstruction::Drop { place, ty } => {
             format!("drop {} ({})", ty.display_name(), format_place(place))
         }
+        zulon_mir::MirInstruction::FieldAccess { .. } => {
+            format!("<field access>")
+        }
+        zulon_mir::MirInstruction::PerformEffect { .. } => {
+            format!("<perform effect>")
+        }
     }
 }
 
@@ -183,6 +189,9 @@ fn format_terminator(terminator: &zulon_mir::MirTerminator) -> String {
         }
         zulon_mir::MirTerminator::Unreachable => {
             "unreachable".to_string()
+        }
+        zulon_mir::MirTerminator::EffectCall { .. } => {
+            format!("<effect call>")
         }
     }
 }

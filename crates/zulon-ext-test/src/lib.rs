@@ -77,11 +77,9 @@ pub const TEST_ATTRIBUTE: &str = "#[test]";
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-
     #[test]
     fn test_framework_exists() {
         // Verify testing framework components exist
-        assert!(true);
+        std::assert!(true);
     }
 }

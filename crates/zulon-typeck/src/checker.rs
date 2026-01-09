@@ -118,6 +118,7 @@ impl TypeChecker {
         self.current_return_type = Some(return_type.clone());
         self.current_error_type = error_type.clone();
 
+        // Debug logging
         // Process effects from function signature (e.g., `-> i32 | Log`)
         for effect_ty in &func.effects {
             let (effect_name, span) = match &effect_ty {
@@ -137,12 +138,24 @@ impl TypeChecker {
             }
         }
 
-        // Check function body
-        self.check_block(&func.body)?;
+        // Check function body and validate return type
+        let body_result_ty = self.check_block(&func.body)?;
+
+        // Validate that the body's result type matches the declared return type
+        if &body_result_ty != &return_type {
+            // Allow Never type (throw/return) in any position
+            if !matches!(body_result_ty, Ty::Never) {
+                return Err(TypeError::TypeMismatch {
+                    expected: return_type.clone(),
+                    found: body_result_ty,
+                    span: func.body.span.clone(),
+                });
+            }
+        }
 
         // Restore return type and error type
         self.current_return_type = prev_return_type;
-        self.current_error_type = prev_error_type;
+        self.current_error_type = prev_error_type.clone();
         self.current_effects = prev_effects;
 
         // Exit function scope - swap back to parent environment
@@ -326,6 +339,11 @@ impl TypeChecker {
                 self.check_expression(expr)?;
                 Ok(())
             }
+            ast::StatementKind::Defer(stmt) => {
+                // Defer statements are checked normally
+                // The runtime behavior (execution at scope exit) is handled later
+                self.check_statement(stmt)
+            }
             ast::StatementKind::Empty => Ok(()),
         }
     }
@@ -458,45 +476,64 @@ impl TypeChecker {
 
     /// Type check a path (variable or function reference)
     fn check_path(&mut self, path: &[Identifier]) -> Result<Ty> {
-        if path.len() != 1 {
-            // TODO: Handle qualified paths
-            return Ok(Ty::Unit);
-        }
+        if path.len() == 1 {
+            // Simple identifier - existing logic
+            let name = &path[0].name;
 
-        let name = &path[0].name;
+            // Look up as variable
+            if let Some(ty) = self.env.lookup_binding(name) {
+                return Ok(ty);
+            }
 
-        // Look up as variable
-        if let Some(ty) = self.env.lookup_binding(name) {
-            return Ok(ty);
-        }
+            // Look up as function
+            if let Some(ty) = self.env.lookup_function(name) {
+                return Ok(ty);
+            }
 
-        // Look up as function
-        if let Some(ty) = self.env.lookup_function(name) {
-            return Ok(ty);
-        }
+            // Look up as type
+            if let Some(ty) = self.env.lookup_type_def(name) {
+                return Ok(ty);
+            }
 
-        // Look up as type
-        if let Some(ty) = self.env.lookup_type_def(name) {
-            return Ok(ty);
-        }
-
-        // Look up as effect operation in current effects
-        for effect_name in &self.current_effects {
-            if let Some(effect) = self.env.lookup_effect(effect_name) {
-                if let Some(op) = effect.operations.iter().find(|op| &op.name == name) {
-                    // Found the effect operation - return its type
-                    return Ok(Ty::Function {
-                        params: op.param_types.clone(),
-                        return_type: Box::new(op.return_type.clone()),
-                    });
+            // Look up as effect operation in current effects
+            for effect_name in &self.current_effects {
+                if let Some(effect) = self.env.lookup_effect(effect_name) {
+                    if let Some(op) = effect.operations.iter().find(|op| &op.name == name) {
+                        // Found the effect operation - return its type
+                        return Ok(Ty::Function {
+                            params: op.param_types.clone(),
+                            return_type: Box::new(op.return_type.clone()),
+                        });
+                    }
                 }
             }
-        }
 
-        Err(TypeError::UndefinedVariable {
-            name: name.clone(),
-            span: path[0].span,
-        })
+            Err(TypeError::UndefinedVariable {
+                name: name.clone(),
+                span: path[0].span,
+            })
+        } else if path.len() == 2 {
+            // Qualified path: Type::Variant or Type::Field
+            let type_name = &path[0].name;
+            let _variant_name = &path[1].name;
+
+            // Look up as enum type
+            if let Some(enum_ty) = self.env.lookup_type_def(type_name) {
+                return Ok(enum_ty);
+            }
+
+            // Not found
+            Err(TypeError::UndefinedVariable {
+                name: type_name.clone(),
+                span: path[0].span.clone(),
+            })
+        } else {
+            // Longer paths (module::Type::Variant, etc.) - not yet supported
+            Err(TypeError::UndefinedVariable {
+                name: path.last().unwrap().name.clone(),
+                span: path.last().unwrap().span.clone(),
+            })
+        }
     }
 
     /// Type check a binary operation with type inference
@@ -698,7 +735,18 @@ impl TypeChecker {
             None => Ty::Unit,
         };
 
-        // Unify branch types
+        // Special handling for Never type (diverging expressions)
+        // If one branch never returns, the result type is the other branch
+        if matches!(then_ty, Ty::Never) {
+            // Then branch diverges (throw/return), so result is else branch type
+            return Ok(else_ty);
+        }
+        if matches!(else_ty, Ty::Never) {
+            // Else branch diverges, so result is then branch type
+            return Ok(then_ty);
+        }
+
+        // Normal case: unify branch types
         self.unify(&then_ty, &else_ty, &then_block.span)?;
 
         // Return the unified type
@@ -973,7 +1021,52 @@ impl TypeChecker {
                     return_type: Box::new(self.ast_type_to_ty(return_type)),
                 }
             }
-            _ => Ty::Unit,  // TODO: Implement other types
+            Type::Pipe(left, right) => {
+                // T | E syntax is desugared to Outcome<T, E>
+                // Create Outcome struct with type parameters
+                use zulon_parser::ast::Identifier;
+                use zulon_parser::{Span, Position};
+
+                Ty::Struct {
+                    name: Identifier {
+                        span: Span::new(Position::new(0, 0), Position::new(0, 0)),
+                        name: "Outcome".to_string(),
+                    },
+                    generics: vec![self.ast_type_to_ty(left), self.ast_type_to_ty(right)],
+                }
+            }
+            Type::Optional(inner) => {
+                // T? syntax is desugared to Optional<T>
+                use zulon_parser::ast::Identifier;
+                use zulon_parser::{Span, Position};
+
+                Ty::Struct {
+                    name: Identifier {
+                        span: Span::new(Position::new(0, 0), Position::new(0, 0)),
+                        name: "Optional".to_string(),
+                    },
+                    generics: vec![self.ast_type_to_ty(inner)],
+                }
+            }
+            Type::Never => Ty::Never,
+            Type::Unit => Ty::Unit,
+            Type::TraitObject(inner) => Ty::TraitObject(Box::new(self.ast_type_to_ty(inner))),
+            Type::ImplTrait(inner) => Ty::ImplTrait(Box::new(self.ast_type_to_ty(inner))),
+            Type::Pointer(inner, mutable) => {
+                Ty::Ref {
+                    inner: Box::new(self.ast_type_to_ty(inner)),
+                    mutable: *mutable,
+                }
+            }
+            Type::Path(path) => {
+                // For now, treat paths as simple types (first component)
+                if let Some(ident) = path.first() {
+                    self.env.lookup_type_def(&ident.name)
+                        .unwrap_or(Ty::TyVar(self.env.peek_next_ty_var()))
+                } else {
+                    Ty::TyVar(self.env.peek_next_ty_var())
+                }
+            }
         }
     }
 }

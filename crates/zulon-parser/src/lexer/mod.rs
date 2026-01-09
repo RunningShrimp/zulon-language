@@ -170,6 +170,7 @@ impl<'a> Lexer<'a> {
             "break" => TokenKind::Break,
             "continue" => TokenKind::Continue,
             "return" => TokenKind::Return,
+            "defer" => TokenKind::Defer,
 
             // Declarations
             "extern" => TokenKind::Extern,

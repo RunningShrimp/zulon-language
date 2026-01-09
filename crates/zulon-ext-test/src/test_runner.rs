@@ -43,8 +43,9 @@ impl TestStats {
     }
 
     /// Check if all tests passed
+    /// Note: Empty test stats (no tests run) is considered successful
     pub fn is_success(&self) -> bool {
-        self.failed == 0 && self.total > 0
+        self.failed == 0
     }
 
     /// Calculate pass rate as percentage

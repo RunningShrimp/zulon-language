@@ -105,6 +105,7 @@ pub enum HirStatement {
     Item(HirItem),
     Expression(HirExpression),
     Semi(HirExpression),
+    Defer(Box<HirStatement>),
 }
 
 /// Local variable declaration
@@ -268,6 +269,22 @@ pub enum HirExpression {
 
     /// Try...with effect handler block
     Try(HirTryBlock),
+
+    /// Template string with interpolation (desugared to string concatenation)
+    TemplateString {
+        parts: Vec<HirTemplateStringPart>,
+        ty: HirTy,
+        span: Span,
+    },
+}
+
+/// Template string part
+#[derive(Debug, Clone)]
+pub enum HirTemplateStringPart {
+    /// Static string literal
+    Static(String),
+    /// Interpolated expression
+    Expr(Box<HirExpression>),
 }
 
 impl HirExpression {
@@ -296,6 +313,7 @@ impl HirExpression {
             HirExpression::Throw(..) => &HirTy::Never,  // throw doesn't return normally
             HirExpression::QuestionMark(_, ty, _) => ty,  // ? returns the success type
             HirExpression::Try(try_block) => &try_block.try_block.ty,
+            HirExpression::TemplateString { ty, .. } => ty,
         }
     }
 
@@ -326,6 +344,7 @@ impl HirExpression {
             HirExpression::Throw(_, span) => span,
             HirExpression::QuestionMark(_, _, span) => span,
             HirExpression::Try(try_block) => &try_block.span,
+            HirExpression::TemplateString { span, .. } => span,
         }
     }
 }

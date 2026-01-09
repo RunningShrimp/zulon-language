@@ -127,6 +127,12 @@ pub fn unify_with_subst(
             // Equal, nothing to do
         }
 
+        // Never type (diverging) unifies with any type
+        // This allows expressions like `throw` or `return` to work in any context
+        (Ty::Never, _) | (_, Ty::Never) => {
+            // Never is compatible with any type - nothing to do
+        }
+
         // References
         (Ty::Ref { inner: inner1, mutable: mut1 }, Ty::Ref { inner: inner2, mutable: mut2 }) => {
             if mut1 != mut2 {

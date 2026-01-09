@@ -313,7 +313,7 @@ mod tests {
         let config = BuildConfig::default();
         assert_eq!(config.output, PathBuf::from("a.out"));
         assert_eq!(config.keep_intermediates, false);
-        assert_eq!(config.opt_level, 0);
+        assert_eq!(config.opt_level, 2); // Default to -O2 for production
         assert!(config.target.is_none());
     }
 

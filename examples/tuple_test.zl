@@ -1,0 +1,26 @@
+// Tuple test example
+// This tests tuple creation and usage
+
+fn main() -> i32 {
+    // Create a tuple
+    let tuple = (1, 2, 3);
+
+    // Create a tuple with mixed types
+    let mixed = (42, "hello", true);
+
+    // Create a single-element tuple (note the trailing comma)
+    let single = (100,);
+
+    // Create an empty tuple (unit type)
+    let unit = ();
+
+    // Array literal
+    let arr = [1, 2, 3, 4, 5];
+
+    println(`Tuple: ${tuple}`);
+    println(`Mixed: ${mixed}`);
+    println(`Single: ${single}`);
+    println(`Array: ${arr}`);
+
+    0
+}

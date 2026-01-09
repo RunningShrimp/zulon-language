@@ -51,6 +51,9 @@ fn print_hir_block(block: &zulon_hir::HirBlock, indent: usize) {
             zulon_hir::HirStatement::Item(_) => {
                 println!("{}Item\n", indent_str);
             }
+            zulon_hir::HirStatement::Defer(_) => {
+                println!("{}Defer\n", indent_str);
+            }
         }
     }
 

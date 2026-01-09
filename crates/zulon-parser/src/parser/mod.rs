@@ -501,6 +501,12 @@ impl Parser {
                 let local = self.parse_local()?;
                 StatementKind::Local(local)
             }
+            Some(TokenKind::Defer) => {
+                // Defer statement: defer expr_or_statement;
+                self.advance();
+                let stmt = Box::new(self.parse_statement()?);
+                StatementKind::Defer(stmt)
+            }
             Some(TokenKind::Fn | TokenKind::Struct | TokenKind::Enum | TokenKind::Trait |
                  TokenKind::Impl | TokenKind::Type | TokenKind::Const | TokenKind::Static |
                  TokenKind::Mod | TokenKind::Use) => {
@@ -928,7 +934,10 @@ impl Parser {
 
                 self.consume(TokenKind::In)?;
 
-                let iter = Box::new(self.parse_expression()?);
+                // Parse iterator expression
+                let iter = self.parse_expression()?;
+
+                // Parse body
                 let body = self.parse_block()?;
 
                 Ok(Expression {
@@ -940,7 +949,7 @@ impl Parser {
                             init: None,
                             is_mutable: false,
                         },
-                        iter,
+                        Box::new(iter),
                         body,
                         None, // TODO: Parse label
                     ),
@@ -1211,6 +1220,22 @@ impl Parser {
                     Ok(Expression {
                         span,
                         kind: ExpressionKind::Literal(Literal::String(s.to_string())),
+                    })
+                } else {
+                    unreachable!()
+                }
+            }
+            Some(TokenKind::TemplateString(_)) => {
+                let token = self.advance().unwrap();
+                if let TokenKind::TemplateString(template) = &token.kind {
+                    // Parse template string with interpolation
+                    let parts = self.parse_template_string_parts(template, &token.span)?;
+
+                    Ok(Expression {
+                        span,
+                        kind: ExpressionKind::TemplateString(
+                            TemplateString { parts }
+                        ),
                     })
                 } else {
                     unreachable!()
@@ -2310,6 +2335,101 @@ impl Parser {
             found: self.current_kind().cloned().unwrap_or(TokenKind::Unknown),
             span: self.current_span(),
         })
+    }
+
+    /// Parse template string parts, splitting static text from interpolated expressions
+    fn parse_template_string_parts(&mut self, template: &str, span: &Span) -> ParseResult<Vec<TemplateStringPart>> {
+        use crate::ast::TemplateStringPart;
+
+        let mut parts = Vec::new();
+        let mut current = String::new();
+        let mut chars = template.chars().peekable();
+        let mut in_interpolation = false;
+        let mut brace_depth = 0;
+
+        while let Some(c) = chars.next() {
+            if in_interpolation {
+                if c == '{' {
+                    brace_depth += 1;
+                    current.push(c);
+                } else if c == '}' {
+                    brace_depth -= 1;
+                    if brace_depth == 0 {
+                        // End of interpolation
+                        let expr_str = current[1..].to_string(); // Skip the opening '$'
+                        current.clear();
+
+                        // Parse the interpolated expression
+                        // We need to create a temporary lexer to tokenize just this expression
+                        let lexer = Lexer::new(&expr_str);
+                        let (tokens, errors) = lexer.lex_all();
+
+                        if !errors.is_empty() {
+                            return Err(ParseError::InvalidSyntax {
+                                message: format!("Failed to lex interpolated expression: {}", expr_str),
+                                span: span.clone(),
+                            });
+                        }
+
+                        // Parse the expression using the tokens
+                        let old_tokens = std::mem::replace(&mut self.tokens, tokens.into_iter().peekable());
+                        let old_current = std::mem::replace(&mut self.current, None);
+
+                        let expr_result = self.parse_expression();
+
+                        // Restore the original token stream
+                        self.tokens = old_tokens;
+                        self.current = old_current;
+
+                        let expr = expr_result?;
+
+                        parts.push(TemplateStringPart::Expr(expr));
+                        in_interpolation = false;
+                    } else {
+                        current.push(c);
+                    }
+                } else {
+                    current.push(c);
+                }
+            } else {
+                if c == '$' {
+                    // Check if next char is '{'
+                    if let Some(&'{') = chars.peek() {
+                        chars.next(); // consume '{'
+
+                        // Save the static part before interpolation
+                        if !current.is_empty() {
+                            parts.push(TemplateStringPart::Static(std::mem::take(&mut current)));
+                        }
+
+                        // Start interpolation
+                        current.push('$');
+                        current.push('{');
+                        in_interpolation = true;
+                        brace_depth = 1;
+                    } else {
+                        current.push(c);
+                    }
+                } else {
+                    current.push(c);
+                }
+            }
+        }
+
+        // Add remaining static text
+        if !current.is_empty() && !in_interpolation {
+            parts.push(TemplateStringPart::Static(current));
+        }
+
+        // If we're still in interpolation at EOF, that's an error
+        if in_interpolation {
+            return Err(ParseError::InvalidSyntax {
+                message: "Unterminated interpolation in template string".to_string(),
+                span: span.clone(),
+            });
+        }
+
+        Ok(parts)
     }
 }
 

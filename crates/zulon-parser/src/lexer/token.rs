@@ -30,6 +30,7 @@ pub enum TokenKind {
     Break,
     Continue,
     Return,
+    Defer,
 
     // Declarations
     Extern,

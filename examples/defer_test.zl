@@ -1,0 +1,21 @@
+// Defer statement test example
+// This tests the defer keyword for cleanup code
+
+fn main() -> i32 {
+    // Simple defer with expression
+    defer println("Cleanup 1");
+
+    // Defer with local variable
+    defer {
+        let msg = "Cleanup 2";
+        println(msg);
+    }
+
+    // Multiple defers execute in LIFO order
+    defer println("Cleanup 3");
+    defer println("Cleanup 4");
+
+    println("Main code");
+
+    0
+}

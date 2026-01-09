@@ -1,0 +1,23 @@
+// Template string test example
+// This tests template string interpolation
+
+fn main() -> i32 {
+    let name = "ZULON";
+    let version = 1;
+
+    // Simple template string with interpolation
+    let greeting = `Hello, ${name}!`;
+
+    // Template string with multiple interpolations
+    let message = `Welcome to ${name} version ${version}`;
+
+    // Template string with expressions
+    let sum = 10 + 20;
+    let result = `The sum is ${sum}`;
+
+    println(greeting);
+    println(message);
+    println(result);
+
+    0
+}

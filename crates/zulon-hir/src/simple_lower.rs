@@ -47,6 +47,9 @@ impl SimpleLoweringContext {
                 ast::ItemKind::Struct(struct_def) => {
                     items.push(HirItem::Struct(self.lower_struct(struct_def)?));
                 }
+                ast::ItemKind::Enum(enum_def) => {
+                    items.push(HirItem::Enum(self.lower_enum(enum_def)?));
+                }
                 _ => {
                     // Skip other items for now
                     continue;
@@ -158,6 +161,28 @@ impl SimpleLoweringContext {
         })
     }
 
+    /// Lower an enum definition
+    fn lower_enum(&mut self, enum_def: &ast::Enum) -> Result<HirEnum> {
+        // Lower enum variants
+        let variants: Vec<HirVariant> = enum_def.variants.iter()
+            .map(|variant| {
+                Ok(HirVariant {
+                    name: variant.name.name.clone(),
+                    fields: Vec::new(),  // TODO: Handle variant data fields
+                    span: variant.name.span.clone(),
+                })
+            })
+            .collect::<Result<_>>()?;
+
+        Ok(HirEnum {
+            id: self.alloc_id(),
+            name: enum_def.name.name.clone(),
+            generics: Vec::new(),  // TODO: Handle generics
+            variants,
+            span: enum_def.name.span.clone(),
+        })
+    }
+
     /// Lower a block (simplified)
     fn lower_block(&mut self, block: &ast::Block) -> Result<HirBlock> {
         let mut statements = Vec::new();
@@ -188,6 +213,40 @@ impl SimpleLoweringContext {
                     // They become Semi statements in HIR
                     let lowered_expr = self.lower_expression(expr)?;
                     statements.push(HirStatement::Semi(lowered_expr));
+                }
+
+                ast::StatementKind::Defer(stmt) => {
+                    // Defer statement: execute when scope exits
+                    // Lower the deferred statement inline
+                    let lowered_stmt = match &stmt.kind {
+                        ast::StatementKind::Expr(expr) => {
+                            let lowered_expr = self.lower_expression(expr)?;
+                            HirStatement::Semi(lowered_expr)
+                        }
+                        ast::StatementKind::Local(local) => {
+                            let local_ty = HirTy::I32;  // TODO: Get actual type
+                            let init = if let Some(init) = &local.init {
+                                Some(self.lower_expression(init)?)
+                            } else {
+                                None
+                            };
+                            HirStatement::Local(HirLocal {
+                                id: self.alloc_id(),
+                                name: local.name.name.clone(),
+                                ty: local_ty,
+                                init,
+                                span: local.name.span.clone(),
+                            })
+                        }
+                        _ => {
+                            // For now, only support simple expressions and locals in defer
+                            return Err(LoweringError::UnsupportedFeature {
+                                feature: format!("complex defer statement: {:?}", stmt.kind),
+                                span: stmt.span.clone(),
+                            });
+                        }
+                    };
+                    statements.push(HirStatement::Defer(Box::new(lowered_stmt)));
                 }
 
                 ast::StatementKind::Empty => {
@@ -232,10 +291,9 @@ impl SimpleLoweringContext {
             }
 
             ast::ExpressionKind::Path(path) => {
-                // Simple variable reference
+                // Handle both simple variables and qualified paths (e.g., Enum::Variant)
                 if path.len() == 1 {
-                    // For now, use a placeholder type
-                    // TODO: Look up variable type from symbol table
+                    // Simple variable reference
                     Ok(HirExpression::Variable(
                         path[0].name.clone(),
                         self.alloc_id(),
@@ -243,10 +301,17 @@ impl SimpleLoweringContext {
                         expr.span.clone(),
                     ))
                 } else {
-                    Err(LoweringError::UnsupportedFeature {
-                        feature: format!("qualified path: {:?}", path),
-                        span: expr.span.clone(),
-                    })
+                    // Qualified path (e.g., Enum::Variant)
+                    // For now, convert to a string with "::" separator and treat as variable
+                    // This is a simplified approach - a full implementation would have proper enum support
+                    let full_name = path.iter().map(|id| id.name.as_str()).collect::<Vec<_>>().join("::");
+
+                    Ok(HirExpression::Variable(
+                        full_name,
+                        self.alloc_id(),
+                        HirTy::I32,  // Placeholder - will be fixed when proper type propagation is implemented
+                        expr.span.clone(),
+                    ))
                 }
             }
 
@@ -457,6 +522,41 @@ impl SimpleLoweringContext {
                 Ok(HirExpression::Continue(expr.span.clone()))
             }
 
+            ast::ExpressionKind::Throw(error_expr) => {
+                // Throw statement: `throw error;`
+                let lowered_error = Box::new(self.lower_expression(error_expr)?);
+                Ok(HirExpression::Throw(lowered_error, expr.span.clone()))
+            }
+
+            ast::ExpressionKind::QuestionMark(inner_expr) => {
+                // Question mark operator: `expr?`
+                let lowered_inner = Box::new(self.lower_expression(inner_expr)?);
+                let ty = HirTy::I32;  // TODO: Infer actual success type
+                Ok(HirExpression::QuestionMark(lowered_inner, ty, expr.span.clone()))
+            }
+
+            ast::ExpressionKind::TemplateString(template) => {
+                // Template string with interpolation
+                // Lower each part, converting static strings and expressions
+                let mut parts = Vec::new();
+                for part in &template.parts {
+                    match part {
+                        ast::TemplateStringPart::Static(s) => {
+                            parts.push(super::hir::HirTemplateStringPart::Static(s.clone()));
+                        }
+                        ast::TemplateStringPart::Expr(e) => {
+                            let lowered_expr = Box::new(self.lower_expression(e)?);
+                            parts.push(super::hir::HirTemplateStringPart::Expr(lowered_expr));
+                        }
+                    }
+                }
+                Ok(HirExpression::TemplateString {
+                    parts,
+                    ty: HirTy::String,  // Template strings always produce strings
+                    span: expr.span.clone(),
+                })
+            }
+
             ast::ExpressionKind::Loop(body, _label) => {
                 let lowered_body = Box::new(self.lower_block(body)?);
                 Ok(HirExpression::Loop {
@@ -476,11 +576,16 @@ impl SimpleLoweringContext {
                 })
             }
 
-            ast::ExpressionKind::For(_local, _iter, _body, _label) => {
-                // For loops need to be desugared into while loops or match expressions
-                // For now, mark as unsupported
-                Err(LoweringError::UnsupportedFeature {
-                    feature: "for loop (will be desugared to while loop)".to_string(),
+            ast::ExpressionKind::For(local, iter, body, _label) => {
+                // For loop: for pat in iter { body }
+                // This will be desugared later in MIR/LIR lowering
+                let hir_pattern = self.lower_pattern_local(local)?;
+                let lowered_iter = self.lower_expression(iter)?;
+                let lowered_body = self.lower_block(body)?;
+                Ok(HirExpression::For {
+                    pattern: hir_pattern,
+                    iter: Box::new(lowered_iter),
+                    body: Box::new(lowered_body),
                     span: expr.span.clone(),
                 })
             }
@@ -640,6 +745,47 @@ impl SimpleLoweringContext {
                 }))
             }
 
+            ast::ExpressionKind::Tuple(elements) => {
+                // Tuple literal: (a, b, c)
+                let mut lowered_elements = Vec::new();
+                for elem in elements {
+                    lowered_elements.push(self.lower_expression(elem)?);
+                }
+                Ok(HirExpression::Tuple(
+                    lowered_elements,
+                    HirTy::Tuple(vec![HirTy::I32; elements.len()]), // TODO: Infer actual types
+                    expr.span.clone(),
+                ))
+            }
+
+            ast::ExpressionKind::Array(elements) => {
+                // Array literal: [a, b, c]
+                let mut lowered_elements = Vec::new();
+                for elem in elements {
+                    lowered_elements.push(self.lower_expression(elem)?);
+                }
+                Ok(HirExpression::Array {
+                    elements: lowered_elements,
+                    ty: HirTy::Array {
+                        inner: Box::new(HirTy::I32), // TODO: Infer actual type
+                        len: None,
+                    },
+                    span: expr.span.clone(),
+                })
+            }
+
+            ast::ExpressionKind::Index(base, index) => {
+                // Array/tuple indexing: arr[index] or tuple.0
+                let lowered_base = Box::new(self.lower_expression(base)?);
+                let lowered_index = Box::new(self.lower_expression(index)?);
+                Ok(HirExpression::Index {
+                    base: lowered_base,
+                    index: lowered_index,
+                    ty: HirTy::I32, // TODO: Infer actual type
+                    span: expr.span.clone(),
+                })
+            }
+
             _ => Err(LoweringError::UnsupportedFeature {
                 feature: format!("expression: {:?}", expr.kind),
                 span: expr.span.clone(),
@@ -670,6 +816,17 @@ impl SimpleLoweringContext {
                 })
             }
         }
+    }
+
+    /// Lower a Local (for loop pattern)
+    fn lower_pattern_local(&mut self, local: &ast::Local) -> Result<HirPattern> {
+        // For now, just create a binding pattern from the local's name
+        // TODO: Use type_annotation if present
+        Ok(HirPattern::Binding(
+            local.name.name.clone(),
+            HirTy::I32, // Default to i32 for now
+            local.name.span.clone(),
+        ))
     }
 
     /// Lower a literal

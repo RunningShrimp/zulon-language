@@ -315,7 +315,9 @@ pub enum StatementKind {
     Item(Box<Item>),
     /// Expression statement: `expr;`
     Expr(Expression),
-    /// Semi-colicon (empty statement)
+    /// Defer statement: `defer statement;`
+    Defer(Box<Statement>),
+    /// Semi-colon (empty statement)
     Empty,
 }
 
@@ -649,6 +651,8 @@ pub enum Type {
     Unit,
     /// Optional type: `T?`
     Optional(Box<Type>),
+    /// Error type: `T | E` (pipe syntax for error handling)
+    Pipe(Box<Type>, Box<Type>),
     /// Path type: `std::collections::HashMap`
     Path(Vec<Identifier>),
 }

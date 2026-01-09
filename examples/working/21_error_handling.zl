@@ -1,0 +1,108 @@
+// Copyright 2026 ZULON Language Team
+// SPDX-License-Identifier: Apache-2.0 OR MIT
+
+//! Error Handling Working Example
+//!
+//! This example demonstrates ZULON's error handling features:
+//! - Throw statements
+//! - Error types (enums)
+//! - The ? operator for error propagation
+//! - Outcome<T, E> type (ZULON's Result equivalent)
+
+// Define an error type for division operations
+enum DivideError {
+    Zero,
+    Overflow,
+}
+
+// Define a validation error type
+enum ValidationError {
+    Negative,
+    TooLarge,
+}
+
+// Safe division with throw statements
+fn safe_divide(a: i32, b: i32) -> i32 | DivideError {
+    if b == 0 {
+        throw DivideError::Zero;
+    }
+    if a == i32::max() && b == 1 {
+        throw DivideError::Overflow;
+    }
+    a / b
+}
+
+// Function that validates input
+fn validate(x: i32) -> () | ValidationError {
+    if x < 0 {
+        throw ValidationError::Negative;
+    }
+    if x > 100 {
+        throw ValidationError::TooLarge;
+    }
+    // Valid input - return unit
+    ()
+}
+
+// Chained operations using ?
+fn process(x: i32, y: i32) -> i32 | DivideError {
+    // This demonstrates the ? operator
+    // If validate throws, it propagates immediately
+    let validated = validate_input(x)?;
+    let result = safe_divide(validated, y)?;
+    result * 2
+}
+
+// Helper function that uses ? operator
+fn validate_input(x: i32) -> i32 | DivideError {
+    if x < 0 {
+        throw DivideError::Zero; // Reusing Zero for negative numbers
+    }
+    if x > 1000 {
+        throw DivideError::Overflow;
+    }
+    x
+}
+
+// Demonstrate explicit Outcome syntax
+fn divide_with_outcome(a: i32, b: i32) -> Outcome<i32, DivideError> {
+    if b == 0 {
+        return Outcome::Err(DivideError::Zero);
+    }
+    if a == i32::max() && b == 1 {
+        return Outcome::Err(DivideError::Overflow);
+    }
+    Outcome::Ok(a / b)
+}
+
+// Main function demonstrating all features
+fn main() -> i32 {
+    // Test 1: Successful division
+    let result1 = safe_divide(100, 5);
+    print!("100 / 5 = ");
+    println_i32(result1);
+
+    // Test 2: Division by zero (would throw in real execution)
+    // let result2 = safe_divide(100, 0);
+    // In actual execution, this would unwind the stack
+
+    // Test 3: Successful validation
+    let validation_result = validate(50);
+    print!("Validation of 50: ");
+    // Would print "success"
+
+    // Test 4: Explicit Outcome
+    let outcome_result = divide_with_outcome(42, 2);
+    print!("42 / 2 with Outcome = ");
+    match outcome_result {
+        Outcome::Ok(val) => println_i32(val),
+        Outcome::Err(_) => println_str("error"),
+    }
+
+    // Test 5: Chained operations
+    let chained = process(20, 4);
+    print!("Chained result: ");
+    println_i32(chained);
+
+    0
+}
