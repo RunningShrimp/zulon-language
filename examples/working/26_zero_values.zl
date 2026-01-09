@@ -1,0 +1,36 @@
+// 26_zero_values.zl - Zero and default values
+// Shows how different types handle zero/initialization
+
+extern fn printf(s: &u8, ...) -> i32;
+
+fn main() -> i32 {
+    printf("ZULON Zero Values\n");
+    printf("==================\n");
+
+    // Integer zero
+    let zero_int: i32 = 0;
+    printf("Integer zero: 0\n");
+
+    // Boolean false
+    let false_bool: bool = false;
+    printf("Boolean false\n");
+
+    // Zero in arithmetic
+    let result = 0 + 10;
+    printf("0 + 10 = 10\n");
+
+    // Zero in comparison
+    if zero_int < 10 {
+        printf("0 < 10 is true\n");
+    }
+
+    // Zero as initial value
+    let mut counter: i32 = 0;
+    counter = counter + 1;
+    printf("Counter starts at 0, increments to 1\n");
+
+    printf("==================\n");
+    printf("All zero value tests pass!\n");
+
+    0
+}

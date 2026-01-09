@@ -1,0 +1,46 @@
+// fib.zl - ZULON Fibonacci benchmark
+fn fib(n: i32) -> i32 {
+    if n <= 1 {
+        return n
+    }
+    return fib(n - 1) + fib(n - 2)
+}
+
+fn main() {
+    println!("ZULON Fibonacci Benchmark")
+    println!("=========================")
+
+    // Warmup
+    fib(30)
+
+    // Get start time (using simple approach for now)
+    // TODO: Implement proper timing when available
+    let iterations = 10
+    let mut total_time = 0
+
+    for i in 0..iterations {
+        let start = current_time_ms()
+        let result = fib(40)
+        let end = current_time_ms()
+
+        if i == 0 {
+            println!("fib(40) = {}", result)
+        }
+
+        total_time = total_time + (end - start)
+    }
+
+    let avg_time = total_time / iterations
+    println!("Time: {}ms (avg over {} iterations)", avg_time, iterations)
+    println!("Throughput: {:.2} ops/sec", 40000000.0 / avg_time)
+}
+
+// External function from runtime
+extern "C" {
+    fn __zulon_builtin_current_time_ms() -> i32
+}
+
+// Wrapper for convenience
+fn current_time_ms() -> i32 {
+    return __zulon_builtin_current_time_ms()
+}

@@ -1,0 +1,106 @@
+// error_diagnostic_demo.zl
+// ZULON 错误诊断演示
+// 展示Diagnostic系统的错误消息格式化能力
+
+fn main() {
+    // 演示1: 类型不匹配错误
+    demonstrate_type_mismatch()
+
+    // 演示2: 未定义变量错误
+    demonstrate_undefined_variable()
+
+    // 演示3: 多位置错误
+    demonstrate_multi_span_error()
+
+    println!("✅ 错误诊断演示完成！")
+}
+
+// 演示类型不匹配错误
+fn demonstrate_type_mismatch() {
+    println!("=== 演示1: 类型不匹配 ===")
+
+    // 这个错误会显示：
+    // error[E0308]: type mismatch
+    //   --> error_diagnostic_demo.zl:15:20
+    //    |
+    // 15 |     let x: i32 = "hello";
+    //    |            ---   ^^^^^^^ expected i32, found &str
+    //    |
+    //    = note: expected type: i32
+    //            found type: &str
+    //
+    // help: consider removing the type annotation
+    // 15 |         let x = "hello";
+    //    |             ~~~~~~~~~~~
+
+    let x: i32 = "hello"
+}
+
+// 演示未定义变量错误
+fn demonstrate_undefined_variable() {
+    println!("=== 演示2: 未定义变量 ===")
+
+    // 这个错误会显示：
+    // error[E0425]: cannot find value `undefined_var` in this scope
+    //   --> error_diagnostic_demo.zl:30:5
+    //    |
+    // 30 |     undefined_var = 42
+    //    |     ^^^^^^^^^^^^^^ not found in this scope
+
+    undefined_var = 42
+}
+
+// 演示多位置错误
+fn demonstrate_multi_span_error() {
+    println!("=== 演示3: 多位置错误 ===")
+
+    // 这个错误会显示：
+    // error[E0308]: type mismatch
+    //   --> error_diagnostic_demo.zl:43:12
+    //    |
+    // 43 |     let result = add(1.5, 2)
+    //    |                ---   ^^^ expected f32, found i32
+    //    |                    |
+    //    |                    arguments to this function are incorrect
+    //    |
+    //    = note: expected type: f32
+    //            found type: i32
+    //
+    // help: consider using floating-point literals
+    // 43 |         let result = add(1.5, 2.0)
+    //    |                            ~~~~
+
+    fn add(a: i32, b: i32) -> i32 {
+        return a + b
+    }
+
+    let result = add(1.5, 2)
+}
+
+// 演示建议系统
+fn demonstrate_suggestions() {
+    println!("=== 演示4: 建议系统 ===")
+
+    // 这个错误会显示多个修复建议：
+    //
+    // error[E0277]: trait `Display` not implemented for `TypeError`
+    //   --> error_diagnostic_demo.zl:60:20
+    //    |
+    // 60 |     print(error)
+    //    |           ^^^^^ `TypeError` cannot be formatted with default formatter
+    //    |
+    // help: consider using debug formatting
+    // 60 |         print!("{:?}", error)
+    //    |                ~~~~~~~~~~~~
+    //    |
+    // help: consider implementing the Display trait
+    // 60 |         println!("{}", error.to_string())
+    //    |                      ~~~~~~~~~~~~~~~~~~~~
+
+    struct TypeError {
+        message: String
+    }
+
+    let error = TypeError { message: "something went wrong".to_string() }
+    print(error)
+}

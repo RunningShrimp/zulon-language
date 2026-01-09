@@ -1,0 +1,36 @@
+// 27_type_annotations.zl - Type annotation examples
+// Shows explicit and inferred type annotations
+
+extern fn printf(s: &u8, ...) -> i32;
+
+fn main() -> i32 {
+    printf("ZULON Type Annotations\n");
+    printf("========================\n");
+
+    // Explicit type annotation
+    let x: i32 = 10;
+    printf("Explicit i32: x = 10\n");
+
+    // Explicit bool
+    let flag: bool = true;
+    printf("Explicit bool: flag = true\n");
+
+    // Type annotation on function parameter
+    fn add(x: i32, y: i32) -> i32 {
+        x + y
+    }
+
+    let sum = add(5, 10);
+    printf("Function with typed parameters\n");
+
+    // Multiple variables with types
+    let a: i32 = 1;
+    let b: i32 = 2;
+    let c: i32 = 3;
+    printf("Multiple typed variables\n");
+
+    printf("========================\n");
+    printf("All type annotations work!\n");
+
+    0
+}

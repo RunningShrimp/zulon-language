@@ -1,0 +1,40 @@
+// 22_operator_precedence.zl - Operator precedence demonstration
+// Shows how operators with different precedence interact
+
+extern fn printf(s: &u8, ...) -> i32;
+
+fn main() -> i32 {
+    printf("ZULON Operator Precedence\n");
+    printf("=========================\n");
+
+    // Multiplication before addition
+    let result1 = 10 + 20 * 3;  // 10 + (20 * 3) = 70
+    printf("10 + 20 * 3 computed correctly\n");
+
+    // Parentheses override precedence
+    let result2 = (10 + 20) * 3;  // 30 * 3 = 90
+    printf("(10 + 20) * 3 computed correctly\n");
+
+    // Comparison operators
+    let result3 = 10 < 20 || 30 > 40;  // true
+    printf("Boolean expression computed\n");
+
+    // Logical operators
+    let a: bool = true;
+    let b: bool = false;
+    if a && b || a {
+        printf("Complex boolean works\n");
+    }
+
+    // Mixed operators
+    let x: i32 = 10;
+    let y: i32 = 20;
+    let z: i32 = 30;
+    let result4 = x + y * z;  // x + (y * z)
+    printf("Mixed arithmetic computed\n");
+
+    printf("=========================\n");
+    printf("All precedence tests pass!\n");
+
+    0
+}

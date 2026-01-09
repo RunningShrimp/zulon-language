@@ -1,0 +1,42 @@
+// 23_mutability.zl - Variable mutability demonstration
+// Shows mutable variables and reassignment
+
+extern fn printf(s: &u8, ...) -> i32;
+
+fn main() -> i32 {
+    printf("ZULON Mutability\n");
+    printf("================\n");
+
+    // Mutable variable (using mut - though syntax may vary)
+    let mut counter: i32 = 0;
+    printf("Initial counter: 0\n");
+
+    // Reassignment
+    counter = 10;
+    printf("Counter after assignment: 10\n");
+
+    // Increment
+    counter = counter + 1;
+    printf("Counter after increment: 11\n");
+
+    // In loop
+    let mut i: i32 = 0;
+    while i < 3 {
+        i = i + 1;
+        printf("Loop iteration\n");
+    }
+
+    // Multiple mutable variables
+    let mut x: i32 = 5;
+    let mut y: i32 = 10;
+    
+    x = x + y;
+    y = x * 2;
+    
+    printf("Multiple mutations work\n");
+
+    printf("================\n");
+    printf("All mutability features work!\n");
+
+    0
+}

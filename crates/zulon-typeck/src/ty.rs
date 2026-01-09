@@ -106,6 +106,9 @@ pub enum Ty {
 
     /// Optional type T?
     Optional(Box<Ty>),
+
+    /// Effect type (for effect system)
+    Effect(String),
 }
 
 impl Ty {
@@ -268,6 +271,7 @@ impl fmt::Display for Ty {
             Ty::TraitObject(inner) => write!(f, "dyn {}", inner),
             Ty::ImplTrait(inner) => write!(f, "impl {}", inner),
             Ty::Optional(inner) => write!(f, "{}?", inner),
+            Ty::Effect(name) => write!(f, "{}", name),
         }
     }
 }
@@ -351,7 +355,8 @@ pub fn subst_ty(substs: &Substs, ty: &Ty) -> Ty {
         // Non-recursive types - return as is
         Ty::Bool | Ty::I8 | Ty::I16 | Ty::I32 | Ty::I64 | Ty::I128 | Ty::ISize |
         Ty::U8 | Ty::U16 | Ty::U32 | Ty::U64 | Ty::U128 | Ty::USize |
-        Ty::F32 | Ty::F64 | Ty::Char | Ty::String | Ty::Unit | Ty::Never => ty.clone(),
+        Ty::F32 | Ty::F64 | Ty::Char | Ty::String | Ty::Unit | Ty::Never |
+        Ty::Effect(_) => ty.clone(),
     }
 }
 

@@ -1,0 +1,25 @@
+[package]
+name = "zulon-compiler"
+version = "0.1.0"
+edition = "2021"
+description = "ZULON language compiler driver"
+license = "Apache-2.0 OR MIT"
+
+[[bin]]
+name = "zulon-compiler"
+path = "src/main.rs"
+
+[dependencies]
+zulon-parser = { path = "../zulon-parser" }
+zulon-typeck = { path = "../zulon-typeck" }
+zulon-hir = { path = "../zulon-hir" }
+zulon-mir = { path = "../zulon-mir" }
+zulon-lir = { path = "../zulon-lir" }
+zulon-codegen-llvm = { path = "../zulon-codegen-llvm" }
+zulon-build = { path = "../zulon-build" }
+zulon-macros = { path = "../zulon-macros" }
+anyhow = "1.0"
+thiserror = "1.0"
+clap = { version = "4.5", features = ["derive"] }
+atty = "0.2"
+serde_json = "1.0"

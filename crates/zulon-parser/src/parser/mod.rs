@@ -98,6 +98,11 @@ impl Parser {
         self.current.as_ref().map(|t| &t.kind)
     }
 
+    /// Peek at the next token kind without consuming it
+    fn peek_kind(&mut self) -> Option<&TokenKind> {
+        self.tokens.peek().map(|t| &t.kind)
+    }
+
     /// Get the current span
     fn current_span(&self) -> Span {
         self.current
@@ -168,6 +173,99 @@ impl Parser {
         };
 
         let kind = match self.current_kind() {
+            Some(TokenKind::Extern) => {
+                self.advance();
+                if self.check(&TokenKind::Fn) {
+                    // Parse extern function declaration
+                    self.consume(TokenKind::Fn)?;
+                    let name = self.parse_identifier()?;
+
+                    // Parse generics
+                    let generics = if self.check(&TokenKind::Less) {
+                        Some(self.parse_generics()?)
+                    } else {
+                        None
+                    };
+
+                    self.consume(TokenKind::LeftParen)?;
+
+                    // Parse parameters
+                    let mut params = Vec::new();
+                    let mut is_variadic = false;
+
+                    while !self.check(&TokenKind::RightParen) {
+                        params.push(self.parse_param()?);
+
+                        if !self.check(&TokenKind::RightParen) {
+                            self.consume(TokenKind::Comma)?;
+                        }
+
+                        // Check for variadic argument marker ... after the comma
+                        if self.check(&TokenKind::DotDotDot) {
+                            self.advance();
+                            is_variadic = true;
+                            break;
+                        }
+                    }
+
+                    self.consume(TokenKind::RightParen)?;
+
+                    // Parse return type
+                    let return_type = if self.check(&TokenKind::Arrow) {
+                        self.advance();
+                        Some(self.parse_type()?)
+                    } else {
+                        None
+                    };
+
+                    // Parse error type
+                    let error_type = if self.check(&TokenKind::Pipe) {
+                        self.advance();
+                        Some(self.parse_type()?)
+                    } else {
+                        None
+                    };
+
+                    // Parse effects
+                    let mut effects = Vec::new();
+                    if error_type.is_some() && self.check(&TokenKind::Pipe) {
+                        self.advance();
+                        effects.push(self.parse_type()?);
+                        while self.check(&TokenKind::Plus) {
+                            self.advance();
+                            effects.push(self.parse_type()?);
+                        }
+                    }
+
+                    // Extern functions end with semicolon, not a block
+                    self.consume(TokenKind::Semicolon)?;
+
+                    let func = Function {
+                        name,
+                        generics,
+                        params,
+                        return_type,
+                        error_type,
+                        effects,
+                        is_variadic,
+                        body: Block {
+                            statements: Vec::new(),
+                            trailing_expr: None,
+                            span: self.current_span(),
+                        },
+                        is_async: false,
+                        is_unsafe: false,
+                        attributes,
+                    };
+
+                    ItemKind::ExternFunction(func)
+                } else {
+                    return Err(ParseError::InvalidSyntax {
+                        message: "expected 'fn' after 'extern'".to_string(),
+                        span: self.current_span(),
+                    });
+                }
+            }
             Some(TokenKind::Fn) => {
                 let mut func = self.parse_function()?;
                 // Add attributes parsed before the item
@@ -242,11 +340,20 @@ impl Parser {
 
         // Parse parameters
         let mut params = Vec::new();
+        let mut is_variadic = false;
+
         while !self.check(&TokenKind::RightParen) {
             params.push(self.parse_param()?);
 
             if !self.check(&TokenKind::RightParen) {
                 self.consume(TokenKind::Comma)?;
+            }
+
+            // Check for variadic argument marker ... after the comma
+            if self.check(&TokenKind::DotDotDot) {
+                self.advance();
+                is_variadic = true;
+                break;
             }
         }
 
@@ -260,26 +367,41 @@ impl Parser {
             None
         };
 
-        // Parse error type with | separator: -> Type | Error
-        let error_type = if self.check(&TokenKind::Pipe) {
-            self.advance();  // consume |
-            Some(self.parse_type()?)
-        } else {
-            None
-        };
-
-        // Parse effects with second | separator: -> Type | Error | Effect1 + Effect2
+        // Parse error type and effects with | separator
+        // Syntax: -> Type | Error | Effect1 + Effect2
+        //         -> Type | Effect1 + Effect2  (no error type)
+        //         -> Type | Error  (no effects)
+        let mut error_type = None;
         let mut effects = Vec::new();
-        if error_type.is_some() && self.check(&TokenKind::Pipe) {
-            self.advance();  // consume second |
 
-            // Parse first effect
-            effects.push(self.parse_type()?);
+        while self.check(&TokenKind::Pipe) {
+            self.advance();  // consume |
 
-            // Parse additional effects with + separator
-            while self.check(&TokenKind::Plus) {
-                self.advance();  // consume +
-                effects.push(self.parse_type()?);
+            // Parse the type after |
+            let ty = self.parse_type()?;
+
+            // Check if this is an error type or effect
+            // For now, we'll use a simple heuristic: if it's a known type name like "Error", treat it as error type
+            // Otherwise, treat it as an effect
+            let is_error_type = match &ty {
+                Type::Simple(ident) => {
+                    ident.name == "Error" || ident.name.ends_with("Error")
+                }
+                _ => false,
+            };
+
+            if is_error_type && error_type.is_none() {
+                // First type that looks like an error type becomes the error type
+                error_type = Some(ty);
+            } else {
+                // Everything else is an effect
+                effects.push(ty);
+
+                // Parse additional effects with + separator
+                while self.check(&TokenKind::Plus) {
+                    self.advance();  // consume +
+                    effects.push(self.parse_type()?);
+                }
             }
         }
 
@@ -293,6 +415,7 @@ impl Parser {
             return_type,
             error_type,
             effects,
+            is_variadic,
             body,
             is_async: false, // TODO: Parse async modifier
             is_unsafe: false, // TODO: Parse unsafe modifier
@@ -1159,9 +1282,45 @@ impl Parser {
                 }
             }
 
-            // Identifier or path
+            // Identifier or path or macro invocation
             Some(TokenKind::Ident(_)) => {
+                // Check if this is a macro invocation (identifier followed by !)
+                if let Some(TokenKind::Bang) = self.peek_kind() {
+                    // Parse as macro invocation
+                    let macro_name = self.parse_identifier()?;
+                    return self.parse_macro_invocation(macro_name, span);
+                }
+
+                // Otherwise parse as path
                 let path = self.parse_path()?;
+                Ok(Expression {
+                    span,
+                    kind: ExpressionKind::Path(path),
+                })
+            }
+
+            // Path starting with :: (e.g., ::__builtin_function)
+            Some(TokenKind::PathSep) => {
+                let mut path = Vec::new();
+                // Add empty identifier for the leading ::
+                path.push(Identifier::new(span, String::new()));
+                self.advance();
+
+                // Parse the rest of the path
+                loop {
+                    match self.current_kind() {
+                        Some(TokenKind::Ident(_)) => {
+                            path.push(self.parse_identifier()?);
+                        }
+                        _ => break,
+                    }
+
+                    if !self.check(&TokenKind::PathSep) {
+                        break;
+                    }
+                    self.advance();
+                }
+
                 Ok(Expression {
                     span,
                     kind: ExpressionKind::Path(path),
@@ -1210,6 +1369,68 @@ impl Parser {
         Ok(path)
     }
 
+    /// Parse a macro invocation: macro_name!(args), macro_name! {args}, or macro_name![args]
+    fn parse_macro_invocation(&mut self, macro_name: Identifier, span: Span) -> ParseResult<Expression> {
+        use crate::ast::{MacroDelimiter, ExpressionKind};
+
+        // Consume the !
+        self.consume(TokenKind::Bang)?;
+
+        // Determine the delimiter and parse arguments
+        let delimiter = match self.current_kind() {
+            Some(TokenKind::LeftParen) => {
+                self.advance();
+                MacroDelimiter::Paren
+            }
+            Some(TokenKind::LeftBrace) => {
+                self.advance();
+                MacroDelimiter::Brace
+            }
+            Some(TokenKind::LeftBracket) => {
+                self.advance();
+                MacroDelimiter::Bracket
+            }
+            _ => {
+                return Err(ParseError::UnexpectedToken {
+                    expected: "macro delimiter (, {, or [".to_string(),
+                    found: self.current_kind().cloned().unwrap_or(TokenKind::Unknown),
+                    span: self.current_span(),
+                })
+            }
+        };
+
+        // Parse macro arguments (comma-separated expressions)
+        let mut args = Vec::new();
+        while !self.check(&Self::closing_delimiter(delimiter)) {
+            args.push(Box::new(self.parse_expression()?));
+
+            if !self.check(&Self::closing_delimiter(delimiter)) {
+                self.consume(TokenKind::Comma)?;
+            }
+        }
+
+        // Consume the closing delimiter
+        self.consume(Self::closing_delimiter(delimiter))?;
+
+        Ok(Expression {
+            span,
+            kind: ExpressionKind::MacroInvocation {
+                macro_name,
+                args,
+                delimiter,
+            },
+        })
+    }
+
+    /// Get the closing delimiter for a macro invocation
+    fn closing_delimiter(opening: MacroDelimiter) -> TokenKind {
+        match opening {
+            MacroDelimiter::Paren => TokenKind::RightParen,
+            MacroDelimiter::Brace => TokenKind::RightBrace,
+            MacroDelimiter::Bracket => TokenKind::RightBracket,
+        }
+    }
+
     /// Parse an identifier
     fn parse_identifier(&mut self) -> ParseResult<Identifier> {
         let span = self.current_span();
@@ -1254,6 +1475,27 @@ impl Parser {
     /// Parse a type
     fn parse_type(&mut self) -> ParseResult<Type> {
         let span = self.current_span();
+
+        // Reference type: &T or &mut T
+        if self.check(&TokenKind::Ampersand) {
+            self.advance();
+            let is_mutable = if self.check(&TokenKind::Mut) {
+                self.advance();
+                true
+            } else {
+                false
+            };
+            let inner = Box::new(self.parse_type()?);
+            return Ok(Type::Ref(inner, is_mutable));
+        }
+
+        // Pointer type: *T (C-style pointer)
+        if self.check(&TokenKind::Star) {
+            self.advance();
+            let inner = Box::new(self.parse_type()?);
+            // Treat *T as &T (reference) for now
+            return Ok(Type::Ref(inner, false));
+        }
 
         // Simple type or path
         if let Some(TokenKind::Ident(_)) = self.current_kind() {

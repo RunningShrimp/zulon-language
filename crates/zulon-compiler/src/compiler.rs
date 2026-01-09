@@ -11,6 +11,7 @@ use zulon_hir::SimpleLoweringContext;
 use zulon_mir::MirLoweringContext;
 use zulon_lir::{LirLoweringContext, LirExternal, LirTy};
 use zulon_codegen_llvm::CodeGenerator;
+use crate::macro_expander::MacroExpander;
 
 use crate::error::{CompilerError, Result as CompilerResult};
 
@@ -56,20 +57,111 @@ impl Compiler {
         let source = std::fs::read_to_string(input)
             .map_err(|e| CompilerError::Io(e))?;
 
-        // Compile source (generates .ll file)
+        // Compile source to LLVM IR
         self.compile_source(&source, input)?;
 
-        // Return the .ll file path for now
-        Ok(input.with_extension("ll"))
+        // Try to compile to executable if LLVM tools are available
+        let ll_path = input.with_extension("ll");
+        match self.compile_ll_to_executable(&ll_path, input) {
+            Ok(exe_path) => {
+                println!("🎉 Executable created: {}", exe_path.display());
+                Ok(exe_path)
+            }
+            Err(e) => {
+                println!("⚠️  Could not create executable: {}", e);
+                println!("   LLVM IR is available at: {}", ll_path.display());
+                Ok(ll_path)
+            }
+        }
+    }
+
+    /// Compile LLVM IR to executable using llc and clang
+    fn compile_ll_to_executable(&self, ll_path: &Path, original_input: &Path) -> CompilerResult<PathBuf> {
+        // Generate assembly using llc
+        let asm_path = original_input.with_extension("s");
+
+        println!("  🔧 Compiling LLVM IR to assembly...");
+        let llc_status = std::process::Command::new("llc")
+            .arg(ll_path)
+            .arg("-o")
+            .arg(&asm_path)
+            .output();
+
+        match llc_status {
+            Ok(output) if output.status.success() => {
+                println!("    ✅ Assembly generated: {}", asm_path.display());
+            }
+            Ok(output) => {
+                let stderr = String::from_utf8_lossy(&output.stderr);
+                return Err(CompilerError::Link(format!("llc failed: {}", stderr)));
+            }
+            Err(e) => {
+                return Err(CompilerError::Link(format!("llc not found: {}", e)));
+            }
+        }
+
+        // Assemble and link using clang
+        let exe_path = if cfg!(target_os = "windows") {
+            original_input.with_extension("exe")
+        } else {
+            original_input.to_path_buf()
+        };
+
+        println!("  🔧 Linking executable...");
+        let clang_status = std::process::Command::new("clang")
+            .arg(&asm_path)
+            .arg("-o")
+            .arg(&exe_path)
+            .output();
+
+        match clang_status {
+            Ok(output) if output.status.success() => {
+                println!("    ✅ Executable created");
+                // Clean up assembly file if not keeping intermediates
+                if !self.config.keep_intermediates {
+                    let _ = std::fs::remove_file(&asm_path);
+                }
+                Ok(exe_path)
+            }
+            Ok(output) => {
+                let stderr = String::from_utf8_lossy(&output.stderr);
+                Err(CompilerError::Link(format!("clang failed: {}", stderr)))
+            }
+            Err(e) => {
+                Err(CompilerError::Link(format!("clang not found: {}", e)))
+            }
+        }
     }
 
     /// Compile ZULON source code
     fn compile_source(&self, source: &str, input_path: &Path) -> CompilerResult<()> {
         println!("🔨 Compiling: {}", input_path.display());
 
+        // Step -1: Inject standard prelude
+        let prelude = r#"
+// ZULON Standard Prelude - Automatically injected by compiler
+extern fn printf(format: &u8, ...) -> i32;
+"#;
+
+        let source_with_prelude = format!("{}\n{}", prelude, source);
+
+        // Step 0: Macro expansion
+        println!("  [0/8] Macro expansion...");
+        let expander = MacroExpander::new();
+        let expanded_source = expander.expand_source(&source_with_prelude).map_err(|e| {
+            CompilerError::macro_expansion(format!("Macro expansion failed: {}", e))
+        })?;
+
+        // Check if any macros were expanded
+        if expanded_source != source_with_prelude {
+            println!("    ✅ Macros expanded");
+        } else {
+            println!("    ✅ No macros to expand");
+        }
+
         // Step 1: Lexical analysis
-        println!("  [1/7] Lexical analysis...");
-        let lexer = Lexer::new(source);
+        println!("  [1/8] Lexical analysis...");
+        let lexer = Lexer::new(&expanded_source);
         let (tokens, lex_errors) = lexer.lex_all();
 
         if !lex_errors.is_empty() {
@@ -91,7 +183,7 @@ impl Compiler {
         println!("    ✅ {} tokens generated", tokens.len());
 
         // Step 2: Parsing
-        println!("  [2/7] Parsing...");
+        println!("  [2/8] Parsing...");
         let mut parser = Parser::new(tokens);
         let ast = parser.parse().map_err(|e| {
             let error_msg = self.format_parse_error(&e, input_path);
@@ -106,7 +198,7 @@ impl Compiler {
         }
 
         // Step 3: Type checking
-        println!("  [3/7] Type checking...");
+        println!("  [3/8] Type checking...");
         let mut typeck = TypeChecker::new();
         typeck.check(&ast).map_err(|e| {
             let error_msg = self.format_typeck_error(&e, input_path);
@@ -115,21 +207,33 @@ impl Compiler {
         println!("    ✅ Type checked");
 
         // Step 4: HIR lowering
-        println!("  [4/7] HIR lowering...");
+        println!("  [4/8] HIR lowering...");
         let mut hir_lowerer = SimpleLoweringContext::new();
         let hir_crate = hir_lowerer.lower_ast(&ast)
             .map_err(|e| CompilerError::HirLowering(format!("{:?}", e)))?;
         println!("    ✅ HIR generated ({} items)", hir_crate.items.len());
 
+        // Discover tests and save metadata
+        use zulon_hir::test_discovery;
+        let tests = test_discovery::discover_tests(&hir_crate);
+        if !tests.is_empty() {
+            let test_metadata_path = input_path.with_extension("test.json");
+            let test_json = serde_json::to_string_pretty(&tests)
+                .map_err(|e| CompilerError::Io(std::io::Error::new(std::io::ErrorKind::Other, e)))?;
+            std::fs::write(&test_metadata_path, test_json)
+                .map_err(|e| CompilerError::Io(e))?;
+            println!("    ✅ Discovered {} tests → {}", tests.len(), test_metadata_path.display());
+        }
+
         // Step 5: MIR lowering
-        println!("  [5/7] MIR lowering...");
+        println!("  [5/8] MIR lowering...");
         let mut mir_lowerer = MirLoweringContext::new();
         let mir_body = mir_lowerer.lower_crate(&hir_crate)
             .map_err(|e| CompilerError::MirLowering(format!("{:?}", e)))?;
         println!("    ✅ MIR generated ({} functions)", mir_body.functions.len());
 
         // Step 6: LIR lowering
-        println!("  [6/7] LIR lowering...");
+        println!("  [6/8] LIR lowering...");
         let mut lir_lowerer = LirLoweringContext::new();
         let mut lir_body = lir_lowerer.lower_body(&mir_body)
             .map_err(|e| CompilerError::LirLowering(format!("{:?}", e)))?;
@@ -142,7 +246,7 @@ impl Compiler {
         println!("    ✅ Added {} extern functions", lir_body.externals.len());
 
         // Step 7: Generate LLVM IR
-        println!("  [7/7] Generating LLVM IR...");
+        println!("  [7/8] Generating LLVM IR...");
         let output_path = input_path.with_extension("ll");
         let output_file = std::fs::File::create(&output_path)
             .map_err(|e| CompilerError::Io(e))?;
@@ -256,38 +360,19 @@ impl Compiler {
         msg
     }
 
-    /// Format type check errors with helpful context
+    /// Format type check errors with helpful context using the diagnostic system
     fn format_typeck_error(&self, error: &zulon_typeck::TypeError, file_path: &Path) -> String {
-        use zulon_typeck::TypeError;
-        use std::fmt::Write;
+        // Read source file for diagnostics
+        let source = std::fs::read_to_string(file_path)
+            .unwrap_or_else(|_| "".to_string());
 
-        let mut msg = String::new();
+        // Convert TypeError to Diagnostic and display with context
+        let diagnostic = error.to_diagnostic(&source);
 
-        match error {
-            TypeError::UndefinedVariable { name, span } => {
-                writeln!(msg, "Type error: {}", self.format_location_span(span, file_path)).unwrap_or(());
-                writeln!(msg, "  Undefined variable: '{}'", name).unwrap_or(());
-                writeln!(msg).unwrap_or(());
-                writeln!(msg, "  💡 Hint: Check that the variable is spelled correctly").unwrap_or(());
-                writeln!(msg, "  💡 Hint: Make sure the variable is declared before use").unwrap_or(());
-            }
-            _ => {
-                writeln!(msg, "Type error: {:?}", error).unwrap_or(());
-            }
-        }
+        // Use colors if terminal supports it
+        let use_colors = std::env::var("NO_COLOR").is_err() && atty::is(atty::Stream::Stderr);
 
-        msg
-    }
-
-    /// Format error location with file context (for generic spans)
-    fn format_location_span(&self, span: &zulon_parser::Span, file_path: &Path) -> String {
-        format!("{}:{}:{} to {}:{}",
-            file_path.display(),
-            span.start.line,
-            span.start.column,
-            span.end.line,
-            span.end.column
-        )
+        diagnostic.display_with_context(&source, use_colors)
     }
 
     /// Format error location with file context

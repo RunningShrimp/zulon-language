@@ -9,3 +9,4 @@ license = "Apache-2.0 OR MIT"
 zulon-parser = { path = "../zulon-parser" }
 zulon-typeck = { path = "../zulon-typeck" }
 thiserror = "2.0"
+serde = { version = "1.0", features = ["derive"] }

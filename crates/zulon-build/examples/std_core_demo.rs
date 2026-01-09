@@ -218,7 +218,6 @@ fn main() {
             Err(e) => Err(e),
         }
     }
-    }
 
     println!("   Calculating (100 / 5) / 2:");
     match calculate(100, 5, 2) {

@@ -1,0 +1,53 @@
+// 20_variables_scope.zl - Variable scope and shadowing
+// Shows variable scoping rules in ZULON
+
+extern fn printf(s: &u8, ...) -> i32;
+
+fn main() -> i32 {
+    printf("ZULON Variable Scope\n");
+    printf("=====================\n");
+
+    // Global scope variable
+    let x: i32 = 10;
+    printf("Outer x = 10\n");
+
+    // Block with shadowing
+    {
+        let x: i32 = 20;  // Shadows outer x
+        printf("Inner x = 20\n");
+        
+        let y: i32 = 30;
+        printf("Inner y = 30\n");
+    }
+
+    // Outer x is still 10
+    printf("Outer x still accessible\n");
+
+    // Different scopes
+    {
+        let a: i32 = 100;
+        printf("First block: a = 100\n");
+        
+        {
+            let a: i32 = 200;  // Shadows parent
+            let b: i32 = 300;
+            printf("Second block: a = 200, b = 300\n");
+        }
+        
+        printf("First block: a still = 100\n");
+    }
+
+    // Function parameters create scope
+    let result = compute(5);
+    printf("Function result computed\n");
+
+    printf("=====================\n");
+    printf("All scope features work!\n");
+
+    0
+}
+
+fn compute(x: i32) -> i32 {
+    let doubled = x * 2;
+    doubled
+}

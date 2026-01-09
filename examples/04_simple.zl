@@ -1,0 +1,8 @@
+// Simple test - function after main
+fn main() -> i32 {
+    test()
+}
+
+fn test() -> i32 {
+    42
+}

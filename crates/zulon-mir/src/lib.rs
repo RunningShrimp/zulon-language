@@ -33,6 +33,6 @@ pub mod effect;
 pub use ty::MirTy;
 pub use mir::*;
 pub use error::{MirError, Result};
-pub use lower::lower_hir;
+pub use lower::{lower_hir, MirLoweringContext};
 pub use borrow::{check_borrows, BorrowKind, Permission};
 pub use effect::{check_effects, Effect, EffectSet};

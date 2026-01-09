@@ -1,0 +1,75 @@
+// assert_macros_demo.zl
+// 演示断言宏的使用
+
+fn add(a: i32, b: i32) -> i32 {
+    return a + b
+}
+
+fn multiply(a: i32, b: i32) -> i32 {
+    return a * b
+}
+
+// 测试加法
+#[test]
+fn test_add() {
+    let result = add(2, 3)
+    // TODO: 当宏系统完全集成后使用:
+    // assert_eq!(result, 5)
+    // 目前使用简单的if检查:
+    if result != 5 {
+        panic!("test_add failed: expected 5, got {}", result)
+    }
+}
+
+// 测试乘法
+#[test]
+fn test_multiply() {
+    let result = multiply(3, 4)
+    // assert_eq!(result, 12)
+    if result != 12 {
+        panic!("test_multiply failed: expected 12, got {}", result)
+    }
+}
+
+// 测试相等性
+#[test]
+fn test_equality() {
+    let x = 42
+    // assert!(x == 42)
+    if x != 42 {
+        panic!("test_equality failed: x should be 42")
+    }
+}
+
+// 测试不相等
+#[test]
+fn test_inequality() {
+    let x = 10
+    let y = 20
+    // assert_ne!(x, y)
+    if x == y {
+        panic!("test_inequality failed: x should not equal y")
+    }
+}
+
+fn main() {
+    println!("ZULON断言宏演示")
+    println!("================")
+    println!()
+    println!("注意: 这些函数标记为#[test]")
+    println!("测试运行器会发现并自动执行它们")
+    println!()
+    println!("示例:")
+    println!("  test_add - 验证加法")
+    println!("  test_multiply - 验证乘法")
+    println!("  test_equality - 验证相等性")
+    println!("  test_inequality - 验证不相等")
+    println!()
+    println!("运行测试: yan test")
+    println!()
+
+    // 演示普通函数
+    println!("运行示例:")
+    println!("  add(2, 3) = {}", add(2, 3))
+    println!("  multiply(3, 4) = {}", multiply(3, 4))
+}

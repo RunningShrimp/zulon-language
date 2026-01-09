@@ -3,7 +3,7 @@
 
 //! Build script for zulon-runtime-core
 //!
-//! Compiles the C runtime entry point
+//! Compiles the C runtime entry point and time functions
 
 fn main() {
     // Compile the C entry point
@@ -14,14 +14,22 @@ fn main() {
     // Tell cargo where to find the compiled library
     println!("cargo:rerun-if-changed=c/zulon_entry.c");
 
+    // Compile the C time functions
+    cc::Build::new()
+        .file("c/zulon_time.c")
+        .compile("zulon_time");
+
+    println!("cargo:rerun-if-changed=c/zulon_time.c");
+
     // Get OUT_DIR
     let out_dir = std::env::var("OUT_DIR").unwrap();
 
     // Emit link search path for this crate
     println!("cargo:rustc-link-search=native={}", out_dir);
 
-    // Link the compiled library for this crate
+    // Link the compiled libraries for this crate
     println!("cargo:rustc-link-lib=static=zulon_entry");
+    println!("cargo:rustc-link-lib=static=zulon_time");
 
     // Store the library path for dependent crates
     // We use a DEP_ZULON_RUNTIME_CORE_ prefix that Cargo will propagate

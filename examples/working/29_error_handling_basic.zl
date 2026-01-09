@@ -1,0 +1,41 @@
+// 29_error_handling_basic.zl - Basic error handling
+// Shows simple error handling patterns
+
+extern fn printf(s: &u8, ...) -> i32;
+
+fn divide(a: i32, b: i32) -> i32 {
+    if b == 0 {
+        printf("Error: Division by zero\n");
+        0  // Return error code
+    } else {
+        a / b
+    }
+}
+
+fn main() -> i32 {
+    printf("ZULON Error Handling\n");
+    printf("=====================\n");
+
+    // Successful division
+    let result1 = divide(20, 4);
+    printf("Division result computed\n");
+
+    // Error case
+    let result2 = divide(10, 0);
+    printf("Error case handled\n");
+
+    // Conditional error handling
+    let x: i32 = 10;
+    let y: i32 = 0;
+    
+    if y != 0 {
+        printf("Safe division\n");
+    } else {
+        printf("Cannot divide by zero\n");
+    }
+
+    printf("=====================\n");
+    printf("Basic error handling works!\n");
+
+    0
+}

@@ -32,6 +32,7 @@
 pub mod lexer;
 pub mod ast;
 pub mod parser;
+pub mod diagnostic;
 
 pub use lexer::{Lexer, Token, TokenKind, Span, Position, LexError, LexErrorKind};
 pub use ast::*;

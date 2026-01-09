@@ -34,3 +34,4 @@ pub mod error;
 pub use ty::LirTy;
 pub use lir::*;
 pub use error::{LirError, Result};
+pub use lower::LirLoweringContext;

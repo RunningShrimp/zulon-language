@@ -1,0 +1,47 @@
+// 14_comparison_ops.zl - Comparison operators demonstration
+// Shows all comparison operators in ZULON
+
+extern fn printf(s: &u8, ...) -> i32;
+
+fn main() -> i32 {
+    printf("ZULON Comparison Operators\n");
+    printf("===========================\n");
+
+    let a: i32 = 10;
+    let b: i32 = 20;
+
+    // Less than
+    if a < b {
+        printf("10 < 20: true\n");
+    }
+
+    // Less than or equal
+    if a <= b {
+        printf("10 <= 20: true\n");
+    }
+
+    // Greater than
+    if b > a {
+        printf("20 > 10: true\n");
+    }
+
+    // Greater than or equal
+    if b >= a {
+        printf("20 >= 10: true\n");
+    }
+
+    // Equal
+    if a == a {
+        printf("10 == 10: true\n");
+    }
+
+    // Not equal
+    if a != b {
+        printf("10 != 20: true\n");
+    }
+
+    printf("===========================\n");
+    printf("All comparison operators work!\n");
+
+    0
+}

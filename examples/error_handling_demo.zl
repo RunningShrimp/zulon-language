@@ -1,0 +1,189 @@
+// error_handling_demo.zl
+// ZULON 错误处理完整演示
+// 展示Diagnostic系统的所有功能
+
+fn main() {
+    println!("=== ZULON 错误诊断系统演示 ===\n")
+
+    // 演示1: 词法错误
+    demonstrate_lexical_errors()
+
+    // 演示2: 类型错误
+    demonstrate_type_errors()
+
+    // 演示3: 未定义变量
+    demonstrate_undefined_variables()
+
+    // 演示4: 函数调用错误
+    demonstrate_function_errors()
+
+    println!("\n✅ 演示完成！")
+}
+
+// 演示1: 词法错误
+fn demonstrate_lexical_errors() {
+    println!("1. 词法错误演示")
+    println!("   取消注释以下代码查看错误:")
+
+    // 错误1.1: 未闭合字符串
+    // let x = "hello
+    // 预期输出:
+    // error[E0002]: unterminated string literal
+    //   --> error_handling_demo.zl:28:12
+    //    |
+    // 28 |     let x = "hello
+    //    |            ^^^^^^^
+    //    |
+    // help: close the string with a quote (")
+    // 28 |         let x = "hello";
+    //    |                      ^
+
+    // 错误1.2: 无效字符
+    // let y = @
+    // 预期输出:
+    // error[E0001]: invalid character '@'
+    //   --> error_handling_demo.zl:40:12
+    //    |
+    // 40 |     let y = @
+    //    |            ^
+    //    |
+    // help: consider removing this character
+
+    println!("   - 未闭合字符串 (E0002)")
+    println!("   - 无效字符 (E0001)\n")
+}
+
+// 演示2: 类型错误
+fn demonstrate_type_errors() {
+    println!("2. 类型错误演示")
+
+    // 错误2.1: 类型不匹配
+    // let x: i32 = "hello"
+    // 预期输出:
+    // error[E0308]: type mismatch
+    //   --> error_handling_demo.zl:60:18
+    //    |
+    // 60 |     let x: i32 = "hello"
+    //    |            ---    ^^^^^^^ expected i32, found String
+    //    |            |
+    //    |            declared as i32 here
+    //    |
+    //    = note: expected type: i32
+    //            found type: String
+    //
+    // help: consider removing the type annotation
+    // 60 |         let x = "hello"
+    //    |             ~~~~~~~~~~~
+
+    println!("   - 类型不匹配 (E0308)")
+
+    // 错误2.2: 不可变赋值
+    // let y = 42
+    // y = 100
+    // 预期输出:
+    // error[E0384]: cannot assign to immutable value
+    //   --> error_handling_demo.zl:82:1
+    //    |
+    // 82 |     y = 100
+    //    |     ^^^^^^^^^^ cannot assign twice to immutable variable
+    //    |
+    // help: consider using a mutable variable
+    // 81 |         let mut y = 42
+    //    |             ~~~~~~~~
+
+    println!("   - 不可变赋值 (E0384)\n")
+}
+
+// 演示3: 未定义变量
+fn demonstrate_undefined_variables() {
+    println!("3. 未定义变量演示")
+
+    // 错误3.1: 未定义变量
+    // undefined_var = 42
+    // 预期输出:
+    // error[E0425]: cannot find value `undefined_var` in this scope
+    //   --> error_handling_demo.zl:105:1
+    //    |
+    // 105 |     undefined_var = 42
+    //    |     ^^^^^^^^^^^^^^ not found in this scope
+
+    // 错误3.2: 未定义类型
+    // let x: UndefinedType = 42
+    // 预期输出:
+    // error[E0412]: cannot find type `UndefinedType` in this scope
+    //   --> error_handling_demo.zl:115:10
+    //    |
+    // 115 |     let x: UndefinedType = 42
+    //    |              ^^^^^^^^^^^^^ not found in this scope
+    //    |
+    //    = note: did you mean a similar type?
+
+    println!("   - 未定义变量 (E0425)")
+    println!("   - 未定义类型 (E0412)\n")
+}
+
+// 演示4: 函数调用错误
+fn demonstrate_function_errors() {
+    println!("4. 函数调用错误演示")
+
+    // 错误4.1: 参数数量不匹配
+    // fn add(a: i32, b: i32) -> i32 {
+    //     return a + b
+    // }
+    // let result = add(1, 2, 3)
+    // 预期输出:
+    // error[E0061]: expected 2 arguments, found 3
+    //   --> error_handling_demo.zl:141:20
+    //    |
+    // 141 |     let result = add(1, 2, 3)
+    //    |                    ---  ^^^^^^ expected 2 arguments
+    //    |                    |
+    //    |                    arguments to this function are incorrect
+
+    // 错误4.2: 类型不匹配
+    // let result = add(1.5, 2)
+    // 预期输出:
+    // error[E0308]: type mismatch
+    //   --> error_handling_demo.zl:152:20
+    //    |
+    // 152 |     let result = add(1.5, 2)
+    //    |                    ---   ^ expected f32, found i32
+    //    |                    |
+    //    |                    arguments to this function are incorrect
+    //    |
+    //    = note: expected type: f32
+    //            found type: i32
+    //
+    // help: consider using floating-point literals
+    // 152 |         let result = add(1.5, 2.0)
+    //    |                            ~~~~
+
+    println!("   - 参数数量不匹配 (E0061)")
+    println!("   - 参数类型不匹配 (E0308)\n")
+}
+
+// 实际可运行的代码示例
+fn working_example() {
+    println!("5. 正确代码示例")
+
+    // 正确的变量声明
+    let x: i32 = 42
+    println!("   整数: {}", x)
+
+    // 正确的可变变量
+    let mut y = 100
+    y = 200
+    println!("   可变变量: {}", y)
+
+    // 正确的函数调用
+    fn add(a: i32, b: i32) -> i32 {
+        return a + b
+    }
+    let result = add(10, 20)
+    println!("   函数结果: {}", result)
+
+    // 正确的类型转换
+    let a: i32 = 42
+    let b: i64 = a as i64
+    println!("   类型转换: {} -> {}", a, b)
+}

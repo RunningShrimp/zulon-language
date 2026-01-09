@@ -8,3 +8,6 @@
 #![warn(missing_docs)]
 #![warn(unused_extern_crates)]
 
+pub mod test_runner;
+
+pub use test_runner::{Test, TestResult, TestRunner, TestSummary};

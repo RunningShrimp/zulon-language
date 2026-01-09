@@ -1,0 +1,47 @@
+// 28_comments_documentation.zl - Comments and documentation
+// Shows different comment styles and documentation
+
+/*
+ * Multi-line comment
+ * This is a traditional block comment
+ * spanning multiple lines
+ */
+
+extern fn printf(s: &u8, ...) -> i32;
+
+/// Documentation comment for a function
+/// This function demonstrates documentation
+fn documented_function() -> i32 {
+    // Single-line comment explaining logic
+    let value: i32 = 42;  // End-of-line comment
+    
+    /*
+     * Multi-line comment
+     * in the middle of code
+     * explaining complex logic
+     */
+    let result = value * 2;
+    
+    result
+}
+
+// Main function with documentation
+/// Entry point of the program
+/// Returns 0 on success
+fn main() -> i32 {
+    printf("ZULON Comments\n");
+    printf("==============\n");
+
+    // Call documented function
+    documented_function();
+
+    // Different comment styles
+    // TODO: Add more features
+    // FIXME: Optimize this
+    // NOTE: This is important
+
+    printf("==============\n");
+    printf("All comment styles work!\n");
+
+    0
+}

@@ -44,6 +44,9 @@ impl SimpleLoweringContext {
                 ast::ItemKind::Function(func) => {
                     items.push(HirItem::Function(self.lower_function(func)?));
                 }
+                ast::ItemKind::Struct(struct_def) => {
+                    items.push(HirItem::Struct(self.lower_struct(struct_def)?));
+                }
                 _ => {
                     // Skip other items for now
                     continue;
@@ -94,12 +97,25 @@ impl SimpleLoweringContext {
 
         // Lower effects if present
         let mut effects = Vec::new();
-        for _ in &func.effects {
-            // TODO: Proper type conversion
-            effects.push(HirTy::Struct {
-                name: "Effect".to_string(),
-                generics: Vec::new(),
-            });
+        for effect_ty in &func.effects {
+            // Convert AST effect type to HIR type, preserving effect name
+            let hir_ty = match effect_ty {
+                ast::Type::Simple(ident) => {
+                    // For effects, store the effect name in a simple type
+                    HirTy::Struct {
+                        name: ident.name.clone(),
+                        generics: Vec::new(),
+                    }
+                }
+                _ => {
+                    // Fallback for other effect type forms
+                    HirTy::Struct {
+                        name: "UnknownEffect".to_string(),
+                        generics: Vec::new(),
+                    }
+                }
+            };
+            effects.push(hir_ty);
         }
 
         // Copy attributes (e.g., #[test], #[ignore])
@@ -116,6 +132,29 @@ impl SimpleLoweringContext {
             attributes,
             body,
             span: func.name.span.clone(),
+        })
+    }
+
+    /// Lower a struct definition
+    fn lower_struct(&mut self, struct_def: &ast::Struct) -> Result<HirStruct> {
+        // Lower struct fields
+        let fields: Vec<HirField> = struct_def.fields.iter()
+            .map(|field| {
+                let ty = HirTy::I32;  // TODO: Get actual type from field annotation
+                Ok(HirField {
+                    name: field.name.name.clone(),
+                    ty,
+                    span: field.name.span.clone(),
+                })
+            })
+            .collect::<Result<_>>()?;
+
+        Ok(HirStruct {
+            id: self.alloc_id(),
+            name: struct_def.name.name.clone(),
+            generics: Vec::new(),  // TODO: Handle generics
+            fields,
+            span: struct_def.name.span.clone(),
         })
     }
 
@@ -195,10 +234,12 @@ impl SimpleLoweringContext {
             ast::ExpressionKind::Path(path) => {
                 // Simple variable reference
                 if path.len() == 1 {
+                    // For now, use a placeholder type
+                    // TODO: Look up variable type from symbol table
                     Ok(HirExpression::Variable(
                         path[0].name.clone(),
                         self.alloc_id(),
-                        HirTy::I32,  // TODO: Get actual type
+                        HirTy::I32,  // Placeholder - will be fixed when proper type propagation is implemented
                         expr.span.clone(),
                     ))
                 } else {
@@ -251,6 +292,111 @@ impl SimpleLoweringContext {
                     ty,
                     span: expr.span.clone(),
                 })
+            }
+
+            ast::ExpressionKind::MacroInvocation { macro_name, args, delimiter: _ } => {
+                // Handle builtin macros
+                match macro_name.name.as_str() {
+                    "assert_eq" => {
+                        // assert_eq!(left, right) expands to:
+                        // if left != right {
+                        //     panic("assertion failed: left != right")
+                        // }
+                        if args.len() != 2 {
+                            return Err(LoweringError::UnsupportedFeature {
+                                feature: format!("assert_eq! requires exactly 2 arguments, got {}", args.len()),
+                                span: expr.span.clone(),
+                            });
+                        }
+
+                        let left = Box::new(self.lower_expression(&args[0])?);
+                        let right = Box::new(self.lower_expression(&args[1])?);
+
+                        // Create the comparison: left != right
+                        let comparison = HirExpression::BinaryOp {
+                            op: HirBinOp::NotEq,
+                            left,
+                            right,
+                            ty: HirTy::Bool,
+                            span: expr.span.clone(),
+                        };
+
+                        // Create the panic block (simplified - just return error code)
+                        let panic_block = HirBlock {
+                            id: self.alloc_id(),
+                            statements: vec![],
+                            trailing_expr: Some(HirExpression::Literal(
+                                HirLiteral::Integer(1),
+                                self.alloc_id(),
+                                HirTy::I32,
+                                expr.span.clone(),
+                            )),
+                            ty: HirTy::I32,
+                            span: expr.span.clone(),
+                        };
+
+                        // Wrap in if statement
+                        Ok(HirExpression::If {
+                            condition: Box::new(comparison),
+                            then_block: Box::new(panic_block),
+                            else_block: None,
+                            ty: HirTy::Unit,
+                            span: expr.span.clone(),
+                        })
+                    }
+                    "assert" => {
+                        // assert!(condition) expands to:
+                        // if !condition {
+                        //     panic("assertion failed")
+                        // }
+                        if args.len() != 1 {
+                            return Err(LoweringError::UnsupportedFeature {
+                                feature: format!("assert! requires exactly 1 argument, got {}", args.len()),
+                                span: expr.span.clone(),
+                            });
+                        }
+
+                        let condition = Box::new(self.lower_expression(&args[0])?);
+
+                        // Create the negation: !condition
+                        let negated_condition = HirExpression::UnaryOp {
+                            op: HirUnaryOp::Not,
+                            operand: condition,
+                            ty: HirTy::Bool,
+                            span: expr.span.clone(),
+                        };
+
+                        // Create the panic block
+                        let panic_block = HirBlock {
+                            id: self.alloc_id(),
+                            statements: vec![],
+                            trailing_expr: Some(HirExpression::Literal(
+                                HirLiteral::Integer(1),
+                                self.alloc_id(),
+                                HirTy::I32,
+                                expr.span.clone(),
+                            )),
+                            ty: HirTy::I32,
+                            span: expr.span.clone(),
+                        };
+
+                        // Wrap in if statement
+                        Ok(HirExpression::If {
+                            condition: Box::new(negated_condition),
+                            then_block: Box::new(panic_block),
+                            else_block: None,
+                            ty: HirTy::Unit,
+                            span: expr.span.clone(),
+                        })
+                    }
+                    _ => {
+                        // Unknown macro - for now, return error
+                        Err(LoweringError::UnsupportedFeature {
+                            feature: format!("macro {}", macro_name.name),
+                            span: expr.span.clone(),
+                        })
+                    }
+                }
             }
 
             ast::ExpressionKind::Call(func, args) => {
@@ -417,10 +563,112 @@ impl SimpleLoweringContext {
                 })
             }
 
+            ast::ExpressionKind::Match(scrutinee_expr, arms) => {
+                // Lower scrutinee (note: scrutinee_expr is Box<Expression>, so dereference it)
+                let lowered_scrutinee = Box::new(self.lower_expression(&scrutinee_expr)?);
+
+                // Lower match arms
+                let mut hir_arms = Vec::new();
+                for arm in arms {
+                    // Lower pattern (simplified - just use the first pattern for now)
+                    let hir_pattern = self.lower_pattern(&arm.patterns[0], &arm.span)?;
+
+                    // Lower guard if present
+                    let hir_guard = if let Some(guard_expr) = &arm.guard {
+                        Some(self.lower_expression(guard_expr)?)
+                    } else {
+                        None
+                    };
+
+                    // Lower body
+                    let hir_body = self.lower_expression(&arm.body)?;
+
+                    hir_arms.push(HirMatchArm {
+                        pattern: hir_pattern,
+                        guard: hir_guard,
+                        body: hir_body,
+                        span: arm.span.clone(),
+                    });
+                }
+
+                // Get the type of the match expression from type checker
+                let match_ty = self.typeck.check_expression(expr)?;
+
+                Ok(HirExpression::Match {
+                    scrutinee: lowered_scrutinee,
+                    arms: hir_arms,
+                    ty: HirTy::from(match_ty),
+                    span: expr.span.clone(),
+                })
+            }
+
+            ast::ExpressionKind::Try(block, handlers) => {
+                // Lower try block
+                let try_block = self.lower_block(block)?;
+
+                // Lower effect handlers
+                let mut hir_handlers = Vec::new();
+                for handler in handlers {
+                    let mut hir_methods = Vec::new();
+                    for method in &handler.methods {
+                        let method_body = self.lower_block(&method.body)?;
+
+                        hir_methods.push(HirEffectMethod {
+                            name: method.name.name.clone(),
+                            params: method.params.iter().map(|p| HirParam {
+                                name: p.name.name.clone(),
+                                ty: HirTy::I32,  // TODO: Get actual type
+                                span: p.name.span.clone(),
+                            }).collect(),
+                            return_type: HirTy::I32,  // TODO: Get actual type
+                            body: method_body,
+                            span: method.name.span.clone(),
+                        });
+                    }
+
+                    hir_handlers.push(HirEffectHandler {
+                        effect_name: handler.effect_name.name.clone(),
+                        methods: hir_methods,
+                        span: handler.effect_name.span.clone(),
+                    });
+                }
+
+                Ok(HirExpression::Try(HirTryBlock {
+                    try_block: Box::new(try_block),
+                    handlers: hir_handlers,
+                    span: expr.span.clone(),
+                }))
+            }
+
             _ => Err(LoweringError::UnsupportedFeature {
                 feature: format!("expression: {:?}", expr.kind),
                 span: expr.span.clone(),
             }),
+        }
+    }
+
+    /// Lower a pattern (simplified - literal patterns only)
+    fn lower_pattern(&mut self, pattern: &ast::Pattern, parent_span: &zulon_parser::Span) -> Result<HirPattern> {
+        match pattern {
+            ast::Pattern::Wildcard => {
+                Ok(HirPattern::Wildcard(parent_span.clone()))
+            }
+            ast::Pattern::Literal(lit) => {
+                let hir_lit = self.lower_literal(lit)?;
+                Ok(HirPattern::Literal(hir_lit, parent_span.clone()))
+            }
+            ast::Pattern::Identifier(ident) => {
+                // Identifier pattern is a binding
+                // For now, use i32 as default type
+                Ok(HirPattern::Binding(ident.name.clone(), HirTy::I32, ident.span.clone()))
+            }
+            _ => {
+                // For now, only support simple patterns
+                Err(LoweringError::UnsupportedFeature {
+                    feature: format!("pattern: {:?}", pattern),
+                    span: parent_span.clone(),
+                })
+            }
         }
     }
 

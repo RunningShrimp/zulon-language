@@ -21,23 +21,28 @@ mod vec;
 mod hashmap;
 mod hashset;
 mod vecdeque;
+mod string;
 mod test;
 mod test_runner;
+mod prelude;
 
 // Re-export core traits
 pub use traits::{
-    Clone, Copy, Eq, Ord, PartialEq, PartialOrd, Ordering,
+    Clone, Copy, Eq, Ord, PartialEq, PartialOrd, Ordering, Hash,
 };
 
 // Re-export core types
 pub use option::Optional;
 pub use result::Outcome;
-pub use vec::Vec;
-pub use hashmap::{HashMap, Hash};
+pub use vec::{Vec, IntoIter as VecIntoIter, Iter as VecIter, IterMut as VecIterMut};
+pub use hashmap::HashMap;
 pub use hashset::HashSet;
 pub use vecdeque::VecDeque;
+pub use string::String;
 
 // Re-export testing functions
-pub use test::{assert, assert_eq, assert_ne, panic};
+// Note: We use qualified paths to avoid ambiguity with Rust's prelude assert macro
+pub use test::{assert_eq, assert_ne, panic};
+pub use test::assert as zassert;
 // Re-export test runner
 pub use test_runner::{run_tests, run_test_verbose, Test, TestFunc, TestResult, TestStats};

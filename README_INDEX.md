@@ -1,17 +1,31 @@
-# ZULON Phase 1 MVP - 完整文档索引
+# ZULON 项目文档总索引
 
-**最后更新**: 2026-01-07
-**版本**: 0.1.0-MVP
-**状态**: ✅ 核心功能100%完成
+**最后更新**: 2026-01-08
+**版本**: 0.1.0 MVP
+**状态**: ✅ MVP发布 + 完整文档 (85%)
+
+---
+
+## 🎉 ZULON v0.1.0 MVP 已发布！
+
+ZULON编程语言首个公开版本现已发布，包含完整的编译器工具链、运行时系统、标准库和**完善的文档体系**。
+
+**快速链接**:
+- 🚀 [快速开始指南](docs/QUICK_START_GUIDE.md) - 5分钟上手
+- 📚 [文档索引](docs/DOCS_INDEX.md) - 所有文档导航
+- 📖 [语言特性](docs/LANGUAGE_FEATURES.md) - 完整特性说明
+- ✨ [最佳实践](docs/BEST_PRACTICES.md) - 编码规范
+- 🎯 [示例程序](examples/README.md) - 10个完整示例
 
 ---
 
 ## 🎯 快速导航
 
-### 新用户必读 ⭐
-1. [QUICKSTART.md](./QUICKSTART.md) - 5分钟快速上手
-2. [PHASE1_MVP_FINAL_REPORT.md](./PHASE1_MVP_FINAL_REPORT.md) - MVP完成报告
-3. [DOCUMENTATION_INDEX.md](./DOCUMENTATION_INDEX.md) - 完整文档索引
+### 🌟 新用户必读 ⭐⭐⭐⭐⭐
+1. [发布说明](RELEASE_NOTES_v0.1.0.md) - v0.1.0 功能总览
+2. [快速开始指南](docs/QUICK_START_GUIDE.md) - 5分钟快速上手
+3. [示例程序](examples/README.md) - 10个完整示例
+4. [文档索引](docs/DOCS_INDEX.md) - 所有文档导航
 
 ### 发布信息
 4. [PHASE1_MVP_RELEASE.md](./PHASE1_MVP_RELEASE.md) - 功能特性说明

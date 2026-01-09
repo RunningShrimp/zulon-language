@@ -37,6 +37,12 @@ pub enum TypeError {
         span: Span,
     },
 
+    #[error("cannot find effect {name} in this scope")]
+    UndefinedEffect {
+        name: String,
+        span: Span,
+    },
+
     #[error("cannot call non-function type")]
     NotCallable {
         ty: Ty,

@@ -1,6 +1,9 @@
 [workspace]
 resolver = "2"
 members = [
+    # 编译器
+    "crates/zulon-compiler",
+
     # 编译器前端
     "crates/zulon-parser",
     "crates/zulon-resolver",
@@ -52,7 +55,10 @@ members = [
     
     # 其他
     "crates/zulon-build",
+    "crates/zulon-compiler",
     "crates/zulon-ci",
+    "crates/zulon-diagnostic",
+    "crates/zulon-macros",
 ]
 
 # 默认成员（快速构建）

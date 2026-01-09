@@ -47,6 +47,8 @@ pub struct Item {
 pub enum ItemKind {
     /// Function definition: `fn name(params) -> ReturnType { body }`
     Function(Function),
+    /// External function declaration: `extern fn name(params) -> ReturnType;`
+    ExternFunction(Function),
     /// Struct definition: `struct Name { fields }`
     Struct(Struct),
     /// Enum definition: `enum Name { variants }`
@@ -80,6 +82,7 @@ pub struct Function {
     pub return_type: Option<Type>,
     pub error_type: Option<Type>,  // Error type for | separator
     pub effects: Vec<Type>,         // Effect list for | effects
+    pub is_variadic: bool,          // Variadic function (uses ...)
     pub body: Block,
     pub is_async: bool,
     pub is_unsafe: bool,
@@ -440,6 +443,16 @@ pub enum ExpressionKind {
 
     /// Template string with interpolation
     TemplateString(TemplateString),
+
+    /// Macro invocation: `macro_name!(args)` or `macro_name! { args }` or `macro_name![ args ]`
+    MacroInvocation {
+        /// Macro name
+        macro_name: Identifier,
+        /// Macro arguments
+        args: Vec<Box<Expression>>,
+        /// Delimiter used: '(', '{', or '['
+        delimiter: MacroDelimiter,
+    },
 }
 
 /// Binary operators
@@ -478,6 +491,14 @@ pub enum UnaryOp {
 pub enum RangeKind {
     Exclusive, // ..
     Inclusive, // ..=
+}
+
+/// Macro delimiter kind
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum MacroDelimiter {
+    Paren,   // ( )
+    Brace,   // { }
+    Bracket, // [ ]
 }
 
 /// Literal values

@@ -9,6 +9,7 @@ homepage.workspace = true
 
 [dependencies]
 zulon-parser = { path = "../zulon-parser" }
+zulon-diagnostic = { path = "../zulon-diagnostic" }
 thiserror = "2.0"
 
 [dev-dependencies]

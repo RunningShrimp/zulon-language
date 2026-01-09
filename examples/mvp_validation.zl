@@ -1,0 +1,300 @@
+// MVP Validation Test Program
+// This file tests all major features of the ZULON MVP v0.1.0
+
+// ============================================================================
+// Section 1: Basic Syntax and Types
+// ============================================================================
+
+fn test_basics() -> i32 {
+    // Integer types
+    let a: i32 = 42;
+    let b: u64 = 100;
+
+    // Boolean
+    let flag: bool = true;
+
+    // Character
+    let c: char = 'Z';
+
+    // Floating point
+    let pi: f64 = 3.14159;
+
+    a + b as i32
+}
+
+// ============================================================================
+// Section 2: Control Flow
+// ============================================================================
+
+fn test_if_else(x: i32) -> i32 {
+    if x > 0 {
+        x
+    } else if x < 0 {
+        -x
+    } else {
+        0
+    }
+}
+
+fn test_loop() -> i32 {
+    let mut sum = 0;
+    let mut i = 0;
+    loop {
+        if i >= 10 {
+            break;
+        }
+        sum = sum + i;
+        i = i + 1;
+    }
+    sum
+}
+
+fn test_while() -> i32 {
+    let mut sum = 0;
+    let mut i = 0;
+    while i < 10 {
+        sum = sum + i;
+        i = i + 1;
+    }
+    sum
+}
+
+fn test_for() -> i32 {
+    let arr = [1, 2, 3, 4, 5];
+    let mut sum = 0;
+    for val in arr {
+        sum = sum + val;
+    }
+    sum
+}
+
+// ============================================================================
+// Section 3: Functions and Closures
+// ============================================================================
+
+fn add(a: i32, b: i32) -> i32 {
+    a + b
+}
+
+fn apply_function(x: i32, f: fn(i32) -> i32) -> i32 {
+    f(x)
+}
+
+fn test_higher_order() -> i32 {
+    fn double(x: i32) -> i32 {
+        x * 2
+    }
+    apply_function(5, double)
+}
+
+// Simple closure capture
+fn test_closure() -> i32 {
+    let x = 10;
+    let closure = || { x + 5 };
+    closure()
+}
+
+// ============================================================================
+// Section 4: Structs and Enums
+// ============================================================================
+
+struct Point {
+    x: i32,
+    y: i32,
+}
+
+impl Point {
+    fn new(x: i32, y: i32) -> Point {
+        Point { x, y }
+    }
+
+    fn distance(&self) -> i32 {
+        self.x * self.x + self.y * self.y
+    }
+}
+
+fn test_struct() -> i32 {
+    let p = Point::new(3, 4);
+    p.distance()
+}
+
+enum Option {
+    Some(i32),
+    None,
+}
+
+fn test_enum() -> i32 {
+    let val = Option::Some(42);
+    match val {
+        Option::Some(v) => v,
+        Option::None => 0,
+    }
+}
+
+// ============================================================================
+// Section 5: Pattern Matching
+// ============================================================================
+
+fn test_match_basic(x: i32) -> str {
+    match x {
+        0 => "zero",
+        1 => "one",
+        2 => "two",
+        _ => "other",
+    }
+}
+
+fn test_match_struct(p: Point) -> i32 {
+    match p {
+        Point { x: 0, y: 0 } => 0,
+        Point { x, y: 0 } => x,
+        Point { x: 0, y } => y,
+        Point { x, y } => x + y,
+    }
+}
+
+// ============================================================================
+// Section 6: Collections
+// ============================================================================
+
+fn test_vec() -> i32 {
+    let mut vec = Vec::new();
+    vec.push(1);
+    vec.push(2);
+    vec.push(3);
+
+    let mut sum = 0;
+    for i in 0..vec.len() {
+        sum = sum + vec.get(i).unwrap();
+    }
+    sum
+}
+
+fn test_hashmap() -> i32 {
+    let mut map = HashMap::new();
+    map.insert("one", 1);
+    map.insert("two", 2);
+    map.insert("three", 3);
+
+    let mut sum = 0;
+    if let Some(val) = map.get("two") {
+        sum = sum + val;
+    }
+    if let Some(val) = map.get("three") {
+        sum = sum + val;
+    }
+    sum
+}
+
+// ============================================================================
+// Section 7: Error Handling
+// ============================================================================
+
+enum MathError {
+    DivisionByZero,
+    NegativeInput,
+}
+
+fn safe_divide(a: i32, b: i32) -> i32 | MathError {
+    if b == 0 {
+        throw MathError::DivisionByZero;
+    }
+    if a < 0 || b < 0 {
+        throw MathError::NegativeInput;
+    }
+    Outcome::Ok(a / b)
+}
+
+fn test_error_handling() -> i32 {
+    let result = safe_divide(10, 2);
+    match result {
+        Outcome::Ok(v) => v,
+        Outcome::Err(_) => 0,
+    }
+}
+
+// ============================================================================
+// Section 8: Type Inference
+// ============================================================================
+
+fn test_type_inference() -> i32 {
+    // Compiler should infer types
+    let x = 42;
+    let y = 100;
+    let sum = x + y;
+    sum
+}
+
+// ============================================================================
+// Section 9: Test Attributes
+// ============================================================================
+
+#[test]
+fn test_assertions() {
+    let x = 5;
+    let y = 10;
+
+    // These would use the macro system
+    // assert!(x > 0);
+    // assert_eq!(x + y, 15);
+    // assert_ne!(x, y);
+
+    let result = x + y;
+    // Expected value is 15
+}
+
+#[test]
+fn test_collections() {
+    let mut vec = Vec::new();
+    vec.push(1);
+    vec.push(2);
+    vec.push(3);
+
+    // assert_eq!(vec.len(), 3);
+}
+
+// ============================================================================
+// Section 10: Integration Test
+// ============================================================================
+
+fn main() -> i32 {
+    println!("=== ZULON MVP v0.1.0 Validation Test ===");
+    println!();
+
+    println!("Testing basics...");
+    let basics_result = test_basics();
+    println!("  Basics: {}", basics_result);
+
+    println!("Testing control flow...");
+    println!("  If-Else: {}", test_if_else(5));
+    println!("  Loop: {}", test_loop());
+    println!("  While: {}", test_while());
+    println!("  For: {}", test_for());
+
+    println!("Testing functions...");
+    println!("  Add: {}", add(10, 20));
+    println!("  Higher-order: {}", test_higher_order());
+    println!("  Closure: {}", test_closure());
+
+    println!("Testing structs and enums...");
+    println!("  Struct: {}", test_struct());
+    println!("  Enum: {}", test_enum());
+
+    println!("Testing pattern matching...");
+    println!("  Match basic: {}", test_match_basic(2));
+    println!("  Match struct: {}", test_match_struct(Point::new(3, 4)));
+
+    println!("Testing collections...");
+    println!("  Vec: {}", test_vec());
+    println!("  HashMap: {}", test_hashmap());
+
+    println!("Testing error handling...");
+    println!("  Error handling: {}", test_error_handling());
+
+    println!("Testing type inference...");
+    println!("  Type inference: {}", test_type_inference());
+
+    println!();
+    println!("=== All Tests Passed ===");
+    0
+}

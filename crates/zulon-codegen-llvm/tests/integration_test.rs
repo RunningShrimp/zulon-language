@@ -21,6 +21,7 @@ fn test_simple_function_generation() {
         entry_block: 0,
         next_id: 1,
         next_vreg: 2,
+        external_funcs: Vec::new(),
     };
 
     // Create entry block
@@ -68,6 +69,7 @@ fn test_module_generation() {
         entry_block: 0,
         next_id: 1,
         next_vreg: 2,
+        external_funcs: Vec::new(),
     };
 
     let add_block = LirBlock {
@@ -95,6 +97,7 @@ fn test_module_generation() {
         entry_block: 1,
         next_id: 2,
         next_vreg: 5,
+        external_funcs: Vec::new(),
     };
 
     let sub_block = LirBlock {
@@ -139,6 +142,7 @@ fn test_abi_function_generation() {
         entry_block: 0,
         next_id: 1,
         next_vreg: 3,
+        external_funcs: Vec::new(),
     };
 
     let block = LirBlock {
@@ -183,6 +187,7 @@ fn test_struct_type_declaration() {
         entry_block: 0,
         next_id: 1,
         next_vreg: 1,
+        external_funcs: Vec::new(),
     };
 
     let block = LirBlock {
@@ -226,6 +231,7 @@ fn test_enum_type_declaration() {
         entry_block: 0,
         next_id: 1,
         next_vreg: 1,
+        external_funcs: Vec::new(),
     };
 
     let block = LirBlock {

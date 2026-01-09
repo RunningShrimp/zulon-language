@@ -265,6 +265,9 @@ pub enum HirExpression {
 
     /// Question mark operator (error propagation)
     QuestionMark(Box<HirExpression>, HirTy, Span),
+
+    /// Try...with effect handler block
+    Try(HirTryBlock),
 }
 
 impl HirExpression {
@@ -292,6 +295,7 @@ impl HirExpression {
             HirExpression::Closure { ty, .. } => ty,
             HirExpression::Throw(..) => &HirTy::Never,  // throw doesn't return normally
             HirExpression::QuestionMark(_, ty, _) => ty,  // ? returns the success type
+            HirExpression::Try(try_block) => &try_block.try_block.ty,
         }
     }
 
@@ -321,6 +325,7 @@ impl HirExpression {
             HirExpression::Closure { span, .. } => span,
             HirExpression::Throw(_, span) => span,
             HirExpression::QuestionMark(_, _, span) => span,
+            HirExpression::Try(try_block) => &try_block.span,
         }
     }
 }
@@ -501,6 +506,32 @@ pub struct HirMod {
 pub struct HirGenericParam {
     pub name: String,
     pub bounds: Vec<String>,
+}
+
+/// Try...with effect handler block
+#[derive(Debug, Clone)]
+pub struct HirTryBlock {
+    pub try_block: Box<HirBlock>,
+    pub handlers: Vec<HirEffectHandler>,
+    pub span: Span,
+}
+
+/// Effect handler
+#[derive(Debug, Clone)]
+pub struct HirEffectHandler {
+    pub effect_name: String,
+    pub methods: Vec<HirEffectMethod>,
+    pub span: Span,
+}
+
+/// Effect handler method (operation implementation)
+#[derive(Debug, Clone)]
+pub struct HirEffectMethod {
+    pub name: String,
+    pub params: Vec<HirParam>,
+    pub return_type: HirTy,
+    pub body: HirBlock,
+    pub span: Span,
 }
 
 // Add span() method to HirItem

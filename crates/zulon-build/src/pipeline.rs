@@ -345,6 +345,7 @@ mod tests {
             entry_block: 0,
             next_id: 1,
             next_vreg: 0,
+            external_funcs: vec![],
         }
     }
 }

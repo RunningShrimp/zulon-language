@@ -18,6 +18,12 @@ pub enum MirError {
 
     #[error("invalid MIR construction: {0}")]
     InvalidConstruction(String),
+
+    #[error("invalid field access: field '{field}' - {reason}")]
+    InvalidFieldAccess {
+        field: String,
+        reason: String,
+    },
 }
 
 pub type Result<T> = std::result::Result<T, MirError>;

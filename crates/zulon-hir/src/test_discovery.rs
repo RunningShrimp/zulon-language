@@ -8,9 +8,10 @@
 
 use crate::hir::*;
 use zulon_parser::ast::Attribute;
+use serde::{Serialize, Deserialize};
 
 /// A discovered test function
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DiscoveredTest {
     /// Test function name
     pub name: String,
@@ -88,8 +89,9 @@ fn get_expected_panic_message(attributes: &[Attribute]) -> Option<String> {
 mod tests {
     use super::*;
     use zulon_parser::ast::{Attribute, AttributeArg, Identifier};
-    use crate::{HirCrate, HirItem, HirFunction, HirBlock};
+    use crate::{HirCrate, HirItem, HirFunction, HirBlock, HirTy};
     use zulon_parser::ast::Span;
+    use zulon_parser::lexer::Position;
 
     #[test]
     fn test_discover_simple_test() {
@@ -103,7 +105,7 @@ mod tests {
             effects: Vec::new(),
             attributes: vec![
                 Attribute {
-                    name: Identifier::new(Span::default(), "test"),
+                    name: Identifier::new(Span::new(Position::new(0, 0), Position::new(0, 0)), "test"),
                     args: Vec::new(),
                 }
             ],
@@ -112,14 +114,14 @@ mod tests {
                 statements: Vec::new(),
                 trailing_expr: None,
                 ty: HirTy::Unit,
-                span: Span::default(),
+                span: Span::new(Position::new(0, 0), Position::new(0, 0)),
             },
-            span: Span::default(),
+            span: Span::new(Position::new(0, 0), Position::new(0, 0)),
         };
 
         let hir_crate = HirCrate {
             items: vec![HirItem::Function(func)],
-            span: Span::default(),
+            span: Span::new(Position::new(0, 0), Position::new(0, 0)),
         };
 
         let tests = discover_tests(&hir_crate);
@@ -141,11 +143,11 @@ mod tests {
             effects: Vec::new(),
             attributes: vec![
                 Attribute {
-                    name: Identifier::new(Span::default(), "test"),
+                    name: Identifier::new(Span::new(Position::new(0, 0), Position::new(0, 0)), "test"),
                     args: Vec::new(),
                 },
                 Attribute {
-                    name: Identifier::new(Span::default(), "ignore"),
+                    name: Identifier::new(Span::new(Position::new(0, 0), Position::new(0, 0)), "ignore"),
                     args: Vec::new(),
                 },
             ],
@@ -154,14 +156,14 @@ mod tests {
                 statements: Vec::new(),
                 trailing_expr: None,
                 ty: HirTy::Unit,
-                span: Span::default(),
+                span: Span::new(Position::new(0, 0), Position::new(0, 0)),
             },
-            span: Span::default(),
+            span: Span::new(Position::new(0, 0), Position::new(0, 0)),
         };
 
         let hir_crate = HirCrate {
             items: vec![HirItem::Function(func)],
-            span: Span::default(),
+            span: Span::new(Position::new(0, 0), Position::new(0, 0)),
         };
 
         let tests = discover_tests(&hir_crate);
@@ -181,14 +183,14 @@ mod tests {
             effects: Vec::new(),
             attributes: vec![
                 Attribute {
-                    name: Identifier::new(Span::default(), "test"),
+                    name: Identifier::new(Span::new(Position::new(0, 0), Position::new(0, 0)), "test"),
                     args: Vec::new(),
                 },
                 Attribute {
-                    name: Identifier::new(Span::default(), "should_panic"),
+                    name: Identifier::new(Span::new(Position::new(0, 0), Position::new(0, 0)), "should_panic"),
                     args: vec![
                         AttributeArg::KeyValue {
-                            key: Identifier::new(Span::default(), "expected"),
+                            key: Identifier::new(Span::new(Position::new(0, 0), Position::new(0, 0)), "expected"),
                             value: "index out of bounds".to_string(),
                         }
                     ],
@@ -199,14 +201,14 @@ mod tests {
                 statements: Vec::new(),
                 trailing_expr: None,
                 ty: HirTy::Unit,
-                span: Span::default(),
+                span: Span::new(Position::new(0, 0), Position::new(0, 0)),
             },
-            span: Span::default(),
+            span: Span::new(Position::new(0, 0), Position::new(0, 0)),
         };
 
         let hir_crate = HirCrate {
             items: vec![HirItem::Function(func)],
-            span: Span::default(),
+            span: Span::new(Position::new(0, 0), Position::new(0, 0)),
         };
 
         let tests = discover_tests(&hir_crate);

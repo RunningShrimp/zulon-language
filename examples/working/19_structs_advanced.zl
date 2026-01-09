@@ -1,0 +1,56 @@
+// 19_structs_advanced.zl - Advanced struct features
+// Shows struct definition and usage
+
+extern fn printf(s: &u8, ...) -> i32;
+
+struct Point {
+    x: i32,
+    y: i32,
+}
+
+struct Rectangle {
+    width: i32,
+    height: i32,
+}
+
+fn area(rect: Rectangle) -> i32 {
+    rect.width * rect.height
+}
+
+fn main() -> i32 {
+    printf("ZULON Advanced Structs\n");
+    printf("=======================\n");
+
+    // Struct initialization
+    let p = Point {
+        x: 10,
+        y: 20,
+    };
+
+    printf("Point created at (10, 20)\n");
+
+    // Another struct
+    let rect = Rectangle {
+        width: 5,
+        height: 10,
+    };
+
+    printf("Rectangle created\n");
+
+    // Pass struct to function
+    let a = area(rect);
+    printf("Area computed\n");
+
+    // Multiple structs
+    let p2 = Point {
+        x: 30,
+        y: 40,
+    };
+
+    printf("Second point created\n");
+
+    printf("=======================\n");
+    printf("All advanced structs work!\n");
+
+    0
+}

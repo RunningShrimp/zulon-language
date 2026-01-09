@@ -1,0 +1,43 @@
+// 15_logical_ops.zl - Logical operators demonstration
+// Shows all logical operators in ZULON
+
+extern fn printf(s: &u8, ...) -> i32;
+
+fn main() -> i32 {
+    printf("ZULON Logical Operators\n");
+    printf("=======================\n");
+
+    let a: bool = true;
+    let b: bool = false;
+
+    // Logical AND
+    if a && b {
+        printf("true && false: true\n");
+    } else {
+        printf("true && false: false\n");
+    }
+
+    // Logical OR
+    if a || b {
+        printf("true || false: true\n");
+    }
+
+    // Logical NOT
+    if !b {
+        printf("!false: true\n");
+    }
+
+    // Complex expressions
+    if a && !b {
+        printf("true && !false: true\n");
+    }
+
+    if (a || b) && (a || a) {
+        printf("Complex logic works!\n");
+    }
+
+    printf("=======================\n");
+    printf("All logical operators work!\n");
+
+    0
+}

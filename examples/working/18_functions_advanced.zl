@@ -1,0 +1,45 @@
+// 18_functions_advanced.zl - Advanced function features
+// Shows function parameters, return values, and scope
+
+extern fn printf(s: &u8, ...) -> i32;
+
+fn add(a: i32, b: i32) -> i32 {
+    a + b
+}
+
+fn multiply_by_two(x: i32) -> i32 {
+    x * 2
+}
+
+fn compute(a: i32, b: i32, c: i32) -> i32 {
+    let temp = add(a, b);
+    multiply_by_two(temp) + c
+}
+
+fn main() -> i32 {
+    printf("ZULON Advanced Functions\n");
+    printf("========================\n");
+
+    // Function with multiple parameters
+    let result1 = add(10, 20);
+    printf("add(10, 20) computed\n");
+
+    // Chained function calls
+    let result2 = multiply_by_two(5);
+    printf("multiply_by_two(5) computed\n");
+
+    // Complex function composition
+    let result3 = compute(5, 10, 3);
+    printf("compute(5, 10, 3) computed\n");
+
+    // Function as expression
+    let value = {
+        add(1, 2)
+    };
+    printf("Function in block computed\n");
+
+    printf("========================\n");
+    printf("All advanced functions work!\n");
+
+    0
+}

@@ -11,21 +11,48 @@
 use crate::error::{MirError, Result};
 use crate::mir::*;
 use crate::ty::MirTy;
-use zulon_hir::{HirCrate, HirItem, HirFunction, HirExpression, HirBlock, HirStatement};
+use zulon_hir::{HirCrate, HirItem, HirFunction, HirExpression, HirBlock, HirStatement, HirTy};
+
+/// Loop context for tracking break/continue targets
+struct LoopContext {
+    /// Exit block for break statements
+    exit_block: MirNodeId,
+    /// Head block for continue statements (loop header or while condition)
+    head_block: MirNodeId,
+}
 
 /// Context for lowering HIR to MIR
-pub struct MirLoweringContext;
+pub struct MirLoweringContext {
+    /// Struct definitions: name -> (field_names, field_indices)
+    struct_defs: std::collections::HashMap<String, Vec<String>>,
+    /// Loop context stack (for nested loops)
+    loop_stack: Vec<LoopContext>,
+}
 
 impl MirLoweringContext {
     /// Create a new lowering context
     pub fn new() -> Self {
-        MirLoweringContext
+        MirLoweringContext {
+            struct_defs: std::collections::HashMap::new(),
+            loop_stack: Vec::new(),
+        }
     }
 
     /// Lower an entire HIR crate to MIR body
     pub fn lower_crate(&mut self, hir_crate: &HirCrate) -> Result<MirBody> {
         let mut body = MirBody::new();
 
+        // First pass: collect struct definitions
+        for item in &hir_crate.items {
+            if let HirItem::Struct(struct_def) = item {
+                let field_names: Vec<String> = struct_def.fields.iter()
+                    .map(|field| field.name.clone())
+                    .collect();
+                self.struct_defs.insert(struct_def.name.clone(), field_names);
+            }
+        }
+
+        // Second pass: lower functions
         for item in &hir_crate.items {
             match item {
                 HirItem::Function(func) => {
@@ -67,14 +94,31 @@ impl MirLoweringContext {
             return_type,
         );
 
+        // Extract effect names from function's effects
+        // These are the effects this function performs (e.g., Log in fn() -> i32 | Log)
+        let effect_names: Vec<String> = func.effects.iter()
+            .filter_map(|ty| match ty {
+                HirTy::Struct { name, .. } => Some(name.clone()),
+                _ => None,
+            })
+            .collect();
+
+        // Store effect names in MIR function for use during lowering
+        mir_func.effects = effect_names.clone();
+
         // Lower function body
         let entry_block = mir_func.entry_block;
         let (return_block, return_temp) = self.lower_block(&mut mir_func, &func.body, entry_block, true)?;
 
-        // Set return terminator
+        // Set return terminator ONLY if the trailing expression didn't already set one
+        // (e.g., Return or Throw expressions set their own terminators)
         let block = mir_func.blocks.get_mut(&return_block).unwrap();
-        let return_place = return_temp.map(|t| MirPlace::Temp(t));
-        block.set_terminator(MirTerminator::Return(return_place));
+        if block.terminator.is_none() {
+            // No terminator set yet, set it based on trailing expression
+            let return_place = return_temp.map(|t| MirPlace::Temp(t));
+            block.set_terminator(MirTerminator::Return(return_place));
+        }
+        // Else: terminator already set by Return/Throw, don't override it
 
         Ok(mir_func)
     }
@@ -83,7 +127,7 @@ impl MirLoweringContext {
     ///
     /// Returns (final_block_id, optional_temp_var_for_last_expr)
     fn lower_block(
-        &self,
+        &mut self,
         func: &mut MirFunction,
         block: &HirBlock,
         entry_block: MirNodeId,
@@ -118,7 +162,7 @@ impl MirLoweringContext {
 
     /// Lower a HIR statement to MIR instructions
     fn lower_statement(
-        &self,
+        &mut self,
         func: &mut MirFunction,
         current_block: &mut MirNodeId,
         stmt: &HirStatement,
@@ -142,23 +186,16 @@ impl MirLoweringContext {
                 self.lower_expression(func, current_block, expr)?;
             }
             HirStatement::Semi(expr) => {
-                // Semicolon expression - lower it, but need to handle control flow specially
-                // Check if this is a Loop or If expression that creates new blocks
-                let is_control_flow = matches!(expr, HirExpression::Loop { .. } | HirExpression::If { .. });
-
+                // Semicolon expression - lower it
                 let old_block = *current_block;
                 self.lower_expression(func, current_block, expr)?;
 
-                // If the expression created new blocks (Loop/If), we need to connect the old block
-                // to the new control flow's entry point
-                if is_control_flow && *current_block != old_block {
+                // If the expression created new blocks (Loop/If/Try/EffectCall), the current_block changed
+                // Effect operations create continuation blocks, so we handle them here
+                if *current_block != old_block {
                     // The expression changed the current_block, which means it created new blocks
-                    // We need to add a terminator from old_block to the new entry point
-                    let block_obj = func.blocks.get_mut(&old_block).unwrap();
-                    if block_obj.terminator.is_none() {
-                        // Add Goto to the new entry point
-                        block_obj.set_terminator(MirTerminator::Goto { target: *current_block });
-                    }
+                    // The old_block should already have a terminator (set by the expression)
+                    // For example, effect operations set a Goto to handler, so we don't need to do anything
                 }
             }
             HirStatement::Item(_item) => {
@@ -172,7 +209,7 @@ impl MirLoweringContext {
     ///
     /// Returns the temporary variable containing the result
     fn lower_expression(
-        &self,
+        &mut self,
         func: &mut MirFunction,
         current_block: &mut MirNodeId,
         expr: &HirExpression,
@@ -296,15 +333,97 @@ impl MirLoweringContext {
                     None
                 };
 
+                // Check if this function has any declared effects OR has handlers registered
+                // Effects can be declared in function signature (fn() -> i32 | Log)
+                // OR handlers can be present in try...with blocks
+                let has_effects = !func.effects.is_empty();
+                let has_handlers = !func.handlers.is_empty();
+
+                // Check if this call is to an effect operation
+                // We use a heuristic: if the function has effects/handlers and the
+                // function name matches common effect operation names, treat it as an effect call
+                let is_effect_operation = (has_effects || has_handlers)
+                    && self.is_effect_operation_name(&func_name);
+
+                if is_effect_operation {
+                    // Look for a handler for this effect operation
+                    // Handlers are registered in the function's handlers list
+                    let handler_info = func.handlers.iter()
+                        .find(|h| h.methods.contains_key(&func_name))
+                        .and_then(|h| h.methods.get(&func_name))
+                        .map(|(handler_block, resume_block)| (*handler_block, *resume_block));
+
+                    if let Some((handler_block, resume_block)) = handler_info {
+                        // Handler exists - jump to it
+                        let block_obj = func.blocks.get_mut(current_block).unwrap();
+                        block_obj.set_terminator(MirTerminator::Goto {
+                            target: handler_block,
+                        });
+
+                        // After handler completes, execution resumes at resume_block
+                        // The trailing expression should be lowered into resume_block
+                        *current_block = resume_block;
+
+                        // For unit effect operations (dest_temp is None), don't create a temp
+                        // For operations with return values, return the destination temp
+                        if let Some(dt) = dest_temp {
+                            Ok(dt)
+                        } else {
+                            // Unit operation - return None so statement handling discards it
+                            // and the next expression in the block provides the value
+                            Ok(func.alloc_temp())  // Placeholder, will be discarded
+                        }
+                    } else {
+                        // No handler found - jump directly to resume (like before)
+                        let resume_block = func.alloc_block();
+                        let block_obj = func.blocks.get_mut(current_block).unwrap();
+                        block_obj.set_terminator(MirTerminator::Goto {
+                            target: resume_block,
+                        });
+
+                        *current_block = resume_block;
+                        Ok(dest_temp.unwrap_or_else(|| func.alloc_temp()))
+                    }
+                } else {
+                    // Regular function call - generate Call instruction
+                    let block_obj = func.blocks.get_mut(current_block).unwrap();
+                    block_obj.push_instruction(MirInstruction::Call {
+                        dest: dest_temp,
+                        func: MirPlace::Local(func_name),
+                        args: arg_temps.into_iter().map(|t| MirPlace::Temp(t)).collect(),
+                        return_type: return_ty,
+                    });
+
+                    Ok(dest_temp.unwrap_or_else(|| func.alloc_temp()))
+                }
+            }
+
+            // Field access (e.g., object.field_name)
+            HirExpression::Field { base, field_name, ty, span: _ } => {
+                // Lower the base expression
+                let base_temp = self.lower_expression(func, current_block, base)?;
+
+                // Get the base expression's type (which should be a struct)
+                let base_ty = base.ty();
+
+                // Get the field index from the struct type
+                let field_index = self.get_field_index(base_ty, field_name)?;
+
+                // Allocate result temp
+                let result_temp = func.alloc_temp();
+                let mir_ty = ty.clone().into();
+
+                // Generate FieldAccess instruction
                 let block_obj = func.blocks.get_mut(current_block).unwrap();
-                block_obj.push_instruction(MirInstruction::Call {
-                    dest: dest_temp,
-                    func: MirPlace::Local(func_name),
-                    args: arg_temps.into_iter().map(|t| MirPlace::Temp(t)).collect(),
-                    return_type: return_ty,
+                block_obj.push_instruction(MirInstruction::FieldAccess {
+                    dest: result_temp,
+                    base: base_temp,
+                    field_name: field_name.clone(),
+                    field_index,
+                    ty: mir_ty,
                 });
 
-                Ok(dest_temp.unwrap_or_else(|| func.alloc_temp()))
+                Ok(result_temp)
             }
 
             // Blocks
@@ -355,18 +474,25 @@ impl MirLoweringContext {
                 // Lower then block
                 *current_block = then_block_id;
                 let (_, then_temp) = self.lower_block(func, then_block, then_block_id, false)?;
-                let then_temp = then_temp.unwrap_or_else(|| func.alloc_temp());
                 let then_block_obj = func.blocks.get_mut(&then_block_id).unwrap();
-                then_block_obj.set_terminator(MirTerminator::Goto { target: join_block_id });
+                let then_has_term = then_block_obj.terminator.is_some();
+                // Only set terminator if block doesn't already have one (e.g., from break/continue)
+                if !then_has_term {
+                    then_block_obj.set_terminator(MirTerminator::Goto { target: join_block_id });
+                }
 
                 // Lower else block if present
-                let else_temp: TempVar = if let Some(else_blk) = else_block {
+                let (else_temp, else_has_term): (TempVar, bool) = if let Some(else_blk) = else_block {
                     *current_block = else_block_id;
                     let (_, et) = self.lower_block(func, else_blk, else_block_id, false)?;
                     let et = et.unwrap_or_else(|| func.alloc_temp());
                     let else_block_obj = func.blocks.get_mut(&else_block_id).unwrap();
-                    else_block_obj.set_terminator(MirTerminator::Goto { target: join_block_id });
-                    et
+                    let has_term = else_block_obj.terminator.is_some();
+                    // Only set terminator if block doesn't already have one (e.g., from break/continue)
+                    if !has_term {
+                        else_block_obj.set_terminator(MirTerminator::Goto { target: join_block_id });
+                    }
+                    (et, has_term)
                 } else {
                     // No else block, just goto join (returns unit)
                     let et = func.alloc_temp();
@@ -377,25 +503,37 @@ impl MirLoweringContext {
                         ty: MirTy::Unit,
                     });
                     else_block_obj.set_terminator(MirTerminator::Goto { target: join_block_id });
-                    et
+                    (et, false) // Else block always has terminator we just set
                 };
 
-                // For now, create a Move that will be converted to Phi during LIR lowering
-                *current_block = join_block_id;
-                let result_temp = func.alloc_temp();
-                let join_block_obj = func.blocks.get_mut(&join_block_id).unwrap();
+                // If both branches have terminators (e.g., break/continue), the if expression
+                // doesn't produce a value and we don't need a join block
+                if then_has_term && else_has_term {
+                    // Both branches have terminators, return a dummy temp
+                    // The current block is already set by the last lowered block
+                    let dummy_temp = func.alloc_temp();
+                    Ok(dummy_temp)
+                } else {
+                    // At least one branch doesn't have a terminator, create join block with Move/Phi
+                    *current_block = join_block_id;
+                    let result_temp = func.alloc_temp();
+                    let join_block_obj = func.blocks.get_mut(&join_block_id).unwrap();
 
-                // TODO: Implement proper Phi nodes
-                // For now, just move the then value - this is incorrect for else paths
-                join_block_obj.push_instruction(MirInstruction::Move {
-                    dest: result_temp,
-                    src: MirPlace::Temp(then_temp),
-                });
+                    // Only use then_temp if it exists (then block didn't have terminator)
+                    if let Some(tt) = then_temp {
+                        // TODO: Implement proper Phi nodes
+                        // For now, just move the then value - this is incorrect for else paths
+                        join_block_obj.push_instruction(MirInstruction::Move {
+                            dest: result_temp,
+                            src: MirPlace::Temp(tt),
+                        });
+                    }
 
-                // Note: else_temp is available but not used (would need Phi)
-                let _ = else_temp; // Suppress unused warning
+                    // Note: else_temp is available but not used (would need Phi)
+                    let _ = else_temp; // Suppress unused warning
 
-                Ok(result_temp)
+                    Ok(result_temp)
+                }
             }
 
             // Loop
@@ -403,6 +541,12 @@ impl MirLoweringContext {
                 let loop_head = func.alloc_block();
                 let loop_body = func.alloc_block();
                 let exit_block = func.alloc_block();
+
+                // Push loop context onto stack (for break/continue)
+                self.loop_stack.push(LoopContext {
+                    exit_block,
+                    head_block: loop_head,
+                });
 
                 // Jump from current to loop head
                 let block_obj = func.blocks.get_mut(current_block).unwrap();
@@ -414,8 +558,7 @@ impl MirLoweringContext {
                 head_block_obj.set_terminator(MirTerminator::Goto { target: loop_body });
 
                 // Lower body (this returns the final block ID after all statements)
-                let (final_block_id, body_temp) = self.lower_block(func, body, loop_body, false)?;
-                let _body_temp = body_temp.unwrap_or_else(|| func.alloc_temp());
+                let (final_block_id, _body_temp) = self.lower_block(func, body, loop_body, false)?;
 
                 // After lowering the body, final_block_id might be different from loop_body
                 // (e.g., if the body had an If expression or nested loop that created new blocks)
@@ -425,50 +568,157 @@ impl MirLoweringContext {
                 if final_block_obj.terminator.is_none() {
                     // No terminator - add loop-back to create the actual loop
                     final_block_obj.set_terminator(MirTerminator::Goto { target: loop_head });
-                } else {
-                    // Block already has a terminator - this means the trailing expression
-                    // was a control flow construct (If, Loop, etc.)
-                    //
-                    // For nested loops:
-                    // - final_block_id is the nested loop's exit_block
-                    // - The nested loop set current_block = exit_block but didn't add a terminator
-                    // - We need to add a terminator to loop back to the outer loop head
-                    //
-                    // For If expressions:
-                    // - final_block_id is the join block where then/else converge
-                    // - It should already loop back or have appropriate terminator
                 }
 
-                // Set current to exit (though loop never exits in this simple version)
+                // Pop loop context from stack
+                self.loop_stack.pop();
+
+                // Set current to exit block
                 *current_block = exit_block;
 
-                // Loop never returns, so return never type temp
-                let never_temp = func.alloc_temp();
-                Ok(never_temp)
+                // Loop never returns without break, so return a dummy temp
+                // (break will jump to exit_block, so code after loop won't be reached)
+                let dummy_temp = func.alloc_temp();
+                Ok(dummy_temp)
+            }
+
+            // Match expression (simplified - literal patterns only)
+            HirExpression::Match { scrutinee, arms, ty: _, span: _ } => {
+                // Lower the scrutinee expression
+                let scrutinee_temp = self.lower_expression(func, current_block, scrutinee)?;
+
+                // Allocate blocks for each arm
+                let mut arm_blocks = Vec::new();
+                for _arm in arms {
+                    arm_blocks.push(func.alloc_block());
+                }
+                let default_block = func.alloc_block();
+                let join_block = func.alloc_block();
+
+                // Collect targets for switch (literal patterns only)
+                let mut switch_targets = Vec::new();
+                for (i, arm) in arms.iter().enumerate() {
+                    match &arm.pattern {
+                        zulon_hir::HirPattern::Literal(lit, _span) => {
+                            // Convert literal to MIR constant
+                            let mir_const = self.lower_literal(lit)?.0;
+                            switch_targets.push((mir_const, arm_blocks[i]));
+                        }
+                        zulon_hir::HirPattern::Wildcard(_span) => {
+                            // Wildcard goes to default
+                            // (handled by not adding to switch_targets)
+                        }
+                        _ => {
+                            // For now, ignore complex patterns
+                            // They'll match the default case
+                        }
+                    }
+                }
+
+                // Set switch terminator in current block
+                let block_obj = func.blocks.get_mut(current_block).unwrap();
+                block_obj.set_terminator(MirTerminator::Switch {
+                    scrutinee: scrutinee_temp,
+                    targets: switch_targets,
+                    default: default_block,
+                });
+
+                // Lower each arm
+                let mut arm_temps = Vec::new();
+                for (i, arm) in arms.iter().enumerate() {
+                    *current_block = arm_blocks[i];
+
+                    // TODO: Handle pattern bindings (ignore for now)
+                    // Lower the arm body
+                    let body_temp = self.lower_expression(func, current_block, &arm.body)?;
+                    arm_temps.push(body_temp);
+
+                    // Add goto to join block
+                    let arm_block_obj = func.blocks.get_mut(&arm_blocks[i]).unwrap();
+                    if arm_block_obj.terminator.is_none() {
+                        arm_block_obj.set_terminator(MirTerminator::Goto { target: join_block });
+                    }
+                }
+
+                // Handle default block (for wildcard or non-literal patterns)
+                *current_block = default_block;
+                // For now, just use the last arm as default
+                let default_temp = if let Some(last_arm) = arms.last() {
+                    self.lower_expression(func, current_block, &last_arm.body)?
+                } else {
+                    func.alloc_temp()
+                };
+
+                let default_block_obj = func.blocks.get_mut(&default_block).unwrap();
+                if default_block_obj.terminator.is_none() {
+                    default_block_obj.set_terminator(MirTerminator::Goto { target: join_block });
+                }
+
+                // Join block: create Phi-like value (simplified - use first arm temp)
+                *current_block = join_block;
+                let result_temp = func.alloc_temp();
+                let join_block_obj = func.blocks.get_mut(&join_block).unwrap();
+
+                // TODO: Proper Phi nodes - for now, just move first arm value
+                let first_arm_temp = arm_temps.first().copied().unwrap_or(default_temp);
+                join_block_obj.push_instruction(MirInstruction::Move {
+                    dest: result_temp,
+                    src: MirPlace::Temp(first_arm_temp),
+                });
+
+                Ok(result_temp)
             }
 
             // Break
             HirExpression::Break(_expr, _span) => {
-                // TODO: Handle proper loop exit
-                // For now, just unreachable
-                let block_obj = func.blocks.get_mut(current_block).unwrap();
-                block_obj.set_terminator(MirTerminator::Unreachable);
-                Ok(func.alloc_temp())
+                // Get the innermost loop's exit block from the context stack
+                if let Some(loop_ctx) = self.loop_stack.last() {
+                    let exit_block = loop_ctx.exit_block;
+                    let block_obj = func.blocks.get_mut(current_block).unwrap();
+                    block_obj.set_terminator(MirTerminator::Goto { target: exit_block });
+                    // Return a dummy temp (break doesn't produce a value in the current block)
+                    Ok(func.alloc_temp())
+                } else {
+                    // No loop context - this is a compile error, but for now we make it unreachable
+                    let block_obj = func.blocks.get_mut(current_block).unwrap();
+                    block_obj.set_terminator(MirTerminator::Unreachable);
+                    Ok(func.alloc_temp())
+                }
             }
 
             // Continue
             HirExpression::Continue(_span) => {
-                // TODO: Handle proper loop continue
-                // For now, just unreachable
-                let block_obj = func.blocks.get_mut(current_block).unwrap();
-                block_obj.set_terminator(MirTerminator::Unreachable);
-                Ok(func.alloc_temp())
+                // Get the innermost loop's head block from the context stack
+                if let Some(loop_ctx) = self.loop_stack.last() {
+                    let head_block = loop_ctx.head_block;
+                    let block_obj = func.blocks.get_mut(current_block).unwrap();
+                    block_obj.set_terminator(MirTerminator::Goto { target: head_block });
+                    // Return a dummy temp (continue doesn't produce a value in the current block)
+                    Ok(func.alloc_temp())
+                } else {
+                    // No loop context - this is a compile error, but for now we make it unreachable
+                    let block_obj = func.blocks.get_mut(current_block).unwrap();
+                    block_obj.set_terminator(MirTerminator::Unreachable);
+                    Ok(func.alloc_temp())
+                }
             }
 
-            HirExpression::Return(_expr, _span) => {
-                // TODO: Handle return properly
+            HirExpression::Return(expr_opt, _span) => {
+                // Lower the return expression to get its temporary (if present)
+                let return_place = match expr_opt {
+                    Some(expr) => {
+                        let return_temp = self.lower_expression(func, current_block, expr)?;
+                        Some(MirPlace::Temp(return_temp))
+                    }
+                    None => None,
+                };
+
+                // Set return terminator with the expression's value
                 let block_obj = func.blocks.get_mut(current_block).unwrap();
-                block_obj.set_terminator(MirTerminator::Return(None));
+                block_obj.set_terminator(MirTerminator::Return(return_place));
+
+                // Return doesn't produce a value (Never type)
+                // Allocate a dummy temp (will be ignored since we already set the terminator)
                 Ok(func.alloc_temp())
             }
 
@@ -592,6 +842,12 @@ impl MirLoweringContext {
                 let body_block = func.alloc_block();
                 let exit_block = func.alloc_block();
 
+                // Push loop context onto stack (for break/continue)
+                self.loop_stack.push(LoopContext {
+                    exit_block,
+                    head_block: header_block,
+                });
+
                 // Current block jumps to header
                 let block_obj = func.blocks.get_mut(current_block).unwrap();
                 block_obj.set_terminator(MirTerminator::Goto { target: header_block });
@@ -617,8 +873,9 @@ impl MirLoweringContext {
                     // No terminator yet - add loop-back to header
                     final_body_obj.set_terminator(MirTerminator::Goto { target: header_block });
                 }
-                // If final_block already has a terminator, it's from a nested construct
-                // In that case, we need to ensure the nested construct loops back properly
+
+                // Pop loop context from stack
+                self.loop_stack.pop();
 
                 // Exit block: continue after loop
                 *current_block = exit_block;
@@ -648,6 +905,85 @@ impl MirLoweringContext {
                             Example: 'let mut i = start; while i < end {{ ...; i = i + 1 }};'. \
                             Pattern: {:?}, Iterator: {:?}", pattern, iter)
                 ));
+            }
+
+            HirExpression::Try(try_block) => {
+                // First, register handler blocks so they're available during try block lowering
+                for handler in &try_block.handlers {
+                    let mut mir_handler = MirEffectHandler {
+                        effect_name: handler.effect_name.clone(),
+                        methods: std::collections::HashMap::new(),
+                    };
+
+                    // Pre-allocate handler blocks (will be filled later)
+                    for method in &handler.methods {
+                        let handler_block = func.alloc_block();
+                        let resume_block = func.alloc_block();
+
+                        // Store placeholder mapping (blocks will be filled after try block)
+                        mir_handler.methods.insert(
+                            method.name.clone(),
+                            (handler_block, resume_block)
+                        );
+                    }
+
+                    // Register handler in function (before lowering try block)
+                    func.handlers.push(mir_handler);
+                }
+
+                // Now lower the try block (handlers are now registered)
+                let new_block = func.alloc_block();
+                let old_block = *current_block;
+
+                // Jump to try block
+                let block_obj = func.blocks.get_mut(&old_block).unwrap();
+                block_obj.set_terminator(MirTerminator::Goto { target: new_block });
+
+                *current_block = new_block;
+                let (try_end_block, try_result_temp) = self.lower_block(func, &try_block.try_block, new_block, false)?;
+
+                // Update current_block to where the try block ended
+                // This is important if the try block contained effect operations
+                *current_block = try_end_block;
+
+                // Now lower handler method bodies (after try block, can use resume blocks)
+                let handler_index_offset = func.handlers.len() - try_block.handlers.len();
+
+                // Collect all handler information first to avoid borrow issues
+                let mut handlers_to_lower = Vec::new();
+                for (i, handler) in try_block.handlers.iter().enumerate() {
+                    let mir_handler = &func.handlers[handler_index_offset + i];
+
+                    for method in &handler.methods {
+                        if let Some((handler_block, resume_block)) = mir_handler.methods.get(&method.name) {
+                            handlers_to_lower.push((
+                                handler_index_offset + i,
+                                method.name.clone(),
+                                method.body.clone(),
+                                *handler_block,
+                                *resume_block,
+                            ));
+                        }
+                    }
+                }
+
+                // Now lower handler methods
+                for (_handler_idx, _method_name, method_body, handler_block, resume_block) in handlers_to_lower {
+                    // Lower handler method body
+                    let (handler_end_block, _handler_result_temp) =
+                        self.lower_block(func, &method_body, handler_block, false)?;
+
+                    // Handler should jump to resume block after execution
+                    let end_block_obj = func.blocks.get_mut(&handler_end_block).unwrap();
+                    if end_block_obj.terminator.is_none() {
+                        end_block_obj.set_terminator(MirTerminator::Goto {
+                            target: resume_block,
+                        });
+                    }
+                }
+
+                // Return the result of evaluating the try block
+                Ok(try_result_temp.unwrap_or_else(|| func.alloc_temp()))
             }
 
             _ => {
@@ -705,6 +1041,80 @@ impl MirLoweringContext {
             zulon_hir::HirUnaryOp::Ref => MirUnaryOp::Ref,
             zulon_hir::HirUnaryOp::RefMut => MirUnaryOp::RefMut,
         }
+    }
+
+    /// Get the field index from a struct type
+    ///
+    /// This looks up the struct definition and finds the index of the field by name.
+    /// If the base type is not a struct type (e.g., due to placeholder I32 type),
+    /// we search all struct definitions to find one with a matching field name.
+    fn get_field_index(&self, ty: &HirTy, field_name: &str) -> Result<usize> {
+        // First, try to extract struct name from the type
+        let struct_name = match ty {
+            HirTy::Struct { name, .. } => {
+                // Type info is available - use it
+                return self.get_field_index_in_struct(name, field_name);
+            }
+            _ => {
+                // Type info is not available (placeholder type)
+                // Search all struct definitions for one with this field
+                self.find_field_in_any_struct(field_name)?
+            }
+        };
+
+        Ok(struct_name)
+    }
+
+    /// Get field index in a specific struct
+    fn get_field_index_in_struct(&self, struct_name: &str, field_name: &str) -> Result<usize> {
+        if let Some(field_names) = self.struct_defs.get(struct_name) {
+            if let Some(index) = field_names.iter().position(|name| name == field_name) {
+                Ok(index)
+            } else {
+                Err(MirError::InvalidFieldAccess {
+                    field: field_name.to_string(),
+                    reason: format!("field '{}' not found in struct '{}'", field_name, struct_name),
+                })
+            }
+        } else {
+            Err(MirError::InvalidFieldAccess {
+                field: field_name.to_string(),
+                reason: format!("struct '{}' not found", struct_name),
+            })
+        }
+    }
+
+    /// Find a field in any struct definition
+    ///
+    /// This is a fallback when the base expression's type is not available
+    fn find_field_in_any_struct(&self, field_name: &str) -> Result<usize> {
+        // Search through all struct definitions
+        for (_struct_name, field_names) in &self.struct_defs {
+            if let Some(index) = field_names.iter().position(|name| name == field_name) {
+                // Found the field in this struct
+                return Ok(index);
+            }
+        }
+
+        // Field not found in any struct
+        Err(MirError::InvalidFieldAccess {
+            field: field_name.to_string(),
+            reason: format!("field '{}' not found in any struct definition", field_name),
+        })
+    }
+
+    /// Check if a function name is likely an effect operation
+    ///
+    /// This is a heuristic-based check for common effect operation names.
+    /// TODO: Replace with proper effect system lookup
+    fn is_effect_operation_name(&self, name: &str) -> bool {
+        // Common effect operation names
+        matches!(name,
+            "log" | "print" | "println" |
+            "get" | "set" | "update" |
+            "read" | "write" |
+            "fail" | "raise" | "throw"
+        )
     }
 }
 

@@ -15,6 +15,8 @@ use std::collections::{HashMap, HashSet};
 pub struct LirLoweringContext {
     /// MIR temp to LIR vreg mapping
     temp_map: HashMap<zulon_mir::TempVar, VReg>,
+    /// MIR temp to LIR type mapping (tracks types of temporary variables)
+    temp_types: HashMap<zulon_mir::TempVar, LirTy>,
     /// Parameter name to LIR vreg mapping
     param_map: HashMap<String, VReg>,
     /// Local variable name to LIR vreg mapping (for let bindings)
@@ -29,6 +31,8 @@ pub struct LirLoweringContext {
     mutable_locals: HashSet<String>,
     /// Stack slots for mutable locals (local_name -> vreg for alloca)
     local_stack_slots: HashMap<String, VReg>,
+    /// Track which temps hold values from mutable locals that need loading (temp -> local_name)
+    temp_to_local: HashMap<zulon_mir::TempVar, String>,
 }
 
 impl LirLoweringContext {
@@ -36,6 +40,7 @@ impl LirLoweringContext {
     pub fn new() -> Self {
         LirLoweringContext {
             temp_map: HashMap::new(),
+            temp_types: HashMap::new(),
             param_map: HashMap::new(),
             local_map: HashMap::new(),
             block_returns: HashMap::new(),
@@ -43,6 +48,7 @@ impl LirLoweringContext {
             pending_phis: HashMap::new(),
             mutable_locals: HashSet::new(),
             local_stack_slots: HashMap::new(),
+            temp_to_local: HashMap::new(),
         }
     }
 
@@ -61,12 +67,15 @@ impl LirLoweringContext {
     /// Lower a MIR function to LIR function
     pub fn lower_function(&mut self, func: &MirFunction) -> Result<LirFunction> {
         // Clear previous function's data
+        self.temp_map.clear();
+        self.temp_types.clear();
         self.block_returns.clear();
         self.block_preds.clear();
         self.pending_phis.clear();
         self.mutable_locals.clear();
         self.local_stack_slots.clear();
         self.local_map.clear();
+        self.temp_to_local.clear();
 
         // Detect mutable local variables (those that appear in Store instructions)
         self.detect_mutable_locals(func)?;
@@ -176,6 +185,9 @@ impl LirLoweringContext {
             }
         }
 
+        // Inject Load instructions before Return terminators for mutable locals
+        self.inject_loads_before_returns(&mut lir_func)?;
+
         // CFG Completion Pass: Ensure all blocks have terminators
         // Some blocks (like loop exits) may be created without terminators in MIR
         self.complete_cfg(&mut lir_func)?;
@@ -223,8 +235,10 @@ impl LirLoweringContext {
                     MirInstruction::BinaryOp { dest, .. } => Some(*dest),
                     MirInstruction::UnaryOp { dest, .. } => Some(*dest),
                     MirInstruction::Const { dest, .. } => Some(*dest),
+                    MirInstruction::FieldAccess { dest, .. } => Some(*dest),
                     _ => None,
                 };
+
 
                 if let Some(temp) = return_temp {
                     // We'll map this to vreg later during instruction lowering
@@ -234,6 +248,7 @@ impl LirLoweringContext {
             }
         }
 
+
         Ok(())
     }
 
@@ -242,9 +257,14 @@ impl LirLoweringContext {
         match terminator {
             MirTerminator::Goto { target } => vec![*target],
             MirTerminator::If { then_block, else_block, .. } => vec![*then_block, *else_block],
+            MirTerminator::Switch { targets, default, .. } => {
+                let mut result = targets.iter().map(|(_, block_id)| *block_id).collect::<Vec<_>>();
+                result.push(*default);
+                result
+            }
             MirTerminator::Return { .. } => vec![],
             MirTerminator::Unreachable => vec![],
-            _ => vec![],
+            MirTerminator::EffectCall { resume_block, .. } => vec![*resume_block],
         }
     }
 
@@ -300,6 +320,69 @@ impl LirLoweringContext {
         Ok(())
     }
 
+    /// Inject Load instructions before Return terminators that return mutable locals
+    /// This ensures that variables stored to stack are loaded before being returned
+    fn inject_loads_before_returns(&self, func: &mut LirFunction) -> Result<()> {
+        // Collect the blocks that need load injection first to avoid borrow checker issues
+        let mut blocks_needing_load: Vec<(MirNodeId, VReg)> = Vec::new();
+
+        for (block_id, block) in &func.blocks {
+            if let Some(LirTerminator::Return(return_vreg)) = block.terminator {
+                // Check if this return vreg corresponds to a mutable local stack slot
+                let needs_load = self.local_stack_slots.values().any(|&slot| Some(slot) == return_vreg);
+
+                if needs_load {
+                    if let Some(stack_slot) = return_vreg {
+                        blocks_needing_load.push((*block_id, stack_slot));
+                    }
+                }
+            }
+        }
+
+        // Now inject the loads
+        for (block_id, stack_slot) in blocks_needing_load {
+            // Find the type for this stack slot by looking up the local
+            let mut ty = LirTy::I32; // Default
+
+            for (local_name, &slot) in &self.local_stack_slots {
+                if slot == stack_slot {
+                    // Get the type from temp_types by finding a temp that was stored to this local
+                    for (temp, local) in &self.temp_to_local {
+                        if local == local_name {
+                            if let Some(t) = self.temp_types.get(temp) {
+                                ty = t.clone();
+                                break;
+                            }
+                        }
+                    }
+                    break;
+                }
+            }
+
+            // Allocate a new vreg for the loaded value BEFORE borrowing block
+            let loaded_vreg = func.alloc_vreg();
+
+            // Generate Load instruction
+            let load_inst = LirInstruction::Load {
+                dest: loaded_vreg,
+                src: LirOperand::Reg(stack_slot),
+                ty,
+            };
+
+            // Now borrow the block and insert the instruction
+            if let Some(block) = func.blocks.get_mut(&block_id) {
+
+                // Insert Load before the terminator
+                block.instructions.push(load_inst);
+
+                // Update the Return to use the loaded vreg
+                block.terminator = Some(LirTerminator::Return(Some(loaded_vreg)));
+            }
+        }
+
+        Ok(())
+    }
+
     /// Lower a MIR instruction to LIR instruction(s)
     fn lower_instruction(
         &mut self,
@@ -312,6 +395,7 @@ impl LirLoweringContext {
             MirInstruction::Const { dest, value, ty } => {
                 let vreg = func.alloc_vreg();
                 self.temp_map.insert(*dest, vreg);
+                self.temp_types.insert(*dest, ty.clone().into());
 
                 let lir_value = match value {
                     zulon_mir::MirConstant::Bool(b) => LirConstant::Bool(*b),
@@ -331,10 +415,53 @@ impl LirLoweringContext {
 
             MirInstruction::BinaryOp { dest, op, left, right, ty } => {
                 let dest_vreg = func.alloc_vreg();
-                let left_vreg = self.temp_map.get(left).copied().unwrap_or_else(|| *left as VReg);
-                let right_vreg = self.temp_map.get(right).copied().unwrap_or_else(|| *right as VReg);
+                let mut instructions = Vec::new();
+
+                // Helper to get operand vreg, generating Load if needed for mutable locals
+                let get_operand = |temp: &zulon_mir::TempVar, func: &mut LirFunction, ctx: &mut Self| -> (VReg, Vec<LirInstruction>) {
+                    // Check if this temp corresponds to a mutable local that needs loading
+                    if let Some(local_name) = ctx.temp_to_local.get(temp) {
+                        // This temp was stored to a mutable local - we need to load it back
+                        let stack_slot = *ctx.local_stack_slots.get(local_name)
+                            .expect("Mutable local should have stack slot");
+
+                        // Get the type for this temp
+                        let operand_ty = ctx.temp_types.get(temp)
+                            .cloned()
+                            .unwrap_or(LirTy::I32);
+
+                        // Allocate a new vreg for the loaded value
+                        let loaded_vreg = func.alloc_vreg();
+
+                        // Generate Load instruction
+                        let load_inst = LirInstruction::Load {
+                            dest: loaded_vreg,
+                            src: LirOperand::Reg(stack_slot),
+                            ty: operand_ty,
+                        };
+
+                        // Update temp_map to point to the loaded value
+                        ctx.temp_map.insert(*temp, loaded_vreg);
+
+                        (loaded_vreg, vec![load_inst])
+                    } else if let Some(&vreg) = ctx.temp_map.get(temp) {
+                        // Temp has a vreg mapping - use it directly
+                        (vreg, vec![])
+                    } else {
+                        // No mapping - use temp number as vreg (fallback)
+                        (*temp as VReg, vec![])
+                    }
+                };
+
+                let (left_vreg, left_loads) = get_operand(left, func, self);
+                let (right_vreg, right_loads) = get_operand(right, func, self);
+
+                // Add any Load instructions that were generated
+                instructions.extend(left_loads);
+                instructions.extend(right_loads);
 
                 self.temp_map.insert(*dest, dest_vreg);
+                self.temp_types.insert(*dest, ty.clone().into());
 
                 // Check if this is a comparison operation
                 let is_comparison = matches!(
@@ -347,30 +474,61 @@ impl LirLoweringContext {
                 if is_comparison {
                     // Generate comparison instruction
                     let lir_cmp_op = self.lower_cmp_op(*op);
-                    Ok(vec![LirInstruction::Cmp {
+                    instructions.push(LirInstruction::Cmp {
                         dest: dest_vreg,
                         op: lir_cmp_op,
                         left: left_vreg,
                         right: right_vreg,
-                    }])
+                    });
                 } else {
                     // Regular binary operation (arithmetic, bitwise, or logical)
                     let lir_op = self.lower_bin_op(*op);
-                    Ok(vec![LirInstruction::BinaryOp {
+                    instructions.push(LirInstruction::BinaryOp {
                         dest: dest_vreg,
                         op: lir_op,
                         left: left_vreg,
                         right: right_vreg,
                         ty: ty.clone().into(),
-                    }])
+                    });
                 }
+
+                Ok(instructions)
             }
 
             MirInstruction::UnaryOp { dest, op, operand, ty } => {
                 let dest_vreg = func.alloc_vreg();
-                let operand_vreg = self.temp_map.get(operand).copied().unwrap_or_else(|| *operand as VReg);
+                let mut instructions = Vec::new();
+
+                // Get operand, generating Load if needed for mutable locals
+                let (operand_vreg, load_insts) = if let Some(local_name) = self.temp_to_local.get(operand) {
+                    // This temp was stored to a mutable local - we need to load it back
+                    let stack_slot = *self.local_stack_slots.get(local_name)
+                        .expect("Mutable local should have stack slot");
+
+                    let operand_ty = self.temp_types.get(operand)
+                        .cloned()
+                        .unwrap_or(LirTy::I32);
+
+                    let loaded_vreg = func.alloc_vreg();
+
+                    let load_inst = LirInstruction::Load {
+                        dest: loaded_vreg,
+                        src: LirOperand::Reg(stack_slot),
+                        ty: operand_ty,
+                    };
+
+                    self.temp_map.insert(*operand, loaded_vreg);
+                    (loaded_vreg, vec![load_inst])
+                } else if let Some(&vreg) = self.temp_map.get(operand) {
+                    (vreg, vec![])
+                } else {
+                    (*operand as VReg, vec![])
+                };
+
+                instructions.extend(load_insts);
 
                 self.temp_map.insert(*dest, dest_vreg);
+                self.temp_types.insert(*dest, ty.clone().into());
 
                 // Convert MIR unary op to LIR unary op
                 let lir_op = match op {
@@ -379,12 +537,14 @@ impl LirLoweringContext {
                     _ => LirUnaryOp::Neg, // Default to Neg for other ops (Ref, Deref, etc.)
                 };
 
-                Ok(vec![LirInstruction::UnaryOp {
+                instructions.push(LirInstruction::UnaryOp {
                     dest: dest_vreg,
                     op: lir_op,
                     operand: operand_vreg,
                     ty: ty.clone().into(),
-                }])
+                });
+
+                Ok(instructions)
             }
 
             MirInstruction::Copy { dest, src } => {
@@ -411,6 +571,7 @@ impl LirLoweringContext {
                 // Check if this block is a join point (multiple predecessors)
                 // and we need to generate a Phi node
                 if self.is_join_block(current_block) {
+
                     // Generate Phi node - store in pending_phis
                     let mut phi_sources = Vec::new();
 
@@ -422,6 +583,7 @@ impl LirLoweringContext {
                                 let src_vreg = self.temp_map.get(&(return_temp as zulon_mir::TempVar))
                                     .copied()
                                     .unwrap_or(return_temp);
+
 
                                 phi_sources.push((src_vreg, pred_block_id));
                             } else {
@@ -439,6 +601,7 @@ impl LirLoweringContext {
                         sources: phi_sources,
                         ty: LirTy::I32, // TODO: Infer proper type
                     };
+
 
                     self.pending_phis
                         .entry(current_block)
@@ -478,6 +641,7 @@ impl LirLoweringContext {
 
                 if let Some(d) = dest {
                     self.temp_map.insert(*d, dest_vreg.unwrap());
+                    self.temp_types.insert(*d, return_type.clone().into());
                 }
 
                 // Extract function name
@@ -514,6 +678,7 @@ impl LirLoweringContext {
                     let dest_vreg = func.alloc_vreg();
                     let gep_vreg = func.alloc_vreg();
                     self.temp_map.insert(*dest, dest_vreg);
+                    self.temp_types.insert(*dest, ty.clone().into());
 
                     // Calculate field index
                     // For Outcome<T, E>: discriminant=0, data=1
@@ -551,7 +716,9 @@ impl LirLoweringContext {
                         let stack_slot = *self.local_stack_slots.get(name)
                             .expect("Mutable local should have stack slot");
 
-                        self.temp_map.insert(*dest, func.alloc_vreg());
+                        let dest_vreg = func.alloc_vreg();
+                        self.temp_map.insert(*dest, dest_vreg);
+                        self.temp_types.insert(*dest, ty.clone().into());
 
                         Ok(vec![LirInstruction::Load {
                             dest: self.temp_map[dest],
@@ -562,12 +729,14 @@ impl LirLoweringContext {
                         // Immutable local: SSA rename (no instruction needed)
                         let src_vreg = self.get_or_alloc_vreg(src, func);
                         self.temp_map.insert(*dest, src_vreg);
+                        self.temp_types.insert(*dest, ty.clone().into());
                         Ok(vec![])
                     }
                 } else {
                     // Load from non-local (Temp, Param): SSA rename
                     let src_vreg = self.get_or_alloc_vreg(src, func);
                     self.temp_map.insert(*dest, src_vreg);
+                    self.temp_types.insert(*dest, ty.clone().into());
                     Ok(vec![])
                 }
             }
@@ -581,6 +750,10 @@ impl LirLoweringContext {
                         // Mutable local: generate actual Store to stack slot
                         let stack_slot = *self.local_stack_slots.get(name)
                             .expect("Mutable local should have stack slot");
+
+                        // Track that this src temp corresponds to this mutable local
+                        // This allows us to generate Load instructions when the temp is used later
+                        self.temp_to_local.insert(*src, name.clone());
 
                         // Update local_map for potential subsequent SSA uses
                         self.local_map.insert(name.clone(), src_vreg);
@@ -606,6 +779,60 @@ impl LirLoweringContext {
                 }
             }
 
+            MirInstruction::FieldAccess { dest, base, field_name: _, field_index, ty } => {
+                // Lower MIR FieldAccess to LIR GEP + Load
+                let base_vreg = self.temp_map.get(base).copied().unwrap_or_else(|| *base as VReg);
+                let dest_vreg = func.alloc_vreg();
+                let gep_vreg = func.alloc_vreg();
+
+                self.temp_map.insert(*dest, dest_vreg);
+                self.temp_types.insert(*dest, ty.clone().into());
+
+                // Generate GEP to get pointer to field, then Load the value
+                Ok(vec![
+                    LirInstruction::Gep {
+                        dest: gep_vreg,
+                        base: base_vreg,
+                        indices: vec![
+                            LirOperand::Imm(0),  // struct pointer
+                            LirOperand::Imm(*field_index as u64),  // field index
+                        ],
+                        ty: ty.clone().into(),
+                    },
+                    LirInstruction::Load {
+                        dest: dest_vreg,
+                        src: LirOperand::Reg(gep_vreg),
+                        ty: ty.clone().into(),
+                    },
+                ])
+            }
+
+            MirInstruction::PerformEffect { dest, effect_name: _, operation_name: _, args: _, return_type } => {
+                // Effect operations are currently stubbed
+                // In a full implementation, this would:
+                // 1. Pack the effect operation into a continuation
+                // 2. Call the effect handler
+                // 3. Resume with the result
+
+                if let Some(d) = dest {
+                    let dest_vreg = func.alloc_vreg();
+                    self.temp_map.insert(*d, dest_vreg);
+                    self.temp_types.insert(*d, return_type.clone().into());
+
+                    // For now, just return a placeholder value
+                    // This will be replaced by proper effect handler dispatch
+                    Ok(vec![
+                        LirInstruction::Const {
+                            dest: dest_vreg,
+                            value: LirConstant::Unit,
+                            ty: return_type.clone().into(),
+                        }
+                    ])
+                } else {
+                    Ok(vec![])
+                }
+            }
+
             _ => {
                 // Placeholder for other instructions
                 Ok(vec![])
@@ -622,6 +849,19 @@ impl LirLoweringContext {
                         zulon_mir::MirPlace::Temp(t) => {
                             // Look up the temp in temp_map to get the actual vreg
                             self.temp_map.get(t).copied()
+                        }
+                        zulon_mir::MirPlace::Local(name) => {
+                            // Check if this is a mutable local
+
+                            if self.mutable_locals.contains(name) {
+                                // Return the stack slot - will be loaded by inject_loads_before_returns
+                                let slot = self.local_stack_slots.get(name).copied();
+                                slot
+                            } else {
+                                // Immutable local - look up in local_map
+                                let imm = self.local_map.get(name).copied();
+                                imm
+                            }
                         }
                         _ => None,
                     }
@@ -644,9 +884,55 @@ impl LirLoweringContext {
                 })
             }
 
-            _ => {
-                // Placeholder for other terminators
+            MirTerminator::Switch { scrutinee, targets, default } => {
+                let scrutinee_vreg = self.temp_map.get(scrutinee).copied().unwrap_or(*scrutinee as VReg);
+
+                // Convert MIR constants to u64 values for LIR
+                let lir_targets = targets.iter().map(|(constant, block_id)| {
+                    let value = match constant {
+                        zulon_mir::MirConstant::Bool(b) => {
+                            if *b { 1 } else { 0 }
+                        }
+                        zulon_mir::MirConstant::Integer(i) => {
+                            *i as u64
+                        }
+                        zulon_mir::MirConstant::Char(c) => {
+                            *c as u64
+                        }
+                        _ => {
+                            // For other constants (float, string, unit), use 0 as default
+                            // These shouldn't appear in match patterns for now
+                            0
+                        }
+                    };
+                    (value, *block_id)
+                }).collect();
+
+                Ok(LirTerminator::Switch {
+                    scrutinee: scrutinee_vreg,
+                    targets: lir_targets,
+                    default: *default,
+                })
+            }
+
+            MirTerminator::Unreachable => {
                 Ok(LirTerminator::Unreachable)
+            }
+
+            MirTerminator::EffectCall {
+                effect_name: _effect_name,
+                operation_name: _operation_name,
+                args: _args,
+                return_type: _return_type,
+                resume_block,
+                dest: _dest,
+            } => {
+                // For now, just jump to the resume block
+                // This simulates a handler that immediately returns
+                // TODO: Implement proper handler block generation and dispatch
+                Ok(LirTerminator::Jump {
+                    target: *resume_block,
+                })
             }
         }
     }
@@ -693,10 +979,14 @@ impl LirLoweringContext {
     /// Get the type of a MirPlace
     fn get_place_type(&self, place: &zulon_mir::MirPlace) -> LirTy {
         match place {
-            zulon_mir::MirPlace::Temp(_) => {
-                // Look up the type from temp_types map if available
-                // For now, default to I32
-                LirTy::I32
+            zulon_mir::MirPlace::Temp(temp) => {
+                // Look up the type from temp_types map
+                if let Some(ty) = self.temp_types.get(temp) {
+                    ty.clone()
+                } else {
+                    // Default to I32 if type not found
+                    LirTy::I32
+                }
             }
             zulon_mir::MirPlace::Param(_name) => {
                 // TODO: Look up parameter type from function signature

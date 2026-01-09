@@ -40,6 +40,7 @@ pub mod env;
 pub mod error;
 pub mod checker;
 pub mod infer;
+pub mod diagnostic;
 
 pub use ty::{Ty, TyVarId, GenericParam, TraitBound, subst_ty};
 pub use env::Env;

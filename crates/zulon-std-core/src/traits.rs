@@ -75,6 +75,15 @@ pub enum Ordering {
     Greater,
 }
 
+/// Hash trait
+///
+/// Types that implement `Hash` can be hashed into a u64 value.
+/// This is used for HashMap keys and other hash-based data structures.
+pub trait Hash {
+    /// Compute a hash value for `self`
+    fn hash(&self) -> u64;
+}
+
 /// Copy trait
 ///
 /// Types that implement `Copy` are copied bitwise when assigned.
@@ -420,6 +429,123 @@ impl PartialEq for &'_ str {
 impl Clone for &'_ str {
     fn clone(&self) -> Self {
         *self
+    }
+}
+
+// ============================================================================
+// Hash Trait Implementations
+// ============================================================================
+
+impl Hash for i8 {
+    fn hash(&self) -> u64 {
+        *self as u64
+    }
+}
+
+impl Hash for i16 {
+    fn hash(&self) -> u64 {
+        *self as u64
+    }
+}
+
+impl Hash for i32 {
+    fn hash(&self) -> u64 {
+        *self as u64
+    }
+}
+
+impl Hash for i64 {
+    fn hash(&self) -> u64 {
+        *self as u64
+    }
+}
+
+impl Hash for isize {
+    fn hash(&self) -> u64 {
+        *self as u64
+    }
+}
+
+impl Hash for u8 {
+    fn hash(&self) -> u64 {
+        *self as u64
+    }
+}
+
+impl Hash for u16 {
+    fn hash(&self) -> u64 {
+        *self as u64
+    }
+}
+
+impl Hash for u32 {
+    fn hash(&self) -> u64 {
+        *self as u64
+    }
+}
+
+impl Hash for u64 {
+    fn hash(&self) -> u64 {
+        *self
+    }
+}
+
+impl Hash for usize {
+    fn hash(&self) -> u64 {
+        *self as u64
+    }
+}
+
+impl Hash for bool {
+    fn hash(&self) -> u64 {
+        if *self { 1 } else { 0 }
+    }
+}
+
+impl Hash for f32 {
+    fn hash(&self) -> u64 {
+        // Convert to bits and hash
+        self.to_bits().hash()
+    }
+}
+
+impl Hash for f64 {
+    fn hash(&self) -> u64 {
+        // Convert to bits and hash
+        self.to_bits().hash()
+    }
+}
+
+impl Hash for char {
+    fn hash(&self) -> u64 {
+        *self as u64
+    }
+}
+
+impl Hash for &str {
+    fn hash(&self) -> u64 {
+        // FNV-1a hash algorithm
+        const FNV_PRIME: u64 = 1099511628211;
+        const FNV_OFFSET: u64 = 14695981039346656037;
+
+        let mut hash = FNV_OFFSET;
+        for byte in self.as_bytes() {
+            hash ^= *byte as u64;
+            hash = hash.wrapping_mul(FNV_PRIME);
+        }
+        hash
+    }
+}
+
+impl Hash for String {
+    fn hash(&self) -> u64 {
+        self.as_str().hash()
+    }
+}
+
+impl<T: Hash> Hash for &T {
+    fn hash(&self) -> u64 {
+        (*self).hash()
     }
 }
 

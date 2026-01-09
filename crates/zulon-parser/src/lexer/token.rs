@@ -32,6 +32,7 @@ pub enum TokenKind {
     Return,
 
     // Declarations
+    Extern,
     Fn,
     Struct,
     Enum,

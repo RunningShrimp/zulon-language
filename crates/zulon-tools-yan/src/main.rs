@@ -8,8 +8,10 @@
 
 use clap::{Parser, Subcommand};
 use anyhow::{Result, Context};
+use std::path::Path;
 
 mod build;
+mod test_runner;
 
 #[derive(Parser)]
 #[command(name = "yan")]
@@ -80,6 +82,21 @@ enum Commands {
         #[arg(short, long)]
         package: Option<String>,
     },
+
+    /// Run tests
+    Test {
+        /// Test filter (run only tests matching pattern)
+        #[arg(short, long)]
+        filter: Option<String>,
+
+        /// Show test output
+        #[arg(short, long)]
+        verbose: bool,
+
+        /// Compile in release mode
+        #[arg(short, long)]
+        release: bool,
+    },
 }
 
 fn main() -> Result<()> {
@@ -120,6 +137,11 @@ fn main() -> Result<()> {
 
         Commands::Clean { all, package } => {
             clean_project(all, package.as_deref())?;
+            Ok(())
+        }
+
+        Commands::Test { filter, verbose, release } => {
+            run_tests(filter, verbose, release)?;
             Ok(())
         }
     }
@@ -364,4 +386,89 @@ fn clean_project(all: bool, package: Option<&str>) -> Result<()> {
     } else {
         Err(anyhow::anyhow!("Clean failed with exit code: {:?}", status.code()))
     }
+}
+
+/// Run tests
+fn run_tests(filter: Option<String>, verbose: bool, _release: bool) -> Result<()> {
+    println!("🧪 Running tests...");
+    if let Some(f) = &filter {
+        println!("   Filter: {}", f);
+    }
+    println!();
+
+    // Find all .test.json files in the current directory and subdirectories
+    let mut test_files = Vec::new();
+    find_test_files(Path::new("."), &mut test_files)?;
+
+    if test_files.is_empty() {
+        println!("No test metadata files found (.test.json)");
+        println!("Make sure to compile your test files first:");
+        println!("  cargo run --package zulon-compiler -- your_test.zl");
+        return Ok(());
+    }
+
+    // Load test metadata
+    let mut runner = test_runner::TestRunner::new();
+    let mut total_loaded = 0;
+
+    for test_file in &test_files {
+        match runner.load_from_json(test_file) {
+            Ok(count) => {
+                total_loaded += count;
+                if verbose {
+                    println!("Loaded {} tests from {}", count, test_file.display());
+                }
+            }
+            Err(e) => {
+                eprintln!("Error loading {}: {}", test_file.display(), e);
+            }
+        }
+    }
+
+    if total_loaded == 0 {
+        println!("No tests found");
+        return Ok(());
+    }
+
+    println!("Running {} tests...\n", total_loaded);
+
+    // Run all tests
+    let summary = runner.run();
+
+    // Exit with appropriate code
+    if summary.is_success() {
+        Ok(())
+    } else {
+        Err(anyhow::anyhow!("Some tests failed"))
+    }
+}
+
+/// Find all .test.json files in a directory recursively
+fn find_test_files(dir: &Path, results: &mut Vec<std::path::PathBuf>) -> Result<()> {
+    let entries = std::fs::read_dir(dir)
+        .with_context(|| format!("Failed to read directory: {}", dir.display()))?;
+
+    for entry in entries {
+        let entry = entry?;
+        let path = entry.path();
+
+        if path.is_dir() {
+            // Skip hidden directories and common build directories
+            let file_name = path.file_name().and_then(|n| n.to_str()).unwrap_or("");
+            if file_name.starts_with('.') || file_name == "target" || file_name == "node_modules" {
+                continue;
+            }
+            find_test_files(&path, results)?;
+        } else if path.extension().and_then(|s| s.to_str()) == Some("json") {
+            if let Some(file_name) = path.file_name() {
+                if let Some(name_str) = file_name.to_str() {
+                    if name_str.ends_with(".test.json") {
+                        results.push(path);
+                    }
+                }
+            }
+        }
+    }
+
+    Ok(())
 }

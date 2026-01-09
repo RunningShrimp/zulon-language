@@ -182,7 +182,12 @@ impl<W: Write> CodeGenerator<W> {
 
         let mut sources = phi.sources.iter().peekable();
         while let Some((reg, block_id)) = sources.next() {
-            write!(self.writer, "[ %v{}, %block{} ]", reg, block_id).unwrap();
+            // Special case: vreg 0 represents undef (no value from this predecessor)
+            if *reg == 0 {
+                write!(self.writer, "[ undef, %block{} ]", block_id).unwrap();
+            } else {
+                write!(self.writer, "[ %v{}, %block{} ]", reg, block_id).unwrap();
+            }
             if sources.peek().is_some() {
                 write!(self.writer, ", ").unwrap();
             }
@@ -535,18 +540,31 @@ impl<W: Write> CodeGenerator<W> {
         dest: zulon_lir::VReg,
         base: zulon_lir::VReg,
         indices: &[LirOperand],
-        _ty: &zulon_lir::LirTy,
+        ty: &zulon_lir::LirTy,
     ) -> Result<()> {
         let indices_str: Vec<String> = indices
             .iter()
             .map(|op| self.operand_to_llvm(op))
             .collect::<Result<Vec<_>>>()?;
 
+        // Convert LIR type to LLVM type string
+        use crate::ty::LlvmType;
+        let llvm_type = LlvmType::from(ty.clone());
+        let type_str = llvm_type.to_llvm_ir();
+
+        // Use ptr for the base pointer type (modern LLVM style)
+        let base_type = match ty {
+            zulon_lir::LirTy::Struct { .. } => "ptr".to_string(),
+            _ => format!("{}*", type_str),
+        };
+
         writeln!(
             self.writer,
-            "{}  %v{} = getelementptr i8, i8* %v{}, {}",
+            "{}  %v{} = getelementptr {}, {} %v{}, {}",
             "  ".repeat(self.indent),
             dest,
+            type_str,
+            base_type,
             base,
             indices_str.join(", ")
         ).unwrap();

@@ -207,6 +207,11 @@ impl EffectChecker {
             MirTerminator::Switch { scrutinee: _, targets: _, default: _ } => {
                 // Switch is pure (effects are in the blocks)
             }
+
+            MirTerminator::EffectCall { .. } => {
+                // Effect calls will be transformed to regular calls later
+                // For now, treat them as having no effect
+            }
         }
 
         Ok(())

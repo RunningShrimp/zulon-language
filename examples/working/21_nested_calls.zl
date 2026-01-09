@@ -1,0 +1,48 @@
+// 21_nested_calls.zl - Nested function calls
+// Shows function call nesting and evaluation order
+
+extern fn printf(s: &u8, ...) -> i32;
+
+fn triple(x: i32) -> i32 {
+    x * 3
+}
+
+fn square(x: i32) -> i32 {
+    x * x
+}
+
+fn add(a: i32, b: i32) -> i32 {
+    a + b
+}
+
+fn main() -> i32 {
+    printf("ZULON Nested Calls\n");
+    printf("===================\n");
+
+    // Simple nested call
+    let result1 = square(5);
+    printf("square(5) computed\n");
+
+    // Nested calls in expression
+    let result2 = add(square(2), triple(3));
+    printf("add(square(2), triple(3)) computed\n");
+
+    // Multiple nesting levels
+    let result3 = square(square(2));
+    printf("square(square(2)) computed\n");
+
+    // Complex nested expression
+    let result4 = add(
+        triple(1),
+        add(
+            square(2),
+            triple(3)
+        )
+    );
+    printf("Complex nested expression computed\n");
+
+    printf("===================\n");
+    printf("All nested calls work!\n");
+
+    0
+}

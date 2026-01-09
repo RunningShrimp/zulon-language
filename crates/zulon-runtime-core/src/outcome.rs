@@ -672,6 +672,138 @@ pub fn panic(msg: &str) -> ! {
 }
 
 // ============================================================================
+// ZULON Builtins - C ABI for LLVM IR
+// ============================================================================
+
+/// ZULON builtin panic function - C ABI for calling from LLVM IR.
+///
+/// This function is called by the panic! macro expansion and provides
+/// runtime panic support for ZULON programs.
+///
+/// # Safety
+///
+/// This function expects a valid C string pointer (null-terminated).
+/// It is only meant to be called from generated LLVM IR code.
+///
+/// # ABI
+///
+/// - Uses C calling convention
+/// - Symbol name is not mangled (#[no_mangle])
+/// - Takes a pointer to a null-terminated string
+/// - Never returns (diverges)
+#[no_mangle]
+pub extern "C" fn __zulon_builtin_panic(message: *const u8) -> ! {
+    unsafe {
+        if message.is_null() {
+            eprintln!("Panic: <null message>");
+        } else {
+            // Convert C string to Rust string
+            let len = std::ffi::CStr::from_ptr(message as *const i8)
+                .to_str()
+                .map(|s| s.len())
+                .unwrap_or(0);
+
+            let slice = std::slice::from_raw_parts(message, len);
+            let msg_str = std::str::from_utf8_unchecked(slice);
+            eprintln!("Panic: {}", msg_str);
+        }
+    }
+    std::process::exit(1);
+}
+
+/// Formatted panic function for assert macros
+///
+/// Takes a format string and multiple arguments.
+/// For MVP, this simplifies to just concatenating all parts with spaces.
+///
+/// # Safety
+///
+/// - Uses C calling convention
+/// - Symbol name is not mangled (#[no_mangle])
+/// - Takes variable arguments: format string and args
+/// - Never returns (diverges)
+#[no_mangle]
+pub extern "C" fn __zulon_builtin_panic_formatted(
+    format: *const u8,
+    arg1: *const u8,
+    arg2: *const u8,
+    arg3: *const u8,
+    arg4: *const u8,
+) -> ! {
+    unsafe {
+        eprint!("Panic: ");
+
+        // Print format string
+        if !format.is_null() {
+            let len = std::ffi::CStr::from_ptr(format as *const i8)
+                .to_str()
+                .map(|s| s.len())
+                .unwrap_or(0);
+            let slice = std::slice::from_raw_parts(format, len);
+            let fmt_str = std::str::from_utf8_unchecked(slice);
+            eprint!("{}", fmt_str);
+        }
+
+        // Print additional arguments if present
+        let args = [arg1, arg2, arg3, arg4];
+        for arg in args.iter() {
+            if !arg.is_null() {
+                let len = std::ffi::CStr::from_ptr(*arg as *const i8)
+                    .to_str()
+                    .map(|s| s.len())
+                    .unwrap_or(0);
+                let slice = std::slice::from_raw_parts(*arg, len);
+                let arg_str = std::str::from_utf8_unchecked(slice);
+                eprint!(" {}", arg_str);
+            }
+        }
+
+        eprintln!();
+    }
+    std::process::exit(1);
+}
+
+/// Get current time in milliseconds
+///
+/// Returns the current time as milliseconds since the Unix epoch.
+/// Used for performance benchmarking and timing measurements.
+///
+/// # Safety
+///
+/// - Uses C calling convention
+/// - Symbol name is not mangled (#[no_mangle])
+/// - Returns time as i32 (milliseconds)
+///
+/// # Note
+///
+/// On platforms where `gettimeofday` is not available, this will
+/// fall back to a simple implementation that may not be accurate.
+#[no_mangle]
+pub extern "C" fn __zulon_builtin_current_time_ms() -> i32 {
+    use std::time::SystemTime;
+    use std::time::UNIX_EPOCH;
+    use std::sync::atomic::{AtomicU64, Ordering};
+
+    // Use a static variable to store the start time on first call
+    static START_TIME: AtomicU64 = AtomicU64::new(0);
+
+    let now = match SystemTime::now().duration_since(UNIX_EPOCH) {
+        Ok(duration) => duration.as_millis() as u64,  // Convert u128 to u64
+        Err(_) => return 0,
+    };
+
+    // Initialize start time on first call
+    let start = START_TIME.load(Ordering::Relaxed);
+    if start == 0 {
+        START_TIME.store(now, Ordering::Relaxed);
+        return 0;
+    }
+
+    // Return elapsed time since first call (as i32, fits in ~24 days)
+    (now - start) as i32
+}
+
+// ============================================================================
 // From Trait Implementation for Error Propagation
 // ============================================================================
 

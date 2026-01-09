@@ -23,6 +23,9 @@ pub struct TypeChecker {
     /// Current function error type (for throw and ? statements)
     current_error_type: Option<Ty>,
 
+    /// Current active effects (for effect operations)
+    current_effects: Vec<String>,
+
     /// Type substitution from inference
     subst: Substitution,
 }
@@ -34,6 +37,7 @@ impl TypeChecker {
             env: Env::with_builtins(),
             current_return_type: None,
             current_error_type: None,
+            current_effects: Vec::new(),
             subst: Substitution::new(),
         }
     }
@@ -50,6 +54,7 @@ impl TypeChecker {
     fn check_item(&mut self, item: &Item) -> Result<()> {
         match &item.kind {
             ItemKind::Function(func) => self.check_function(func),
+            ItemKind::ExternFunction(func) => self.check_extern_function(func),
             ItemKind::Struct(struct_def) => self.check_struct(struct_def),
             ItemKind::Enum(enum_def) => self.check_enum(enum_def),
             ItemKind::Trait(trait_def) => self.check_trait(trait_def),
@@ -109,8 +114,28 @@ impl TypeChecker {
         // Set current return type and error type
         let prev_return_type = self.current_return_type.take();
         let prev_error_type = self.current_error_type.take();
+        let prev_effects = self.current_effects.clone();
         self.current_return_type = Some(return_type.clone());
         self.current_error_type = error_type.clone();
+
+        // Process effects from function signature (e.g., `-> i32 | Log`)
+        for effect_ty in &func.effects {
+            let (effect_name, span) = match &effect_ty {
+                Type::Simple(ident) => (ident.name.clone(), ident.span.clone()),
+                _ => continue, // Skip complex types for now
+            };
+
+            // Verify that the effect exists in the environment
+            if self.env.lookup_effect(&effect_name).is_some() {
+                // Add to current effects
+                self.current_effects.push(effect_name);
+            } else {
+                return Err(TypeError::UndefinedEffect {
+                    name: effect_name,
+                    span,
+                });
+            }
+        }
 
         // Check function body
         self.check_block(&func.body)?;
@@ -118,9 +143,36 @@ impl TypeChecker {
         // Restore return type and error type
         self.current_return_type = prev_return_type;
         self.current_error_type = prev_error_type;
+        self.current_effects = prev_effects;
 
         // Exit function scope - swap back to parent environment
         std::mem::swap(&mut self.env, &mut func_env);
+
+        Ok(())
+    }
+
+    /// Type check an extern function declaration
+    fn check_extern_function(&mut self, func: &ast::Function) -> Result<()> {
+        // Similar to regular function, but no body to check
+        let param_types: Vec<Ty> = func.params.iter()
+            .map(|p| {
+                p.type_annotation.as_ref()
+                    .map(|ty| self.ast_type_to_ty(ty))
+                    .unwrap_or(Ty::Unit)
+            })
+            .collect();
+
+        let return_type = func.return_type.as_ref()
+            .map(|ty| self.ast_type_to_ty(ty))
+            .unwrap_or(Ty::Unit);
+
+        let func_ty = Ty::Function {
+            params: param_types.clone(),
+            return_type: Box::new(return_type.clone()),
+        };
+
+        // Insert extern function into environment
+        self.env.insert_function(func.name.name.clone(), func_ty);
 
         Ok(())
     }
@@ -364,6 +416,23 @@ impl TypeChecker {
             ast::ExpressionKind::AssignOp(op, target, value) => {
                 self.check_assign_op(op, target, value)
             }
+            ast::ExpressionKind::MacroInvocation { macro_name, args, .. } => {
+                // For builtin macros, check the arguments
+                match macro_name.name.as_str() {
+                    "assert_eq" | "assert" => {
+                        // Type check macro arguments
+                        for arg in args {
+                            self.check_expression(arg)?;
+                        }
+                        // Macros expand to unit type (for now)
+                        Ok(Ty::Unit)
+                    }
+                    _ => {
+                        // Unknown macro - assume unit type for now
+                        Ok(Ty::Unit)
+                    }
+                }
+            }
             _ => {
                 // TODO: Implement remaining expression kinds
                 Ok(Ty::Unit)
@@ -376,7 +445,11 @@ impl TypeChecker {
         match literal {
             ast::Literal::Int(_) => Ok(Ty::I32),  // Default to i32
             ast::Literal::Float(_) => Ok(Ty::F64),
-            ast::Literal::String(_) => Ok(Ty::String),
+            // String literals are pointers to u8 (for C compatibility)
+            ast::Literal::String(_) => Ok(Ty::Ref {
+                inner: Box::new(Ty::U8),
+                mutable: false,
+            }),
             ast::Literal::Char(_) => Ok(Ty::Char),
             ast::Literal::Bool(_) => Ok(Ty::Bool),
             ast::Literal::Null => Ok(Ty::Unit),
@@ -405,6 +478,19 @@ impl TypeChecker {
         // Look up as type
         if let Some(ty) = self.env.lookup_type_def(name) {
             return Ok(ty);
+        }
+
+        // Look up as effect operation in current effects
+        for effect_name in &self.current_effects {
+            if let Some(effect) = self.env.lookup_effect(effect_name) {
+                if let Some(op) = effect.operations.iter().find(|op| &op.name == name) {
+                    // Found the effect operation - return its type
+                    return Ok(Ty::Function {
+                        params: op.param_types.clone(),
+                        return_type: Box::new(op.return_type.clone()),
+                    });
+                }
+            }
         }
 
         Err(TypeError::UndefinedVariable {
@@ -848,6 +934,11 @@ impl TypeChecker {
     fn ast_type_to_ty(&self, ty: &Type) -> Ty {
         match ty {
             Type::Simple(ident) => {
+                // Check if this is an effect type (by looking up in effects)
+                if self.env.lookup_effect(&ident.name).is_some() {
+                    return Ty::Effect(ident.name.clone());
+                }
+
                 // Look up type in environment
                 self.env.lookup_type_def(&ident.name)
                     .unwrap_or(Ty::TyVar(self.env.peek_next_ty_var()))

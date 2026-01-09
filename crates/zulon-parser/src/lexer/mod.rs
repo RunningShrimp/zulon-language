@@ -80,7 +80,16 @@ impl<'a> Lexer<'a> {
         let kind = match c {
             // Identifiers and keywords
             'a'..='z' | 'A'..='Z' => self.lex_identifier_or_keyword(c),
-            '_' => TokenKind::Underscore,
+            '_' => {
+                // Check if underscore is followed by more identifier characters
+                // If so, it's the start of an identifier, not a standalone underscore
+                match self.chars.peek() {
+                    Some(&next) if is_identifier_continue(next) => {
+                        self.lex_identifier_or_keyword(c)
+                    }
+                    _ => TokenKind::Underscore,
+                }
+            }
 
             // Numbers
             '0'..='9' => self.lex_number(c),
@@ -163,6 +172,7 @@ impl<'a> Lexer<'a> {
             "return" => TokenKind::Return,
 
             // Declarations
+            "extern" => TokenKind::Extern,
             "fn" => TokenKind::Fn,
             "struct" => TokenKind::Struct,
             "enum" => TokenKind::Enum,

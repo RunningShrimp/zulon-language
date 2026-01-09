@@ -3,66 +3,141 @@
 
 //! Hash map implementation (HashMap<K, V>)
 
-use crate::traits::{Clone, PartialEq};
+use crate::traits::{Clone, PartialEq, Hash};
 use crate::Vec;
 use crate::Optional;
 
+/// Default initial capacity for HashMap
+const DEFAULT_CAPACITY: usize = 16;
+
+/// Load factor threshold for resizing (3/4 = 75%)
+const LOAD_FACTOR_NUMERATOR: usize = 3;
+const LOAD_FACTOR_DENOMINATOR: usize = 4;
+
 /// A hash map based on chaining with Vec buckets
-/// Simplified implementation for educational purposes
+/// O(1) average case for insert, get, and remove operations
 #[derive(Debug)]
 pub struct HashMap<K, V> {
-    entries: Vec<(K, V)>,
+    buckets: Vec<Vec<(K, V)>>,
+    capacity: usize,
+    length: usize,
 }
 
 impl<K, V> HashMap<K, V> {
     pub fn new() -> Self {
+        let mut buckets = Vec::new();
+        for _ in 0..DEFAULT_CAPACITY {
+            buckets.push(Vec::new());
+        }
+
         HashMap {
-            entries: Vec::new(),
+            buckets,
+            capacity: DEFAULT_CAPACITY,
+            length: 0,
         }
     }
 
     pub fn with_capacity(capacity: usize) -> Self {
+        let cap = capacity.max(1);
+        let mut buckets = Vec::new();
+        for _ in 0..cap {
+            buckets.push(Vec::new());
+        }
+
         HashMap {
-            entries: Vec::with_capacity(capacity),
+            buckets,
+            capacity: cap,
+            length: 0,
         }
     }
 
     pub fn len(&self) -> usize {
-        self.entries.len()
+        self.length
     }
 
     pub fn is_empty(&self) -> bool {
-        self.entries.is_empty()
+        self.length == 0
     }
 
     pub fn capacity(&self) -> usize {
-        self.entries.capacity()
+        self.capacity
+    }
+
+    /// Compute bucket index for a key
+    fn hash_key(&self, key: &K) -> usize
+    where
+        K: Hash,
+    {
+        let hash = key.hash();
+        (hash as usize) % self.capacity
+    }
+
+    /// Resize the HashMap when load factor is exceeded
+    fn resize(&mut self, new_capacity: usize)
+    where
+        K: Hash + Clone + PartialEq,
+        V: Clone,
+    {
+        let old_buckets = std::mem::replace(&mut self.buckets, Vec::new());
+
+        // Create new buckets
+        let mut new_buckets = Vec::new();
+        for _ in 0..new_capacity {
+            new_buckets.push(Vec::new());
+        }
+
+        self.capacity = new_capacity;
+        self.buckets = new_buckets;
+        self.length = 0;
+
+        // Rehash all entries into new buckets
+        let old_slice = old_buckets.as_slice();
+        for i in 0..old_slice.len() {
+            let bucket = &old_slice[i];
+            let bucket_slice = bucket.as_slice();
+            for j in 0..bucket_slice.len() {
+                let (key, value) = bucket_slice[j].clone();
+                self.insert(key, value);
+            }
+        }
     }
 
     pub fn insert(&mut self, key: K, value: V)
     where
-        K: PartialEq + Clone,
+        K: Hash + PartialEq + Clone,
         V: Clone,
     {
-        // Check if key already exists
-        for i in 0..self.entries.len() {
-            if self.entries.as_slice()[i].0.eq(&key) {
+        // Check if we need to resize
+        if self.length * LOAD_FACTOR_DENOMINATOR > self.capacity * LOAD_FACTOR_NUMERATOR {
+            self.resize(self.capacity * 2);
+        }
+
+        let bucket_index = self.hash_key(&key);
+        let bucket = &mut self.buckets.as_mut_slice()[bucket_index];
+
+        // Check if key already exists in this bucket
+        for i in 0..bucket.len() {
+            if bucket.as_slice()[i].0.eq(&key) {
                 // Update existing entry
-                self.entries.as_mut_slice()[i] = (key, value);
+                bucket.as_mut_slice()[i] = (key, value);
                 return;
             }
         }
 
         // Insert new entry
-        self.entries.push((key, value));
+        bucket.push((key, value));
+        self.length += 1;
     }
 
     pub fn get(&self, key: &K) -> Optional<&V>
     where
-        K: PartialEq,
+        K: Hash + PartialEq,
     {
-        for i in 0..self.entries.len() {
-            let entry = &self.entries.as_slice()[i];
+        let bucket_index = self.hash_key(key);
+        let bucket = &self.buckets.as_slice()[bucket_index];
+
+        for i in 0..bucket.len() {
+            let entry = &bucket.as_slice()[i];
             if entry.0.eq(key) {
                 return Optional::Some(&entry.1);
             }
@@ -73,12 +148,14 @@ impl<K, V> HashMap<K, V> {
 
     pub fn get_mut(&mut self, key: &K) -> Optional<&mut V>
     where
-        K: PartialEq,
+        K: Hash + PartialEq,
     {
-        for i in 0..self.entries.len() {
-            let entry = &self.entries.as_slice()[i];
-            if entry.0.eq(key) {
-                return Optional::Some(&mut self.entries.as_mut_slice()[i].1);
+        let bucket_index = self.hash_key(key);
+        let bucket = &mut self.buckets.as_mut_slice()[bucket_index];
+
+        for i in 0..bucket.len() {
+            if bucket.as_slice()[i].0.eq(key) {
+                return Optional::Some(&mut bucket.as_mut_slice()[i].1);
             }
         }
 
@@ -87,11 +164,15 @@ impl<K, V> HashMap<K, V> {
 
     pub fn remove(&mut self, key: &K) -> Optional<V>
     where
-        K: PartialEq,
+        K: Hash + PartialEq,
     {
-        for i in 0..self.entries.len() {
-            if self.entries.as_slice()[i].0.eq(key) {
-                let entry = self.entries.remove(i);
+        let bucket_index = self.hash_key(key);
+        let bucket = &mut self.buckets.as_mut_slice()[bucket_index];
+
+        for i in 0..bucket.len() {
+            if bucket.as_slice()[i].0.eq(key) {
+                let entry = bucket.remove(i);
+                self.length -= 1;
                 return Optional::Some(entry.1);
             }
         }
@@ -101,7 +182,7 @@ impl<K, V> HashMap<K, V> {
 
     pub fn contains_key(&self, key: &K) -> bool
     where
-        K: PartialEq,
+        K: Hash + PartialEq,
     {
         match self.get(key) {
             Optional::Some(_) => true,
@@ -110,21 +191,28 @@ impl<K, V> HashMap<K, V> {
     }
 
     pub fn clear(&mut self) {
-        self.entries.clear();
+        let buckets = &mut self.buckets;
+        for i in 0..buckets.as_slice().len() {
+            buckets.as_mut_slice()[i].clear();
+        }
+        self.length = 0;
     }
 
     pub fn iter(&self) -> Iter<'_, K, V> {
         Iter {
             map: self,
-            index: 0,
+            bucket_index: 0,
+            entry_index: 0,
         }
     }
 }
 
-impl<K: Clone + PartialEq, V: Clone> Clone for HashMap<K, V> {
+impl<K: Clone, V: Clone> Clone for HashMap<K, V> {
     fn clone(&self) -> Self {
         HashMap {
-            entries: self.entries.clone(),
+            buckets: self.buckets.clone(),
+            capacity: self.capacity,
+            length: self.length,
         }
     }
 }
@@ -137,82 +225,29 @@ impl<K, V> Drop for HashMap<K, V> {
 
 pub struct Iter<'a, K, V> {
     map: &'a HashMap<K, V>,
-    index: usize,
+    bucket_index: usize,
+    entry_index: usize,
 }
 
 impl<'a, K, V> Iter<'a, K, V> {
     pub fn next(&mut self) -> Optional<(&'a K, &'a V)> {
-        if self.index < self.map.len() {
-            let entry = &self.map.entries.as_slice()[self.index];
-            self.index += 1;
-            Optional::Some((&entry.0, &entry.1))
-        } else {
-            Optional::None
+        // Find the next non-empty bucket
+        while self.bucket_index < self.map.capacity {
+            let buckets_slice = self.map.buckets.as_slice();
+            let bucket = &buckets_slice[self.bucket_index];
+
+            if self.entry_index < bucket.len() {
+                let entry = &bucket.as_slice()[self.entry_index];
+                self.entry_index += 1;
+                return Optional::Some((&entry.0, &entry.1));
+            }
+
+            // Move to next bucket
+            self.bucket_index += 1;
+            self.entry_index = 0;
         }
-    }
-}
 
-/// Hash trait for types that can be hashed
-/// Note: In this simplified version, we use linear search instead of hashing
-pub trait Hash {
-    fn hash(&self) -> usize;
-}
-
-// Implement Hash for primitive types
-impl Hash for i32 {
-    fn hash(&self) -> usize {
-        *self as usize
-    }
-}
-
-impl Hash for i64 {
-    fn hash(&self) -> usize {
-        *self as usize
-    }
-}
-
-impl Hash for u32 {
-    fn hash(&self) -> usize {
-        *self as usize
-    }
-}
-
-impl Hash for u64 {
-    fn hash(&self) -> usize {
-        *self as usize
-    }
-}
-
-impl Hash for usize {
-    fn hash(&self) -> usize {
-        *self
-    }
-}
-
-impl Hash for bool {
-    fn hash(&self) -> usize {
-        if *self { 1 } else { 0 }
-    }
-}
-
-impl Hash for char {
-    fn hash(&self) -> usize {
-        *self as usize
-    }
-}
-
-// Implement Hash for &str using FNV-1a
-impl Hash for &str {
-    fn hash(&self) -> usize {
-        const FNV_PRIME: usize = 1099511628211;
-        const FNV_OFFSET: usize = 14695981039346656037;
-
-        let mut hash = FNV_OFFSET;
-        for byte in self.bytes() {
-            hash ^= byte as usize;
-            hash = hash.wrapping_mul(FNV_PRIME);
-        }
-        hash
+        Optional::None
     }
 }
 

@@ -270,6 +270,11 @@ impl From<zulon_typeck::Ty> for HirTy {
             zulon_typeck::Ty::TyVar(id) => {
                 panic!("Type variable ?{} not resolved during lowering", id)
             }
+
+            // Effects should be handled at type checking time
+            zulon_typeck::Ty::Effect(name) => {
+                panic!("Effect '{}' not resolved during lowering", name)
+            }
         }
     }
 }

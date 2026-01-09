@@ -1,0 +1,48 @@
+// 24_expression_statements.zl - Expression vs statement
+// Shows the difference between expressions and statements
+
+extern fn printf(s: &u8, ...) -> i32;
+
+fn returns_value() -> i32 {
+    42
+}
+
+fn returns_nothing() -> i32 {
+    printf("Just a side effect\n");
+    0
+}
+
+fn main() -> i32 {
+    printf("ZULON Expressions vs Statements\n");
+    printf("===============================\n");
+
+    // Expression used as statement
+    returns_value();
+    printf("Expression as statement\n");
+
+    // Expression in variable binding
+    let value = returns_value();
+    printf("Expression in binding\n");
+
+    // Statement (no return value used)
+    returns_nothing();
+    printf("Statement executed\n");
+
+    // Expression in if condition
+    if returns_value() > 0 {
+        printf("Expression in condition\n");
+    }
+
+    // Block as expression
+    let computed = {
+        let x: i32 = 10;
+        let y: i32 = 20;
+        x + y
+    };
+    printf("Block expression computed\n");
+
+    printf("===============================\n");
+    printf("All expression/statement features work!\n");
+
+    0
+}

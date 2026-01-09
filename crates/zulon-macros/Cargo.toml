@@ -1,0 +1,16 @@
+[package]
+name = "zulon-macros"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+
+description = "Macro system for ZULON programming language"
+
+[dependencies]
+zulon-parser = { path = "../zulon-parser" }
+thiserror = "2.0"
+
+[dev-dependencies]

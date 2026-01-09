@@ -1,0 +1,4 @@
+// simple_test.zl - 最简单的ZULON程序
+fn main() {
+    println("Hello, ZULON!")
+}

@@ -1,0 +1,26 @@
+// Effect System Demo
+
+// Define a simple Log effect
+effect Log {
+    log();
+}
+
+// Function that uses the Log effect
+fn process_data() -> i32 | Log {
+    log();
+    let result = 42;
+    log();
+    result
+}
+
+// Main function with effect handler
+fn main() -> i32 {
+    try {
+        let value = process_data();
+        value
+    } with Log {
+        log() {
+            value
+        }
+    }
+}

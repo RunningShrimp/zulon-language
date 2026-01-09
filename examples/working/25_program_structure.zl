@@ -1,0 +1,43 @@
+// 25_program_structure.zl - Complete program structure
+// Shows a well-structured ZULON program
+
+extern fn printf(s: &u8, ...) -> i32;
+
+// Helper function
+fn greet(name: &u8) -> i32 {
+    printf("Hello, ");
+    printf("Guest");
+    printf("!\n");
+    0
+}
+
+// Computation function
+fn calculate() -> i32 {
+    let x: i32 = 10;
+    let y: i32 = 20;
+    let z: i32 = 30;
+    x + y + z
+}
+
+// Main function
+fn main() -> i32 {
+    printf("ZULON Program Structure\n");
+    printf("=======================\n");
+
+    // Call helper
+    greet("Guest");
+
+    // Perform computation
+    let result = calculate();
+    printf("Calculation complete\n");
+
+    // Show structure
+    printf("Functions: 3\n");
+    printf("Structs: 0\n");
+    printf("Extern functions: 1\n");
+
+    printf("=======================\n");
+    printf("Program complete!\n");
+
+    0
+}

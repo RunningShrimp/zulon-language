@@ -32,6 +32,12 @@ pub struct MirFunction {
     /// Entry block ID
     pub entry_block: MirNodeId,
 
+    /// Effect handlers (for try...with blocks)
+    pub handlers: Vec<MirEffectHandler>,
+
+    /// Effects declared by this function (e.g., ["Log"] for fn() -> i32 | Log)
+    pub effects: Vec<String>,
+
     /// Next available node ID
     pub next_id: MirNodeId,
 
@@ -49,6 +55,8 @@ impl MirFunction {
             return_type,
             blocks: HashMap::new(),
             entry_block,
+            handlers: Vec::new(),
+            effects: Vec::new(),
             next_id: 1,
             next_temp: 0,
         };
@@ -184,10 +192,28 @@ pub enum MirInstruction {
         ty: MirTy,
     },
 
+    /// Field access (get element pointer)
+    FieldAccess {
+        dest: TempVar,
+        base: TempVar,
+        field_name: String,
+        field_index: usize,
+        ty: MirTy,
+    },
+
     /// Drop a value (run destructor if needed)
     Drop {
         place: MirPlace,
         ty: MirTy,
+    },
+
+    /// Perform an effect operation (to be handled by try...with blocks)
+    PerformEffect {
+        dest: Option<TempVar>,  // None if effect operation returns unit
+        effect_name: String,
+        operation_name: String,
+        args: Vec<MirPlace>,
+        return_type: MirTy,
     },
 }
 
@@ -278,9 +304,34 @@ pub enum MirTerminator {
         default: MirNodeId,
     },
 
+    /// Effect operation call (with handler dispatch)
+    EffectCall {
+        effect_name: String,
+        operation_name: String,
+        args: Vec<MirPlace>,
+        return_type: MirTy,
+        /// Where to resume after handler completes (for deep handlers)
+        resume_block: MirNodeId,
+        /// Destination for return value (None if operation returns unit)
+        dest: Option<TempVar>,
+    },
+
     /// Unreachable (for ! type)
     Unreachable,
 }
+
+/// Effect handler in MIR
+#[derive(Debug, Clone)]
+pub struct MirEffectHandler {
+    /// Effect name
+    pub effect_name: String,
+
+    /// Handler methods (operation implementations)
+    /// Maps operation name to (handler_block_id, resume_block_id)
+    pub methods: std::collections::HashMap<String, (MirNodeId, MirNodeId)>,
+}
+
+/// MIR function (compilation unit)
 
 /// MIR body (collection of functions)
 #[derive(Debug, Clone)]

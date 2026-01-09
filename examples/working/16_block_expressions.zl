@@ -1,0 +1,45 @@
+// 16_block_expressions.zl - Block expressions demonstration
+// Shows how blocks can be expressions and return values
+
+extern fn printf(s: &u8, ...) -> i32;
+
+fn main() -> i32 {
+    printf("ZULON Block Expressions\n");
+    printf("========================\n");
+
+    // Block as expression returning a value
+    let result = {
+        let x: i32 = 10;
+        let y: i32 = 20;
+        x + y  // Last expression is returned
+    };
+
+    printf("Block expression result computed\n");
+
+    // Nested blocks
+    let nested = {
+        let inner = {
+            let val: i32 = 5;
+            val * 2
+        };
+        inner + 10
+    };
+
+    printf("Nested block result computed\n");
+
+    // Block in if expression
+    let value = if true {
+        let x: i32 = 100;
+        x
+    } else {
+        let y: i32 = 200;
+        y
+    };
+
+    printf("If block expression works!\n");
+
+    printf("========================\n");
+    printf("All block expressions work!\n");
+
+    0
+}
