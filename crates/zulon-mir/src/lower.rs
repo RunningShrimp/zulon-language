@@ -21,12 +21,22 @@ struct LoopContext {
     head_block: MirNodeId,
 }
 
+/// Defer context for tracking deferred statements
+struct DeferContext {
+    /// Block ID where the defer was registered
+    block_id: MirNodeId,
+    /// The deferred statement
+    statement: HirStatement,
+}
+
 /// Context for lowering HIR to MIR
 pub struct MirLoweringContext {
     /// Struct definitions: name -> (field_names, field_indices)
     struct_defs: std::collections::HashMap<String, Vec<String>>,
     /// Loop context stack (for nested loops)
     loop_stack: Vec<LoopContext>,
+    /// Defer statement stack (for cleanup blocks)
+    defer_stack: Vec<DeferContext>,
 }
 
 impl MirLoweringContext {
@@ -35,6 +45,7 @@ impl MirLoweringContext {
         MirLoweringContext {
             struct_defs: std::collections::HashMap::new(),
             loop_stack: Vec::new(),
+            defer_stack: Vec::new(),
         }
     }
 
@@ -157,6 +168,22 @@ impl MirLoweringContext {
             None
         };
 
+        // Execute deferred statements in reverse order (LIFO)
+        // For MVP: Execute at block end
+        // Limitation: Doesn't handle early returns, errors, or nested blocks
+        let defers_to_execute: Vec<HirStatement> = self.defer_stack.iter()
+            .filter(|d| d.block_id == entry_block)
+            .rev()
+            .map(|d| d.statement.clone())
+            .collect();
+
+        for defer_stmt in defers_to_execute {
+            // Lower the deferred statement
+            // Note: We use current_block which may have changed during the block
+            // This is a simplification - proper implementation needs cleanup blocks
+            drop(self.lower_statement(func, &mut current_block, &defer_stmt));
+        }
+
         Ok((current_block, last_temp))
     }
 
@@ -201,10 +228,21 @@ impl MirLoweringContext {
             HirStatement::Item(_item) => {
                 // TODO: Handle nested items
             }
-            HirStatement::Defer(_stmt) => {
-                // Defer statements are handled by creating cleanup blocks
-                // For now, we'll skip them in MIR lowering
-                // TODO: Implement proper defer handling with cleanup blocks
+            HirStatement::Defer(stmt) => {
+                // Defer statements are handled by registering cleanup actions
+                // The cleanup will be executed when exiting the scope
+                //
+                // For MVP: Track defer statements and execute them at block end
+                // Full implementation: Handle early returns, errors, panics
+
+                // Register the defer statement for the current block
+                self.defer_stack.push(DeferContext {
+                    block_id: *current_block,
+                    statement: (**stmt).clone(),
+                });
+
+                // The defer statement itself doesn't generate any code here
+                // The cleanup code will be generated when we exit the block
             }
         }
         Ok(())
