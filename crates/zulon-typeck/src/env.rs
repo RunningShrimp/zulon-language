@@ -7,7 +7,11 @@
 //! and type definitions during type checking.
 
 use std::collections::HashMap;
-use crate::ty::{Ty, TyVarId, Effect};
+use crate::ty::{Ty, TyVarId};
+use crate::effect::EffectSet;
+
+// Import for backward compatibility
+use crate::ty::Effect as LegacyEffect;
 
 /// Type environment - tracks bindings and definitions
 #[derive(Debug, Clone)]
@@ -21,8 +25,14 @@ pub struct Env {
     /// Function signatures: name -> function type
     functions: HashMap<String, Ty>,
 
-    /// Effect declarations: name -> effect
-    effects: HashMap<String, Effect>,
+    /// Function effects: name -> effect set (NEW)
+    function_effects: HashMap<String, EffectSet>,
+
+    /// Legacy effect declarations for backward compatibility: name -> effect
+    effects: HashMap<String, LegacyEffect>,
+
+    /// Current function's effect set (for effect inference)
+    current_effects: EffectSet,
 
     /// Parent environment (for scoping)
     parent: Option<Box<Env>>,
@@ -38,7 +48,9 @@ impl Env {
             bindings: HashMap::new(),
             type_defs: HashMap::new(),
             functions: HashMap::new(),
+            function_effects: HashMap::new(),
             effects: HashMap::new(),
+            current_effects: EffectSet::new(),
             parent: None,
             next_ty_var: 0,
         }
@@ -50,7 +62,9 @@ impl Env {
             bindings: HashMap::new(),
             type_defs: HashMap::new(),
             functions: HashMap::new(),
+            function_effects: HashMap::new(),
             effects: HashMap::new(),
+            current_effects: EffectSet::new(),
             parent: Some(Box::new(parent)),
             next_ty_var: 0,
         }
@@ -116,13 +130,70 @@ impl Env {
         }
     }
 
-    /// Insert an effect declaration
-    pub fn insert_effect(&mut self, name: String, effect: Effect) {
+    /// Insert a function's effect set
+    pub fn insert_function_effects(&mut self, name: String, effects: EffectSet) {
+        self.function_effects.insert(name, effects);
+    }
+
+    /// Lookup a function's effect set
+    pub fn lookup_function_effects(&self, name: &str) -> Option<EffectSet> {
+        // Check current environment
+        if let Some(effects) = self.function_effects.get(name) {
+            return Some(effects.clone());
+        }
+
+        // Check parent environment
+        if let Some(parent) = &self.parent {
+            parent.lookup_function_effects(name)
+        } else {
+            None
+        }
+    }
+
+    /// Get the current function's effect set
+    pub fn get_current_effects(&self) -> &EffectSet {
+        &self.current_effects
+    }
+
+    /// Get mutable reference to current effects
+    pub fn get_current_effects_mut(&mut self) -> &mut EffectSet {
+        &mut self.current_effects
+    }
+
+    /// Set the current function's effect set
+    pub fn set_current_effects(&mut self, effects: EffectSet) {
+        self.current_effects = effects;
+    }
+
+    /// Add an effect to the current function's effect set
+    pub fn add_effect(&mut self, effect: crate::effect::Effect) {
+        self.current_effects.insert(effect);
+    }
+
+    /// Check if a specific effect is allowed in the current context
+    #[allow(unused_variables)]
+    pub fn check_effect_allowed(&self, _effect: &crate::effect::Effect) -> bool {
+        // For now, all effects are allowed
+        // TODO: Implement effect checking based on function declarations
+        true
+    }
+
+    /// Create a new scope with inherited effects
+    pub fn enter_scope_with_effects(&self, effects: EffectSet) -> Env {
+        let mut env = Env::with_parent(self.clone());
+        env.current_effects = effects;
+        env
+    }
+
+    // ========== BACKWARD COMPATIBILITY METHODS ==========
+
+    /// Insert a legacy effect declaration (for error handling system)
+    pub fn insert_effect(&mut self, name: String, effect: LegacyEffect) {
         self.effects.insert(name, effect);
     }
 
-    /// Lookup an effect declaration
-    pub fn lookup_effect(&self, name: &str) -> Option<Effect> {
+    /// Lookup a legacy effect declaration (for error handling system)
+    pub fn lookup_effect(&self, name: &str) -> Option<LegacyEffect> {
         // Check current environment
         if let Some(effect) = self.effects.get(name) {
             return Some(effect.clone());
@@ -243,5 +314,59 @@ mod tests {
         assert_eq!(env.lookup_type_def("i32"), Some(Ty::I32));
         assert_eq!(env.lookup_type_def("bool"), Some(Ty::Bool));
         assert_eq!(env.lookup_type_def("unknown"), None);
+    }
+
+    #[test]
+    fn test_function_effects() {
+        use crate::effect::Effect;
+
+        let mut env = Env::new();
+
+        // Insert function with IO effect
+        let mut io_effects = EffectSet::new();
+        io_effects.insert(Effect::IO);
+        env.insert_function_effects("println".to_string(), io_effects.clone());
+
+        // Lookup function effects
+        let found = env.lookup_function_effects("println");
+        assert!(found.is_some());
+        assert!(found.unwrap().contains(&Effect::IO));
+
+        // Unknown function
+        assert!(env.lookup_function_effects("unknown").is_none());
+    }
+
+    #[test]
+    fn test_current_effects() {
+        use crate::effect::Effect;
+
+        let mut env = Env::new();
+
+        // Initially pure
+        assert!(env.get_current_effects().is_pure());
+
+        // Add IO effect
+        env.add_effect(Effect::IO);
+        assert!(!env.get_current_effects().is_pure());
+        assert!(env.get_current_effects().contains(&Effect::IO));
+
+        // Add Alloc effect
+        env.add_effect(Effect::Alloc);
+        assert_eq!(env.get_current_effects().len(), 2);
+    }
+
+    #[test]
+    fn test_effect_scope_inheritance() {
+        use crate::effect::Effect;
+
+        let mut parent = Env::new();
+        parent.add_effect(Effect::IO);
+
+        let mut io_effects = EffectSet::new();
+        io_effects.insert(Effect::IO);
+
+        // Child scope inherits effects
+        let child = parent.enter_scope_with_effects(io_effects);
+        assert!(child.get_current_effects().contains(&Effect::IO));
     }
 }
