@@ -41,9 +41,11 @@ pub mod error;
 pub mod checker;
 pub mod infer;
 pub mod diagnostic;
+pub mod effect;
 
 pub use ty::{Ty, TyVarId, GenericParam, TraitBound, subst_ty};
 pub use env::Env;
 pub use error::{TypeError, Result};
 pub use checker::TypeChecker;
 pub use infer::{Substitution, unify};
+pub use effect::{Effect, EffectSet};
