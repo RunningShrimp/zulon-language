@@ -264,6 +264,7 @@ mod tests {
 
         let inner_ty = zulon_lir::LirTy::Struct {
             name: "Inner".to_string(),
+            fields: vec![zulon_lir::LirTy::I32, zulon_lir::LirTy::I32],
             size: 8, // i32 + i32
         };
 

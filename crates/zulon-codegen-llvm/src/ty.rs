@@ -82,6 +82,16 @@ impl LlvmType {
             }
         }
     }
+
+    /// Get LLVM type reference (for declared struct types, use just the name)
+    pub fn to_llvm_ref(&self) -> String {
+        match self {
+            LlvmType::Struct { name, .. } => {
+                format!("%struct.{}", name)
+            }
+            _ => self.to_llvm_ir(),
+        }
+    }
 }
 
 /// Convert LIR type to LLVM type
@@ -126,11 +136,15 @@ impl From<LirTy> for LlvmType {
             }
 
             // Structs
-            LirTy::Struct { name, .. } => {
-                // Simplified: struct without field info
+            LirTy::Struct { name, fields, .. } => {
+                // Convert LIR field types to LLVM field types
+                let llvm_fields: Vec<LlvmType> = fields.iter()
+                    .map(|f| f.clone().into())
+                    .collect();
+
                 LlvmType::Struct {
                     name,
-                    fields: vec![LlvmType::Integer(32)], // Placeholder
+                    fields: llvm_fields,
                 }
             }
         }

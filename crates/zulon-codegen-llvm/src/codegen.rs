@@ -275,12 +275,19 @@ impl<W: Write> CodeGenerator<W> {
     fn generate_alloca(&mut self, alloca: &zulon_lir::LirAlloca) -> Result<()> {
         let llvm_ty: LlvmType = alloca.ty.clone().into();
 
+        // Use struct reference if this is a declared struct type
+        let type_str = if matches!(alloca.ty, zulon_lir::LirTy::Struct { .. }) {
+            llvm_ty.to_llvm_ref()
+        } else {
+            llvm_ty.to_llvm_ir()
+        };
+
         writeln!(
             self.writer,
             "{}  %v{} = alloca {}",
             "  ".repeat(self.indent),
             alloca.dest,
-            llvm_ty.to_llvm_ir()
+            type_str
         ).map_err(|e| CodegenError::InstructionError(format!("IO error: {}", e)))?;
 
         Ok(())
@@ -498,13 +505,20 @@ impl<W: Write> CodeGenerator<W> {
         let llvm_ty: LlvmType = ty.clone().into();
         let src_str = self.operand_to_llvm(src)?;
 
+        // Use struct reference if this is a declared struct type
+        let type_str = if matches!(ty, zulon_lir::LirTy::Struct { .. }) {
+            llvm_ty.to_llvm_ref()
+        } else {
+            llvm_ty.to_llvm_ir()
+        };
+
         writeln!(
             self.writer,
             "{}  %v{} = load {}, {}* {}",
             "  ".repeat(self.indent),
             dest,
-            llvm_ty.to_llvm_ir(),
-            llvm_ty.to_llvm_ir(),
+            type_str,
+            type_str,
             src_str
         ).unwrap();
 
@@ -521,13 +535,20 @@ impl<W: Write> CodeGenerator<W> {
         let llvm_ty: LlvmType = ty.clone().into();
         let dest_str = self.operand_to_llvm(dest)?;
 
+        // Use struct reference if this is a declared struct type
+        let type_str = if matches!(ty, zulon_lir::LirTy::Struct { .. }) {
+            llvm_ty.to_llvm_ref()
+        } else {
+            llvm_ty.to_llvm_ir()
+        };
+
         writeln!(
             self.writer,
             "{}  store {} %v{}, {}* {}",
             "  ".repeat(self.indent),
-            llvm_ty.to_llvm_ir(),
+            type_str,
             src,
-            llvm_ty.to_llvm_ir(),
+            type_str,
             dest_str
         ).unwrap();
 

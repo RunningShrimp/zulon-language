@@ -10,7 +10,7 @@ use zulon_typeck::TypeChecker;
 use zulon_hir::SimpleLoweringContext;
 use zulon_mir::MirLoweringContext;
 use zulon_lir::{LirLoweringContext, LirExternal, LirTy};
-use zulon_codegen_llvm::CodeGenerator;
+use zulon_codegen_llvm::{CodeGenerator, StructLayout};
 use crate::macro_expander::MacroExpander;
 
 use crate::error::{CompilerError, Result as CompilerResult};
@@ -253,6 +253,59 @@ extern fn printf(format: &u8, ...) -> i32;
 
         // Generate real LLVM IR from LIR
         let mut codegen = CodeGenerator::new(output_file);
+
+        // Register struct types from LIR before generating module
+        // We need to scan for struct types and register them
+        use std::collections::HashSet;
+        let mut registered_structs = HashSet::new();
+
+        for func in &lir_body.functions {
+            // Helper to register a struct type
+            let mut register_struct = |ty: &LirTy| {
+                if let LirTy::Struct { name, fields, .. } = ty {
+                    if !registered_structs.contains(name) {
+                        let mut layout = StructLayout::new(name.clone());
+                        for (i, field_ty) in fields.iter().enumerate() {
+                            let field_name = format!("field{}", i);
+                            let _ = layout.add_field(field_name, field_ty.clone());
+                        }
+                        layout.finalize();
+                        codegen.register_struct(layout);
+                        registered_structs.insert(name.clone());
+                    }
+                }
+            };
+
+            // Scan all instructions
+            for (_block_id, block) in &func.blocks {
+                for instr in &block.instructions {
+                    match instr {
+                        zulon_lir::LirInstruction::Alloca(a) => register_struct(&a.ty),
+                        zulon_lir::LirInstruction::Const { ty, .. } => register_struct(ty),
+                        zulon_lir::LirInstruction::Load { ty, .. } => register_struct(ty),
+                        zulon_lir::LirInstruction::Store { ty, .. } => register_struct(ty),
+                        zulon_lir::LirInstruction::BinaryOp { ty, .. } => register_struct(ty),
+                        zulon_lir::LirInstruction::Call { return_type, .. } => register_struct(return_type),
+                        _ => {}
+                    }
+                }
+
+                // Also check terminators
+                if let Some(terminator) = &block.terminator {
+                    match terminator {
+                        zulon_lir::LirTerminator::Return(_) => {},
+                        _ => {}
+                    }
+                }
+            }
+
+            // Check parameter and return types
+            for param_ty in &func.param_types {
+                register_struct(param_ty);
+            }
+            register_struct(&func.return_type);
+        }
+
         codegen.generate_module_with_externals(
             &lir_body.functions,
             &lir_body.externals,

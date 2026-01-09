@@ -32,9 +32,10 @@ pub enum LirTy {
         len: u64,
     },
 
-    // Structs (opaque, just name and size)
+    // Structs (with field types for proper LLVM codegen)
     Struct {
         name: String,
+        fields: Vec<LirTy>,
         size: u64,
     },
 }
@@ -154,6 +155,7 @@ impl From<zulon_mir::MirTy> for LirTy {
             zulon_mir::MirTy::Struct { name, .. } => {
                 LirTy::Struct {
                     name,
+                    fields: Vec::new(), // TODO: Extract field types
                     size: 8, // Placeholder
                 }
             }
@@ -162,10 +164,19 @@ impl From<zulon_mir::MirTy> for LirTy {
             zulon_mir::MirTy::Slice(_) => {
                 LirTy::Ptr(Box::new(LirTy::U8))
             }
-            zulon_mir::MirTy::Tuple(_) => {
+            zulon_mir::MirTy::Tuple(tys) => {
+                // Convert element types to LIR types
+                let fields: Vec<LirTy> = tys.iter()
+                    .map(|t| LirTy::from(t.clone()))
+                    .collect();
+
+                // Calculate total size: sum of element sizes
+                let size = fields.iter().map(|f| f.size()).sum();
+
                 LirTy::Struct {
                     name: "Tuple".to_string(),
-                    size: 8, // Placeholder
+                    fields,
+                    size,
                 }
             }
             zulon_mir::MirTy::Function { .. } => {
@@ -174,12 +185,14 @@ impl From<zulon_mir::MirTy> for LirTy {
             zulon_mir::MirTy::Enum { name, .. } => {
                 LirTy::Struct {
                     name,
+                    fields: Vec::new(), // TODO: Extract enum variants
                     size: 8, // Placeholder
                 }
             }
             zulon_mir::MirTy::Optional(_) => {
                 LirTy::Struct {
                     name: "Option".to_string(),
+                    fields: Vec::new(), // TODO: Extract optional type
                     size: 16, // Size + discriminant
                 }
             }
