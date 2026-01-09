@@ -1067,6 +1067,22 @@ impl TypeChecker {
                     Ty::TyVar(self.env.peek_next_ty_var())
                 }
             }
+            Type::PathGeneric(path, generic_args) => {
+                // Handle generic types like Outcome<i32, Error>
+                // For now, treat as struct with generic parameters
+                if let Some(ident) = path.first() {
+                    let args = generic_args.as_ref()
+                        .map(|args| args.iter().map(|t| self.ast_type_to_ty(t)).collect())
+                        .unwrap_or_default();
+
+                    Ty::Struct {
+                        name: ident.clone(),
+                        generics: args,
+                    }
+                } else {
+                    Ty::TyVar(self.env.peek_next_ty_var())
+                }
+            }
         }
     }
 }

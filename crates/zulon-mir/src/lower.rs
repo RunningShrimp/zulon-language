@@ -1024,21 +1024,21 @@ impl MirLoweringContext {
             }
 
             // Tuple expression: (a, b, c)
-            HirExpression::Tuple(elements, ty, _span) => {
+            HirExpression::Tuple(elements, _ty, _span) => {
                 // Tuples are represented as anonymous structs in MIR
                 // We allocate a tuple value and store each element
-                // 
+                //
                 // For MVP, tuples are passed by value (not boxed)
                 // Each element is stored in a temporary, and the tuple
                 // is represented as a collection of these temps
                 //
                 // Future optimization: Use LLVM struct types for tuples
-                
+
                 if elements.is_empty() {
                     // Unit tuple - just return unit constant
                     let temp = func.alloc_temp();
-                    let block_obj = func.blocks.get_mut(current_block).unwrap();
-                    block_obj.push_instruction(MirInstruction::Const {
+                    let _block_obj = func.blocks.get_mut(current_block).unwrap();
+                    _block_obj.push_instruction(MirInstruction::Const {
                         dest: temp,
                         value: MirConstant::Unit,
                         ty: MirTy::Unit,
@@ -1083,28 +1083,28 @@ impl MirLoweringContext {
             }
 
             // Index operation: arr[index] or tuple.0
-            HirExpression::Index { base, index, ty, span: _ } => {
+            HirExpression::Index { base, index, ty: _, span: _ } => {
                 // Index can be used for:
                 // 1. Tuple access: tuple.0, tuple.1, etc. (index is literal)
                 // 2. Array access: arr[i] (index is expression)
                 //
                 // For MVP: Support tuple field access with literal indices
                 // Array access will come later with proper array types
-                
+
                 let base_temp = self.lower_expression(func, current_block, base)?;
-                let index_temp = self.lower_expression(func, current_block, index)?;
-                
+                let _index_temp = self.lower_expression(func, current_block, index)?;
+
                 // Check if index is a constant integer (tuple field access)
-                let block_obj = func.blocks.get_mut(current_block).unwrap();
-                
+                let _block_obj = func.blocks.get_mut(current_block).unwrap();
+
                 // Try to get the constant value of the index
                 // For MVP: Assume it's a constant (tuple field access)
                 // In full implementation, we'd check the actual value
-                
+
                 // For now, just return base_temp as placeholder
                 // TODO: Implement GEP for tuple field access
                 // TODO: Implement array bounds checking and indexing
-                
+
                 Ok(base_temp)
             }
 

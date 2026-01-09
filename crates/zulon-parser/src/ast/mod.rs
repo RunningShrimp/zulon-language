@@ -655,6 +655,8 @@ pub enum Type {
     Pipe(Box<Type>, Box<Type>),
     /// Path type: `std::collections::HashMap`
     Path(Vec<Identifier>),
+    /// Generic type with arguments: `Outcome<i32, Error>` or `std::collections::HashMap<K, V>`
+    PathGeneric(Vec<Identifier>, Option<Vec<Type>>),
 }
 
 /// Identifier

@@ -1522,14 +1522,33 @@ impl Parser {
             return Ok(Type::Ref(inner, false));
         }
 
-        // Simple type or path
+        // Simple type or path (with optional generic arguments)
         if let Some(TokenKind::Ident(_)) = self.current_kind() {
             let path = self.parse_path()?;
 
-            if path.len() == 1 {
+            // Check for generic arguments: Outcome<i32, Error>
+            let generic_args = if self.check(&TokenKind::Less) {
+                self.advance();
+                let mut args = Vec::new();
+
+                while !self.check(&TokenKind::Greater) {
+                    args.push(self.parse_type()?);
+
+                    if !self.check(&TokenKind::Greater) {
+                        self.consume(TokenKind::Comma)?;
+                    }
+                }
+
+                self.consume(TokenKind::Greater)?;
+                Some(args)
+            } else {
+                None
+            };
+
+            if path.len() == 1 && generic_args.is_none() {
                 return Ok(Type::Simple(path[0].clone()));
             } else {
-                return Ok(Type::Path(path));
+                return Ok(Type::PathGeneric(path, generic_args));
             }
         }
 
@@ -2067,12 +2086,20 @@ impl Parser {
                 }
             }
 
-            // Identifier pattern or Struct pattern
+            // Identifier pattern or Struct pattern (including path patterns like Outcome::Ok)
             Some(TokenKind::Ident(_)) => {
-                let name = self.parse_identifier()?;
+                // Parse path (could be single identifier or path like Outcome::Ok)
+                let mut path = Vec::new();
+                path.push(self.parse_identifier()?);
+
+                // Check for path separators (::)
+                while self.check(&TokenKind::PathSep) {
+                    self.advance();
+                    path.push(self.parse_identifier()?);
+                }
 
                 if self.check(&TokenKind::LeftBrace) {
-                    // Struct pattern
+                    // Struct pattern: Point { x, y } or mod::Point { x, y }
                     self.advance();
 
                     let mut fields = Vec::new();
@@ -2097,9 +2124,14 @@ impl Parser {
 
                     self.consume(TokenKind::RightBrace)?;
 
-                    Ok(Pattern::Struct(vec![name], fields))
+                    Ok(Pattern::Struct(path, fields))
+                } else if path.len() == 1 {
+                    // Single identifier pattern
+                    Ok(Pattern::Identifier(path[0].clone()))
                 } else {
-                    Ok(Pattern::Identifier(name))
+                    // Path pattern like Outcome::Ok or Outcome::Err
+                    // Treat as struct pattern with no fields (enum variant pattern)
+                    Ok(Pattern::Struct(path, vec![]))
                 }
             }
 
