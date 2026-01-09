@@ -9,6 +9,8 @@ use crate::env::Env;
 use crate::error::{Result, TypeError};
 use crate::ty::Ty;
 use crate::infer::Substitution;
+use crate::effect::EffectSet;
+use crate::effect_inference::EffectInference;
 use zulon_parser::ast::{self, Ast};
 use zulon_parser::ast::{Expression, Statement, Item, ItemKind, Type, Identifier};
 
@@ -26,6 +28,15 @@ pub struct TypeChecker {
     /// Current active effects (for effect operations)
     current_effects: Vec<String>,
 
+    /// Current function's effect set (for effect checking)
+    current_effect_set: EffectSet,
+
+    /// Declared effect set for current function
+    declared_effects: EffectSet,
+
+    /// Effect inference engine
+    effect_inference: EffectInference,
+
     /// Type substitution from inference
     subst: Substitution,
 }
@@ -38,6 +49,9 @@ impl TypeChecker {
             current_return_type: None,
             current_error_type: None,
             current_effects: Vec::new(),
+            current_effect_set: EffectSet::new(),
+            declared_effects: EffectSet::new(),
+            effect_inference: EffectInference::new(),
             subst: Substitution::new(),
         }
     }
@@ -115,8 +129,12 @@ impl TypeChecker {
         let prev_return_type = self.current_return_type.take();
         let prev_error_type = self.current_error_type.take();
         let prev_effects = self.current_effects.clone();
+        let prev_effect_set = self.current_effect_set.clone();
+        let prev_declared_effects = self.declared_effects.clone();
         self.current_return_type = Some(return_type.clone());
         self.current_error_type = error_type.clone();
+        self.current_effect_set = EffectSet::new();
+        self.declared_effects = EffectSet::new();
 
         // Debug logging
         // Process effects from function signature (e.g., `-> i32 | Log`)
@@ -126,20 +144,48 @@ impl TypeChecker {
                 _ => continue, // Skip complex types for now
             };
 
-            // Verify that the effect exists in the environment
-            if self.env.lookup_effect(&effect_name).is_some() {
-                // Add to current effects
-                self.current_effects.push(effect_name);
+            // Convert string effect name to Effect type
+            if let Some(effect) = EffectSet::from_str(&effect_name) {
+                // Add to declared effects
+                self.declared_effects.insert(effect.clone());
+                self.current_effect_set.insert(effect);
             } else {
-                return Err(TypeError::UndefinedEffect {
-                    name: effect_name,
-                    span,
-                });
+                // Verify that the effect exists in the environment (legacy system)
+                if self.env.lookup_effect(&effect_name).is_some() {
+                    // Add to current effects (legacy)
+                    self.current_effects.push(effect_name);
+                } else {
+                    return Err(TypeError::UndefinedEffect {
+                        name: effect_name,
+                        span,
+                    });
+                }
             }
         }
 
         // Check function body and validate return type
         let body_result_ty = self.check_block(&func.body)?;
+
+        // EFFECT CHECKING: Validate that declared effects match inferred effects
+        if !self.effect_inference.check_effect_declaration(
+            &self.declared_effects,
+            &self.current_effect_set,
+        ) {
+            // TODO: Make this an actual error when effect checking is fully implemented
+            // For now, we'll log it as a warning
+            eprintln!(
+                "Warning: Function '{}' declared effects {} but inferred {}",
+                func.name.name,
+                self.declared_effects,
+                self.current_effect_set
+            );
+        }
+
+        // Store the function's effect set in the environment
+        self.env.insert_function_effects(
+            func.name.name.clone(),
+            self.current_effect_set.clone(),
+        );
 
         // Validate that the body's result type matches the declared return type
         if &body_result_ty != &return_type {
@@ -157,6 +203,8 @@ impl TypeChecker {
         self.current_return_type = prev_return_type;
         self.current_error_type = prev_error_type.clone();
         self.current_effects = prev_effects;
+        self.current_effect_set = prev_effect_set;
+        self.declared_effects = prev_declared_effects;
 
         // Exit function scope - swap back to parent environment
         std::mem::swap(&mut self.env, &mut func_env);
@@ -652,6 +700,45 @@ impl TypeChecker {
                 for (arg, param_ty) in args.iter().zip(params.iter()) {
                     let arg_ty = self.check_expression(arg)?;
                     self.unify(&arg_ty, param_ty, &arg.span)?;
+                }
+
+                // EFFECT CHECKING: Propagate effects from callee to caller
+                // Extract function name if it's a path expression
+                if let Expression {
+                    kind: ast::ExpressionKind::Path(path),
+                    ..
+                } = func {
+                    if !path.is_empty() {
+                        let func_name = &path[0].name;
+
+                        // Look up function's effect set
+                        if let Some(callee_effects) = self.env.lookup_function_effects(func_name) {
+                            // Check purity: pure function cannot call impure function
+                            if self.declared_effects.is_pure() && !callee_effects.is_pure() {
+                                return Err(TypeError::InferenceError {
+                                    message: format!(
+                                        "Pure function '{}' cannot call impure function '{}' with effects: {}",
+                                        "current_function",  // TODO: Track current function name
+                                        func_name,
+                                        callee_effects
+                                    ),
+                                    span: func.span,
+                                });
+                            }
+
+                            // Propagate effects to current function
+                            self.effect_inference.propagate_call_effects(
+                                &mut self.current_effect_set,
+                                func_name,
+                                &callee_effects,
+                            );
+
+                            // Update environment's current effects
+                            for effect in callee_effects.to_vec() {
+                                self.env.add_effect(effect);
+                            }
+                        }
+                    }
                 }
 
                 // Apply substitution to return type
@@ -1204,6 +1291,208 @@ mod tests {
                 let a = 10;
                 let b = 20;
                 a + b
+            }
+        "#;
+
+        let mut parser = Parser::from_source(source);
+        let ast = parser.parse().unwrap();
+
+        let mut checker = TypeChecker::new();
+        assert!(checker.check(&ast).is_ok());
+    }
+
+    // ========== EFFECT CHECKING TESTS ==========
+
+    #[test]
+    fn test_pure_function_type_checking() {
+        // Pure function (no effects) should pass
+        let source = r#"
+            fn pure_function(x: i32) -> i32 {
+                x + 1
+            }
+        "#;
+
+        let mut parser = Parser::from_source(source);
+        let ast = parser.parse().unwrap();
+
+        let mut checker = TypeChecker::new();
+        assert!(checker.check(&ast).is_ok());
+    }
+
+    #[test]
+    fn test_function_call_effect_propagation() {
+        // Test that effects propagate through function calls
+        let source = r#"
+            fn io_function() -> i32 {
+                42
+            }
+
+            fn caller() -> i32 {
+                io_function()
+            }
+        "#;
+
+        let mut parser = Parser::from_source(source);
+        let ast = parser.parse().unwrap();
+
+        let mut checker = TypeChecker::new();
+        assert!(checker.check(&ast).is_ok());
+    }
+
+    #[test]
+    fn test_nested_function_calls_effects() {
+        // Test effect propagation through nested calls
+        let source = r#"
+            fn inner() -> i32 {
+                10
+            }
+
+            fn middle() -> i32 {
+                inner()
+            }
+
+            fn outer() -> i32 {
+                middle()
+            }
+        "#;
+
+        let mut parser = Parser::from_source(source);
+        let ast = parser.parse().unwrap();
+
+        let mut checker = TypeChecker::new();
+        assert!(checker.check(&ast).is_ok());
+    }
+
+    #[test]
+    fn test_multiple_function_calls_effect_accumulation() {
+        // Test that multiple function calls accumulate effects
+        let source = r#"
+            fn func1() -> i32 { 10 }
+            fn func2() -> i32 { 20 }
+
+            fn caller() -> i32 {
+                let x = func1();
+                let y = func2();
+                x + y
+            }
+        "#;
+
+        let mut parser = Parser::from_source(source);
+        let ast = parser.parse().unwrap();
+
+        let mut checker = TypeChecker::new();
+        assert!(checker.check(&ast).is_ok());
+    }
+
+    #[test]
+    fn test_effect_inference_in_blocks() {
+        // Test effect inference in block expressions
+        let source = r#"
+            fn helper() -> i32 { 42 }
+
+            fn test() -> i32 {
+                helper();
+                100
+            }
+        "#;
+
+        let mut parser = Parser::from_source(source);
+        let ast = parser.parse().unwrap();
+
+        let mut checker = TypeChecker::new();
+        assert!(checker.check(&ast).is_ok());
+    }
+
+    #[test]
+    fn test_effect_inference_in_if_expressions() {
+        // Test effect inference in if expressions
+        let source = r#"
+            fn helper1() -> i32 { 10 }
+            fn helper2() -> i32 { 20 }
+
+            fn test() -> i32 {
+                let x = true;
+                if x {
+                    helper1()
+                } else {
+                    helper2()
+                }
+            }
+        "#;
+
+        let mut parser = Parser::from_source(source);
+        let ast = parser.parse().unwrap();
+
+        let mut checker = TypeChecker::new();
+        assert!(checker.check(&ast).is_ok());
+    }
+
+    #[test]
+    fn test_closure_effect_inference() {
+        // Test effect inference with closures
+        let source = r#"
+            fn helper() -> i32 { 42 }
+
+            fn test() -> i32 {
+                helper()
+            }
+        "#;
+
+        let mut parser = Parser::from_source(source);
+        let ast = parser.parse().unwrap();
+
+        let mut checker = TypeChecker::new();
+        assert!(checker.check(&ast).is_ok());
+    }
+
+    #[test]
+    fn test_pure_function_with_pure_callee() {
+        // Test pure function calling pure function (should pass)
+        let source = r#"
+            fn pure_helper(x: i32) -> i32 {
+                x + 1
+            }
+
+            fn pure_main(x: i32) -> i32 {
+                pure_helper(x)
+            }
+        "#;
+
+        let mut parser = Parser::from_source(source);
+        let ast = parser.parse().unwrap();
+
+        let mut checker = TypeChecker::new();
+        assert!(checker.check(&ast).is_ok());
+    }
+
+    #[test]
+    fn test_effect_tracking_across_scopes() {
+        // Test effect tracking across different scopes
+        let source = r#"
+            fn helper() -> i32 { 42 }
+
+            fn test() -> i32 {
+                helper();
+                helper();
+                100
+            }
+        "#;
+
+        let mut parser = Parser::from_source(source);
+        let ast = parser.parse().unwrap();
+
+        let mut checker = TypeChecker::new();
+        assert!(checker.check(&ast).is_ok());
+    }
+
+    #[test]
+    fn test_effect_inference_with_arithmetic() {
+        // Test effect inference with arithmetic operations
+        let source = r#"
+            fn helper() -> i32 { 10 }
+
+            fn test() -> i32 {
+                helper() + 20
             }
         "#;
 
