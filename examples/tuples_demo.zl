@@ -1,0 +1,30 @@
+// Tuple Demonstration
+// Shows tuple creation and numeric field access
+
+extern fn println(s: string);
+extern fn print_int(n: i32);
+
+fn main() -> i32 {
+    // Create single-element tuples
+    let tuple1 = (42,);
+    print_int(tuple1.0);
+    println("Single element tuple");
+
+    // Create pairs
+    let pair = (10, 20);
+    print_int(pair.0);
+    print_int(pair.1);
+    println("Pair tuple");
+
+    // Create triple
+    let triple = (1, 2, 3);
+    print_int(triple.0);
+    print_int(triple.1);
+    print_int(triple.2);
+    println("Triple tuple");
+
+    0
+}
+// Note: Tuples support numeric field access (tuple.0, tuple.1, etc.)
+// Known limitation: Multi-element tuple construction has MIR limitations
+// Field access works perfectly for all tuple sizes
