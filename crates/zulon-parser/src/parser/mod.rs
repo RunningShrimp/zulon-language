@@ -814,16 +814,39 @@ impl Parser {
                     };
                 }
 
-                // Field access: obj.field
+                // Field access: obj.field OR tuple.0 (numeric field access)
                 Some(TokenKind::Dot) => {
                     self.advance();
 
-                    let field_name = self.parse_identifier()?;
+                    // Check if it's a numeric field access (tuple.0, tuple.1, etc.)
+                    if let Some(TokenKind::IntLiteral(_)) = self.current_kind() {
+                        // Numeric field access for tuples: tuple.0, tuple.1
+                        let index_token = self.advance().unwrap();
+                        let index_value = if let TokenKind::IntLiteral(s) = &index_token.kind {
+                            s.parse().unwrap_or(0)
+                        } else {
+                            0
+                        };
 
-                    expr = Expression {
-                        span,
-                        kind: ExpressionKind::FieldAccess(Box::new(expr), field_name),
-                    };
+                        expr = Expression {
+                            span,
+                            kind: ExpressionKind::Index(
+                                Box::new(expr),
+                                Box::new(Expression {
+                                    span: index_token.span.clone(),
+                                    kind: ExpressionKind::Literal(Literal::Int(index_value)),
+                                }),
+                            ),
+                        };
+                    } else {
+                        // Named field access for structs: obj.field
+                        let field_name = self.parse_identifier()?;
+
+                        expr = Expression {
+                            span,
+                            kind: ExpressionKind::FieldAccess(Box::new(expr), field_name),
+                        };
+                    }
                 }
 
                 // Array indexing: arr[index]

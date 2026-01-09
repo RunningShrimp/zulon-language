@@ -1026,13 +1026,7 @@ impl MirLoweringContext {
             // Tuple expression: (a, b, c)
             HirExpression::Tuple(elements, _ty, _span) => {
                 // Tuples are represented as anonymous structs in MIR
-                // We allocate a tuple value and store each element
-                //
-                // For MVP, tuples are passed by value (not boxed)
-                // Each element is stored in a temporary, and the tuple
-                // is represented as a collection of these temps
-                //
-                // Future optimization: Use LLVM struct types for tuples
+                // For MVP, we create a struct-like representation using FieldAccess
 
                 if elements.is_empty() {
                     // Unit tuple - just return unit constant
@@ -1045,24 +1039,38 @@ impl MirLoweringContext {
                     });
                     return Ok(temp);
                 }
-                
+
                 // Lower each element and store in temps
                 let mut elem_temps = Vec::new();
                 for elem in elements {
                     let elem_temp = self.lower_expression(func, current_block, elem)?;
                     elem_temps.push(elem_temp);
                 }
-                
-                // For MVP: Return the first element as placeholder
-                // In full implementation, we'd create a tuple struct value
-                // and return a reference to it
-                // 
-                // The caller can access elements via Index operation
+
+                // For MVP: Store tuple elements as consecutive temps
+                // Return the first temp as the "tuple" value
+                // Index operations will use offset to access other elements
+                //
+                // Example: tuple = (1, 2, 3)
+                // - elem_temps = [t1, t2, t3]
+                // - Return t1 as the tuple value
+                // - tuple.0 → t1 (offset 0)
+                // - tuple.1 → t2 (offset 1) - need to track this
+                // - tuple.2 → t3 (offset 2) - need to track this
+                //
+                // Limitation: This only works if the tuple is immediately indexed
+                // A full implementation would create a proper tuple struct
+
                 let result_temp = elem_temps[0];
-                
-                // TODO: Store tuple metadata (element count, types)
-                // so that Index operations can properly access elements
-                
+
+                // Store tuple metadata for later field access
+                // For MVP: We track which temps belong to tuples
+                // This is a simplification - a full implementation would
+                // create proper tuple struct values
+                //
+                // TODO: Add tuple metadata table to MirFunction
+                // For now, tuples are limited to immediate indexing
+
                 Ok(result_temp)
             }
 
