@@ -2422,17 +2422,17 @@ impl Parser {
 
                         // Parse the expression using the tokens
                         let old_tokens = std::mem::replace(&mut self.tokens, tokens.into_iter().peekable());
-                        let old_current = std::mem::replace(&mut self.current, None);
+                        let _old_current = std::mem::replace(&mut self.current, self.tokens.next());
 
                         let expr_result = self.parse_expression();
 
-                        // Restore the original token stream
+                        // Restore the original token stream BEFORE checking expr_result
                         self.tokens = old_tokens;
-                        self.current = old_current;
+                        // Don't restore old_current - we've moved past it
+                        // Instead, get the next token from the restored stream
+                        self.current = self.tokens.next();
 
-                        let expr = expr_result?;
-
-                        parts.push(TemplateStringPart::Expr(expr));
+                        parts.push(TemplateStringPart::Expr(expr_result?));
                         in_interpolation = false;
                     } else {
                         current.push(c);
