@@ -564,6 +564,8 @@ pub enum Pattern {
     Identifier(Identifier),
     /// Struct pattern: `Point { x, y }`
     Struct(Vec<Identifier>, Vec<StructPatternField>),
+    /// Tuple-like variant pattern: `Some(x)`, `Outcome::Ok(value)`
+    TupleVariant(Vec<Identifier>, Vec<Pattern>),
     /// Tuple pattern: `(a, b, c)`
     Tuple(Vec<Pattern>),
     /// Array pattern: `[a, b, c]`

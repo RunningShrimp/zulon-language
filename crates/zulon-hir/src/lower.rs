@@ -569,6 +569,35 @@ impl LoweringContext {
                 Ok(HirPattern::Tuple(lowered_patterns?, dummy_span()))
             }
 
+            ast::Pattern::TupleVariant(path, patterns) => {
+                // Convert tuple-like variant pattern to HIR
+                // For example: Outcome::Ok(value) -> EnumVariant { ... }
+                let enum_name = path.first().map(|ident| ident.name.clone()).unwrap_or_default();
+                let variant_name = path.last().map(|ident| ident.name.clone()).unwrap_or_default();
+
+                // For MVP: Use first pattern as inner (handles single-field variants like Outcome::Ok)
+                let inner = if patterns.len() == 1 {
+                    Some(Box::new(self.lower_pattern(&patterns[0])?))
+                } else if patterns.is_empty() {
+                    None
+                } else {
+                    // Multiple patterns - create a tuple pattern as inner
+                    let lowered_patterns: Result<Vec<_>> = patterns
+                        .iter()
+                        .map(|p| self.lower_pattern(p))
+                        .collect();
+                    Some(Box::new(HirPattern::Tuple(lowered_patterns?, dummy_span())))
+                };
+
+                Ok(HirPattern::EnumVariant {
+                    enum_name,
+                    variant_name,
+                    inner,
+                    ty: HirTy::I32, // TODO: Get actual type
+                    span: dummy_span(),
+                })
+            }
+
             // For now, treat complex patterns as unsupported
             _ => Err(LoweringError::UnsupportedFeature {
                 feature: format!("pattern: {:?}", pattern),

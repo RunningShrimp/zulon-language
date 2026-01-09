@@ -2125,11 +2125,28 @@ impl Parser {
                     self.consume(TokenKind::RightBrace)?;
 
                     Ok(Pattern::Struct(path, fields))
+                } else if self.check(&TokenKind::LeftParen) {
+                    // Tuple-like enum variant pattern: Outcome::Ok(value), Some(x)
+                    self.advance();
+
+                    let mut patterns = Vec::new();
+
+                    while !self.check(&TokenKind::RightParen) {
+                        patterns.push(self.parse_pattern()?);
+
+                        if !self.check(&TokenKind::RightParen) {
+                            self.consume(TokenKind::Comma)?;
+                        }
+                    }
+
+                    self.consume(TokenKind::RightParen)?;
+
+                    Ok(Pattern::TupleVariant(path, patterns))
                 } else if path.len() == 1 {
                     // Single identifier pattern
                     Ok(Pattern::Identifier(path[0].clone()))
                 } else {
-                    // Path pattern like Outcome::Ok or Outcome::Err
+                    // Path pattern like Outcome::Ok or Outcome::Err (no fields)
                     // Treat as struct pattern with no fields (enum variant pattern)
                     Ok(Pattern::Struct(path, vec![]))
                 }
