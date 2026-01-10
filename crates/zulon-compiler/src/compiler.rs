@@ -326,6 +326,7 @@ extern fn printf(format: &u8, ...) -> i32;
     fn extract_extern_functions(&self, ast: &zulon_parser::ast::Ast) -> Vec<LirExternal> {
         let mut externs = Vec::new();
 
+        // First, collect explicitly declared extern functions from source code
         for item in &ast.items {
             if let ItemKind::ExternFunction(func) = &item.kind {
                 // Convert parameter types
@@ -340,15 +341,48 @@ extern fn printf(format: &u8, ...) -> i32;
                     .unwrap_or(LirTy::Unit);
 
                 // Mark known variadic C functions
-                let is_varadic = matches!(func.name.name.as_str(), "printf" | "scanf");
+                let is_variadice = matches!(func.name.name.as_str(), "printf" | "scanf");
 
                 externs.push(LirExternal {
                     name: func.name.name.clone(),
                     param_types,
                     return_type,
-                    variadic: is_varadic,
+                    variadic: is_variadice,
                 });
             }
+        }
+
+        // CRITICAL FIX: Auto-inject common C standard library functions
+        // These are used implicitly by ZULON programs (e.g., printf for debugging)
+        // This allows users to call printf() without explicit extern declarations
+
+        // Check if printf is already declared
+        let has_printf = externs.iter().any(|e| e.name == "printf");
+        if !has_printf {
+            // Inject printf declaration: extern fn printf(format: *u8, ...) -> i32
+            externs.push(LirExternal {
+                name: "printf".to_string(),
+                param_types: vec![LirTy::Ptr(Box::new(LirTy::U8))], // format: *u8
+                return_type: LirTy::I32,
+                variadic: true, // printf accepts variable arguments
+            });
+        }
+
+        // Check if scanf is needed (could check function calls, but inject for now)
+        let has_scanf = externs.iter().any(|e| e.name == "scanf");
+        if !has_scanf {
+            // Inject scanf declaration: extern fn scanf(format: *u8, ...) -> i32
+            externs.push(LirExternal {
+                name: "scanf".to_string(),
+                param_types: vec![LirTy::Ptr(Box::new(LirTy::U8))], // format: *u8
+                return_type: LirTy::I32,
+                variadic: true, // scanf accepts variable arguments
+            });
+        }
+
+        eprintln!("DEBUG: Total externals extracted: {}", externs.len());
+        for ext in &externs {
+            eprintln!("DEBUG:   - {} (variadic: {})", ext.name, ext.variadic);
         }
 
         externs

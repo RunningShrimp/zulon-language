@@ -56,9 +56,27 @@ impl LirLoweringContext {
     pub fn lower_body(&mut self, mir_body: &MirBody) -> Result<LirBody> {
         let mut lir_body = LirBody::new();
 
-        // NOTE: External functions like printf should be declared in the source code
-        // with `extern fn` declarations. They will be extracted by the compiler
-        // and added to lir_body.externals, preventing duplicate declarations.
+        // CRITICAL FIX: Auto-inject common C standard library externals
+        // When using the simplified build pipeline (yan build), these externals
+        // aren't extracted from source code, so we inject them here.
+        //
+        // Inject printf: extern fn printf(format: *u8, ...) -> i32
+        lir_body.externals.push(LirExternal {
+            name: "printf".to_string(),
+            param_types: vec![LirTy::Ptr(Box::new(LirTy::U8))],
+            return_type: LirTy::I32,
+            variadic: true,
+        });
+
+        // Inject scanf: extern fn scanf(format: *u8, ...) -> i32
+        lir_body.externals.push(LirExternal {
+            name: "scanf".to_string(),
+            param_types: vec![LirTy::Ptr(Box::new(LirTy::U8))],
+            return_type: LirTy::I32,
+            variadic: true,
+        });
+
+        eprintln!("DEBUG: Injected {} externals (printf, scanf)", lir_body.externals.len());
 
         for func in &mir_body.functions {
             let lir_func = self.lower_function(func)?;
