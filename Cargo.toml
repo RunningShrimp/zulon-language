@@ -31,6 +31,7 @@ members = [
     "crates/zulon-runtime-net",
     "crates/zulon-runtime-test",
     "crates/zulon-async-futures",
+    "crates/zulon-async-runtime",
     
     # 标准库
     "crates/zulon-std-core",
