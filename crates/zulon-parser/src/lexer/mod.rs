@@ -174,6 +174,7 @@ impl<'a> Lexer<'a> {
 
             // Declarations
             "extern" => TokenKind::Extern,
+            "async" => TokenKind::Async,
             "fn" => TokenKind::Fn,
             "struct" => TokenKind::Struct,
             "enum" => TokenKind::Enum,
@@ -845,5 +846,40 @@ mod tests {
         assert!(errors.is_empty(), "Should have no errors");
         assert_eq!(tokens.len(), 1);
         assert_eq!(tokens[0].kind, TokenKind::TemplateString("Price: $100".into()));
+    }
+
+    #[test]
+    fn test_async_keyword() {
+        let source = "async";
+        let lexer = Lexer::new(source);
+        let (tokens, errors) = lexer.lex_all();
+
+        assert!(errors.is_empty(), "Should have no errors");
+        assert_eq!(tokens.len(), 1);
+        assert_eq!(tokens[0].kind, TokenKind::Async);
+    }
+
+    #[test]
+    fn test_async_fn() {
+        let source = "async fn";
+        let lexer = Lexer::new(source);
+        let (tokens, errors) = lexer.lex_all();
+
+        assert!(errors.is_empty(), "Should have no errors");
+        assert_eq!(tokens.len(), 2);
+        assert_eq!(tokens[0].kind, TokenKind::Async);
+        assert_eq!(tokens[1].kind, TokenKind::Fn);
+    }
+
+    #[test]
+    fn test_await_identifier() {
+        let source = "await";
+        let lexer = Lexer::new(source);
+        let (tokens, errors) = lexer.lex_all();
+
+        assert!(errors.is_empty(), "Should have no errors");
+        assert_eq!(tokens.len(), 1);
+        // await is NOT a keyword, it's just an identifier
+        assert_eq!(tokens[0].kind, TokenKind::Ident("await".into()));
     }
 }

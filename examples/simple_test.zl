@@ -1,0 +1,14 @@
+// Simple test suite
+
+#[test]
+fn test_addition() {
+    let x = 2 + 2;
+    assert_eq!(x, 4);
+}
+
+#[test]
+fn test_inequality() {
+    let a = 10;
+    let b = 20;
+    assert_ne!(a, b);
+}

@@ -1,0 +1,166 @@
+// Async Echo Server Example
+//
+// This example demonstrates ZULON's async/await capabilities
+// by implementing a simple TCP echo server that handles
+// multiple concurrent connections asynchronously.
+//
+// To run (when async is fully integrated):
+//   ./scripts/quick_build.sh async_echo_server.zl
+//   ./async_echo_server
+
+use zulon_runtime_io::io::async_io::{AsyncTcpListener, AsyncTcpStream};
+use zulon_runtime_scheduler::IntegratedEventLoopExecutor;
+use zulon_async_futures::Future;
+
+// Main async server function
+// Note: This is Rust code for the runtime. In ZULON, this would be:
+// async fn handle_client(mut stream: AsyncTcpStream) -> Result<(), IoError> {
+//     let mut buffer = [0u8; 1024];
+//
+//     loop {
+//         let n = stream.read(&mut buffer).await?;
+//
+//         if n == 0 {
+//             // Connection closed by client
+//             return Ok(());
+//         }
+//
+//         // Echo the data back
+//         let mut total_written = 0;
+//         while total_written < n {
+//             let written = stream.write(&buffer[total_written..n]).await?;
+//             total_written += written;
+//         }
+//     }
+// }
+
+// For now, here's the Rust runtime implementation showing how it would work:
+
+/*
+async fn handle_client(mut stream: AsyncTcpStream) -> Result<(), Box<dyn std::error::Error>> {
+    let mut buffer = [0u8; 1024];
+
+    loop {
+        // Read data asynchronously
+        let n = stream.read(&mut buffer).await?;
+
+        if n == 0 {
+            // Connection closed by client
+            return Ok(());
+        }
+
+        // Echo the data back asynchronously
+        let mut total_written = 0;
+        while total_written < n {
+            let written = stream.write(&buffer[total_written..n]).await?;
+            total_written += written;
+        }
+    }
+}
+
+async fn run_server(addr: std::net::SocketAddr) -> Result<(), Box<dyn std::error::Error>> {
+    // Bind listener asynchronously
+    let listener = AsyncTcpListener::bind(addr).await?;
+
+    println!("Async echo server listening on {}", addr);
+
+    loop {
+        // Accept connections asynchronously
+        let (stream, peer_addr) = listener.accept().await?;
+
+        println!("New connection from {}", peer_addr);
+
+        // Spawn a new task to handle this client
+        // In ZULON: spawn handle_client(stream);
+        tokio::spawn(async move {
+            if let Err(e) = handle_client(stream).await {
+                eprintln!("Error handling client: {}", e);
+            }
+        });
+    }
+}
+
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let addr = "127.0.0.1:8080".parse()?;
+
+    println!("Starting async echo server on {}", addr);
+
+    // Create executor
+    let mut executor = IntegratedEventLoopExecutor::new();
+
+    // Spawn the server task
+    executor.spawn(async move {
+        if let Err(e) = run_server(addr).await {
+            eprintln!("Server error: {}", e);
+        }
+    });
+
+    // Run with event loop
+    // executor.run_with_event_loop(&mut event_loop)?;
+
+    Ok(())
+}
+*/
+
+// For now, this is a placeholder showing the intended ZULON syntax:
+//
+// async fn handle_client(stream: AsyncTcpStream) -> i32 {
+//     let mut buffer = [0u8; 1024];
+//
+//     loop {
+//         let n = await stream.read(buffer);
+//
+//         if n == 0 {
+//             return 0;  // Success
+//         }
+//
+//         let written = await stream.write(buffer[0..n]);
+//     }
+// }
+//
+// async fn run_server() -> i32 {
+//     let listener = await AsyncTcpListener::bind("127.0.0.1:8080");
+//
+//     loop {
+//         let (stream, addr) = await listener.accept();
+//         spawn handle_client(stream);
+//     }
+// }
+//
+// fn main() -> i32 {
+//     run_server()
+// }
+
+// Until async/await is fully integrated into ZULON codegen,
+// this example serves as documentation of the intended API.
+
+fn main() -> i32 {
+    println!("Async Echo Server Example");
+    println!();
+    println!("This example demonstrates the planned async/await API in ZULON.");
+    println!();
+    println!("The async I primitives have been implemented:");
+    println!("  ✅ AsyncTcpStream - async TCP stream with connect/read/write");
+    println!("  ✅ AsyncTcpListener - async TCP listener with bind/accept");
+    println!("  ✅ Future-based API - ergonomic async/await syntax");
+    println!();
+    println!("Planned ZULON syntax:");
+    println!();
+    println!("  async fn handle_client(stream: AsyncTcpStream) -> i32 {{");
+    println!("      let n = await stream.read(buffer);");
+    println!("      await stream.write(buffer[0..n]);");
+    println!("      0");
+    println!("  }}");
+    println!();
+    println!("  async fn run_server() -> i32 {{");
+    println!("      let listener = await AsyncTcpListener::bind(addr);");
+    println!("      loop {{");
+    println!("          let (stream, _) = await listener.accept();");
+    println!("          spawn handle_client(stream);");
+    println!("      }}");
+    println!("  }}");
+    println!();
+    println!("Status: Async I/O runtime implemented, awaiting compiler integration");
+
+    0
+}

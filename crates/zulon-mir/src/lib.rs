@@ -29,6 +29,7 @@ pub mod lower;
 pub mod error;
 pub mod borrow;
 pub mod effect;
+pub mod async_transform;
 
 pub use ty::MirTy;
 pub use mir::*;
@@ -36,3 +37,4 @@ pub use error::{MirError, Result};
 pub use lower::{lower_hir, MirLoweringContext};
 pub use borrow::{check_borrows, BorrowKind, Permission};
 pub use effect::{check_effects, Effect, EffectSet};
+pub use async_transform::{transform_async_function, transform_async_functions};

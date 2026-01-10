@@ -162,6 +162,8 @@ impl LoweringContext {
             return_type,
             error_type,
             effects,
+            is_async: func.is_async,
+            is_unsafe: func.is_unsafe,
             body,
             span: func.name.span.clone(),
         })
@@ -232,7 +234,12 @@ impl LoweringContext {
     fn lower_expression(&mut self, expr: &ast::Expression) -> Result<HirExpression> {
         // Type check the expression
         let expr_ty = self.typeck.check_expression(expr)?;
-        let ty: HirTy = expr_ty.into();
+        let ty: HirTy = expr_ty.clone().into();
+
+        // Debug: print type for if expressions
+        if matches!(&expr.kind, ast::ExpressionKind::If { .. }) {
+            eprintln!("DEBUG lower_expression: expr_ty={:?}, HirTy={:?}", expr_ty, ty);
+        }
 
         match &expr.kind {
             ast::ExpressionKind::Literal(lit) => {
@@ -465,6 +472,16 @@ impl LoweringContext {
                     body: lowered_body,
                     captures,
                     ty: closure_ty_hir,
+                    span: expr.span.clone(),
+                })
+            }
+
+            // Await expression: future.await
+            ast::ExpressionKind::Await(future_expr) => {
+                let lowered_future = self.lower_expression(future_expr)?;
+                Ok(HirExpression::Await {
+                    future: Box::new(lowered_future),
+                    ty,  // Type is the Future's Output type
                     span: expr.span.clone(),
                 })
             }

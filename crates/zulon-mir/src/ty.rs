@@ -51,12 +51,14 @@ pub enum MirTy {
         return_type: Box<MirTy>,
     },
 
-    // ADTs (simplified - just names for now)
+    // ADTs (with generics for Outcome<T, E> etc.)
     Struct {
         name: String,
+        generics: Vec<MirTy>,
     },
     Enum {
         name: String,
+        generics: Vec<MirTy>,
     },
 
     // Optional
@@ -183,8 +185,28 @@ impl MirTy {
                     .join(", ");
                 format!("fn({}) -> {}", params, return_type.display_name())
             }
-            MirTy::Struct { name } => name.clone(),
-            MirTy::Enum { name } => name.clone(),
+            MirTy::Struct { name, generics } => {
+                if generics.is_empty() {
+                    name.clone()
+                } else {
+                    let gen_args = generics.iter()
+                        .map(|g| g.display_name())
+                        .collect::<Vec<_>>()
+                        .join(", ");
+                    format!("{}<{}>", name, gen_args)
+                }
+            }
+            MirTy::Enum { name, generics } => {
+                if generics.is_empty() {
+                    name.clone()
+                } else {
+                    let gen_args = generics.iter()
+                        .map(|g| g.display_name())
+                        .collect::<Vec<_>>()
+                        .join(", ");
+                    format!("{}<{}>", name, gen_args)
+                }
+            }
             MirTy::Optional(inner) => format!("Option<{}>", inner.display_name()),
             _ => format!("{:?}", self),
         }
@@ -257,12 +279,18 @@ impl From<zulon_hir::HirTy> for MirTy {
                 }
             }
 
-            zulon_hir::HirTy::Struct { name, .. } => {
-                MirTy::Struct { name: name.clone() }
+            zulon_hir::HirTy::Struct { name, generics } => {
+                MirTy::Struct {
+                    name: name.clone(),
+                    generics: generics.into_iter().map(|ty| ty.into()).collect(),
+                }
             }
 
-            zulon_hir::HirTy::Enum { name, .. } => {
-                MirTy::Enum { name: name.clone() }
+            zulon_hir::HirTy::Enum { name, generics } => {
+                MirTy::Enum {
+                    name: name.clone(),
+                    generics: generics.into_iter().map(|ty| ty.into()).collect(),
+                }
             }
 
             zulon_hir::HirTy::Optional(inner) => {
@@ -271,7 +299,7 @@ impl From<zulon_hir::HirTy> for MirTy {
 
             zulon_hir::HirTy::TraitObject(_) | zulon_hir::HirTy::ImplTrait(_) => {
                 // Simplified: treat as opaque
-                MirTy::Struct { name: "TraitObject".to_string() }
+                MirTy::Struct { name: "TraitObject".to_string(), generics: Vec::new() }
             }
         }
     }

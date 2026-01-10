@@ -1,0 +1,24 @@
+// Simple Counter Demo
+// Demonstrates variable updates and control flow
+
+fn main() -> i32 {
+    printf("=== ZULON Counter Demo ===\n\n");
+
+    let count = 0;
+    printf("Initial count: %d\n", count);
+
+    count = count + 1;
+    printf("After increment 1: %d\n", count);
+
+    count = count + 1;
+    printf("After increment 2: %d\n", count);
+
+    count = count + 1;
+    printf("After increment 3: %d\n", count);
+
+    let final_value = count * 10;
+    printf("Final value (count * 10): %d\n", final_value);
+
+    printf("\n=== Demo Complete ===\n");
+    0
+}

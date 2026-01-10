@@ -7,7 +7,8 @@ license.workspace = true
 repository.workspace = true
 homepage.workspace = true
 
-# TODO: Add dependencies when needed
 [dependencies]
+zulon-async-futures = { path = "../zulon-async-futures" }
+zulon-runtime-io = { path = "../zulon-runtime-io" }
 
 [dev-dependencies]

@@ -1,0 +1,31 @@
+// ZULON Printf Capabilities Demo
+// Demonstrates current multi-argument call support
+
+fn main() -> i32 {
+    // Single argument (string only)
+    printf("=== ZULON Printf Demo ===\n");
+
+    // Multi-argument call with string literal
+    printf("Testing multi-argument calls\n");
+
+    // Multi-argument with integer literal
+    // Note: Format string processing not yet implemented
+    // This will print raw bytes instead of "42"
+    printf("Number literal: %d\n", 42);
+
+    // Multi-argument with variable
+    let x = 100;
+    printf("Variable value: %d\n", x);
+
+    // Multiple variables
+    let a = 10;
+    let b = 20;
+    printf("Two variables: %d %d\n", a, b);
+
+    // Expression as argument
+    let result = 5 + 3;
+    printf("Expression result: %d\n", result);
+
+    printf("\n=== Demo Complete ===\n");
+    0
+}

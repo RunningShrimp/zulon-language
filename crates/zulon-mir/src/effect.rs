@@ -196,6 +196,10 @@ impl EffectChecker {
                 // Return is pure
             }
 
+            MirTerminator::Throw(_) => {
+                // Throw is pure (error value is already computed)
+            }
+
             MirTerminator::Goto { target: _ } => {
                 // Goto is pure
             }

@@ -41,6 +41,14 @@ enum Commands {
         /// Build an example
         #[arg(long)]
         example: Option<String>,
+
+        /// Compile a ZULON source file
+        #[arg(long)]
+        file: Option<String>,
+
+        /// Automatically run the compiled executable
+        #[arg(long)]
+        run: bool,
     },
 
     /// Run a ZULON project or example
@@ -103,14 +111,41 @@ fn main() -> Result<()> {
     let cli = Cli::parse();
 
     match cli.command {
-        Commands::Build { release, package, jobs, example } => {
+        Commands::Build { release, package: _, jobs: _, example, file, run } => {
             build::check_project_dir()?;
 
-            if let Some(ex) = example {
-                build::build_example(&ex, release)?;
+            let executable_path = if let Some(source_file) = &file {
+                Some(build::build_zulon_file(source_file, release)?)
+            } else if let Some(ex) = &example {
+                Some(build::build_example(ex, release)?)
             } else {
-                build::build_project(release, package.as_deref(), jobs)?;
+                None // build_project doesn't return executable path
+            };
+
+            // If --run flag is specified and we have an executable, run it
+            if run {
+                if let Some(exe_path) = executable_path {
+                    println!();
+                    println!("🚀 Running executable...");
+                    println!("   Path: {}", exe_path);
+                    println!();
+
+                    let status = std::process::Command::new(&exe_path)
+                        .status()
+                        .with_context(|| format!("Failed to run executable: {}", exe_path))?;
+
+                    if status.success() {
+                        println!("✅ Run complete!");
+                    } else {
+                        let code = status.code().unwrap_or(-1);
+                        eprintln!("❌ Run failed with exit code: {}", code);
+                        return Err(anyhow::anyhow!("Run failed with exit code: {}", code));
+                    }
+                } else {
+                    println!("Note: --run flag only works with --file or --example");
+                }
             }
+
             Ok(())
         }
 

@@ -1,0 +1,131 @@
+// Extended error handling test cases
+// Tests for ? operator edge cases and validation chains
+
+// Test 1: Nested ? operators
+enum MathError {
+    Zero,
+    Negative,
+}
+
+enum IoError {
+    NotFound,
+}
+
+fn divide(a: i32, b: i32) -> i32 | MathError {
+    if b == 0 {
+        throw MathError::Zero;
+    }
+    if b < 0 {
+        throw MathError::Negative;
+    }
+    a / b
+}
+
+fn square(x: i32) -> i32 | MathError {
+    if x < 0 {
+        throw MathError::Negative;
+    }
+    x * x
+}
+
+// Test nested validation
+fn validate_and_process(x: i32) -> i32 | MathError {
+    let half = divide(x, 2)?;   // First ?
+    let result = square(half)?;  // Second ?
+    result
+}
+
+// Test 2: Multiple error paths
+enum MultiError {
+    ErrorA,
+    ErrorB,
+    ErrorC,
+}
+
+fn check_a(x: i32) -> i32 | MultiError {
+    if x < 0 {
+        throw MultiError::ErrorA;
+    }
+    x
+}
+
+fn check_b(x: i32) -> i32 | MultiError {
+    if x > 100 {
+        throw MultiError::ErrorB;
+    }
+    x
+}
+
+fn check_c(x: i32) -> i32 | MultiError {
+    if x == 50 {
+        throw MultiError::ErrorC;
+    }
+    x
+}
+
+fn triple_check(x: i32) -> i32 | MultiError {
+    let a = check_a(x)?;
+    let b = check_b(a)?;
+    let c = check_c(b)?;
+    c
+}
+
+// Test 3: ? operator in different positions
+fn test_early_return() -> i32 | MathError {
+    // Error happens early, should return immediately
+    let x = divide(10, 0)?;  // This throws
+    let y = square(x);        // This should never execute
+    y
+}
+
+fn test_late_error() -> i32 | MathError {
+    // Error happens late
+    let x = divide(10, 2)?;   // Success
+    let y = divide(x, 0)?;   // Error
+    let z = square(y);        // Never executes
+    z
+}
+
+// Test 4: Complex computation chain
+fn complex_chain(start: i32) -> i32 | MathError {
+    let v1 = divide(start, 2)?;
+    let v2 = divide(v1, 3)?;
+    let v3 = divide(v2, 4)?;
+    let v4 = square(v3)?;
+    v4 + 1
+}
+
+// Test 5: Reusing error results
+fn reuse_result(x: i32) -> i32 | MathError {
+    let result1 = divide(x, 2)?;
+
+    // Use result1 multiple times
+    let temp1 = result1 + 1;
+    let temp2 = result1 * 2;
+
+    // Then use ? again
+    let result2 = divide(temp1, temp2)?;
+    result2
+}
+
+// Test 6: ? with different return types
+fn returns_bool(x: i32) -> bool | MathError {
+    let result = divide(x, 2)?;
+    result > 0
+}
+
+fn returns_large(x: i32) -> i64 | MathError {
+    let result = divide(x, 2)?;
+    1000000 + result as i64
+}
+
+// Main test function
+fn main() -> i32 {
+    // Test various scenarios
+    let t1 = validate_and_process(20);
+    let t2 = triple_check(10);
+    let t3 = complex_chain(100);
+    let t4 = reuse_result(16);
+
+    0
+}

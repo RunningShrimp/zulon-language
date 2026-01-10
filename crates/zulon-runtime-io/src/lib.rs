@@ -21,10 +21,18 @@
 mod error;
 mod stdout;
 mod file;
+pub mod event_loop;
 
 pub use error::{IoError, IoResult};
 pub use stdout::{print, println};
 pub use file::File;
+pub use event_loop::{EventLoop, EventHandler, EventSource, Token, Interest, TimerHandle};
+
+// TODO: Re-enable when modules are complete
+// mod channel;
+// mod io;
+// mod sys;
+// mod select;
 
 #[cfg(test)]
 mod tests {

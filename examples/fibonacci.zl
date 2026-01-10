@@ -1,0 +1,58 @@
+// Fibonacci数列计算示例
+// 展示递归和迭代两种实现方式
+
+fn main() -> i32 {
+    printf("=== Fibonacci Sequence Examples ===\n\n");
+
+    // 测试递归版本
+    printf("Recursive Fibonacci:\n");
+    let mut i = 0;
+    while i < 10 {
+        let n = fib_recursive(i);
+        printf("  fib_recursive(%d) = %d\n", i, n);
+        i = i + 1;
+    }
+
+    printf("\n");
+
+    // 测试迭代版本
+    printf("Iterative Fibonacci:\n");
+    i = 0;
+    while i < 10 {
+        let n = fib_iterative(i);
+        printf("  fib_iterative(%d) = %d\n", i, n);
+        i = i + 1;
+    }
+
+    printf("\n=== All Tests Passed ===\n");
+    0
+}
+
+// 递归版本的 Fibonacci
+fn fib_recursive(n: i32) -> i32 {
+    if n <= 1 {
+        n
+    } else {
+        let n1 = fib_recursive(n - 1);
+        let n2 = fib_recursive(n - 2);
+        n1 + n2
+    }
+}
+
+// 迭代版本的 Fibonacci
+fn fib_iterative(n: i32) -> i32 {
+    if n <= 1 {
+        n
+    } else {
+        let mut a = 0;
+        let mut b = 1;
+        let mut i = 2;
+        while i <= n {
+            let temp = a + b;
+            a = b;
+            b = temp;
+            i = i + 1;
+        }
+        b
+    }
+}

@@ -1,0 +1,46 @@
+// 素数计算示例（最简单版本）
+// 使用最小嵌套避免编译器bug
+
+fn main() -> i32 {
+    printf("=== Prime Number Test ===\n\n");
+
+    printf("Primes between 2 and 30:\n");
+    let mut i = 2;
+    while i <= 30 {
+        let is_prime = check_prime(i);
+        if is_prime == 1 {
+            printf("  %d is prime\n", i);
+        }
+        i = i + 1;
+    }
+
+    printf("\n=== Test Complete ===\n");
+    0
+}
+
+// 简化的素数检查 - 最小嵌套
+fn check_prime(n: i32) -> i32 {
+    let mut result = 0;
+
+    // Check if n is prime using simple trial division
+    let mut i = 2;
+    let mut found_divisor = 0;
+
+    while i < n {
+        if n % i == 0 {
+            found_divisor = 1;
+            i = n; // exit loop
+        } else {
+            i = i + 1;
+        }
+    }
+
+    // If no divisor found, it's prime
+    if found_divisor == 0 {
+        if n > 1 {
+            result = 1;
+        }
+    }
+
+    result
+}

@@ -309,8 +309,11 @@ pub enum LirCmpOp {
 /// Terminator - ends a basic block with control flow
 #[derive(Debug, Clone)]
 pub enum LirTerminator {
-    /// Return from function
+    /// Return from function (normal return)
     Return(Option<VReg>),
+
+    /// Throw an error (error return from functions with error types)
+    Throw(VReg),
 
     /// Unconditional jump
     Jump {
@@ -346,6 +349,9 @@ pub struct LirExternal {
 
     /// Return type
     pub return_type: LirTy,
+
+    /// Whether this is a variadic function (like printf)
+    pub variadic: bool,
 }
 
 /// LIR body (collection of functions and external declarations)

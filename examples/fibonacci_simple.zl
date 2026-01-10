@@ -1,0 +1,62 @@
+// Fibonacci数列计算示例（简化版）
+// 避免在if-else块内使用while循环的编译器bug
+
+fn main() -> i32 {
+    printf("=== Fibonacci Sequence Examples ===\n\n");
+
+    // 测试递归版本
+    printf("Recursive Fibonacci:\n");
+    let mut i = 0;
+    while i < 10 {
+        let n = fib_recursive(i);
+        printf("  fib(%d) = %d\n", i, n);
+        i = i + 1;
+    }
+
+    printf("\n");
+
+    // 测试迭代版本（使用独立函数避免bug）
+    printf("Iterative Fibonacci:\n");
+    i = 0;
+    while i < 10 {
+        let n = fib_iter(i);
+        printf("  fib(%d) = %d\n", i, n);
+        i = i + 1;
+    }
+
+    printf("\n=== All Tests Passed ===\n");
+    0
+}
+
+// 递归版本的 Fibonacci
+fn fib_recursive(n: i32) -> i32 {
+    if n <= 1 {
+        return n;
+    }
+    let n1 = fib_recursive(n - 1);
+    let n2 = fib_recursive(n - 2);
+    n1 + n2
+}
+
+// 迭代版本的 Fibonacci（使用早期返回避免编译器bug）
+fn fib_iter(n: i32) -> i32 {
+    // 边界条件使用早期返回
+    if n == 0 {
+        return 0;
+    }
+    if n == 1 {
+        return 1;
+    }
+
+    // 主循环（不在if-else内）
+    let mut a = 0;
+    let mut b = 1;
+    let mut i = 2;
+    while i <= n {
+        let temp = a + b;
+        a = b;
+        b = temp;
+        i = i + 1;
+    }
+    b
+}

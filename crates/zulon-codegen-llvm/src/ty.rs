@@ -56,7 +56,12 @@ impl LlvmType {
                 _ => format!("fp{}", bits),
             },
 
-            LlvmType::Pointer(inner) => format!("{}*", inner.to_llvm_ir()),
+            // Use modern opaque pointer type "ptr" instead of "i8*"
+            // This matches modern LLVM/Clang syntax and ensures proper calling convention
+            LlvmType::Pointer(_inner) => {
+                // For opaque pointers, we don't need to specify the pointee type
+                "ptr".to_string()
+            }
 
             LlvmType::Array { inner, len } => {
                 format!("[{} x {}]", len, inner.to_llvm_ir())

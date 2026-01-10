@@ -22,4 +22,11 @@ serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 toml = "0.8"
 
+# ZULON compiler dependencies
+zulon-parser = { path = "../zulon-parser" }
+zulon-hir = { path = "../zulon-hir" }
+zulon-mir = { path = "../zulon-mir" }
+zulon-lir = { path = "../zulon-lir" }
+zulon-codegen-llvm = { path = "../zulon-codegen-llvm" }
+
 [dev-dependencies]

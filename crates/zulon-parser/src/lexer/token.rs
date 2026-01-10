@@ -34,6 +34,7 @@ pub enum TokenKind {
 
     // Declarations
     Extern,
+    Async,
     Fn,
     Struct,
     Enum,

@@ -999,6 +999,10 @@ name = "zulon-air"
 version = "0.1.0"
 
 [[package]]
+name = "zulon-async-futures"
+version = "0.1.0"
+
+[[package]]
 name = "zulon-build"
 version = "0.1.0"
 dependencies = [
@@ -1013,6 +1017,10 @@ dependencies = [
 
 [[package]]
 name = "zulon-ci"
+version = "0.1.0"
+
+[[package]]
+name = "zulon-codegen"
 version = "0.1.0"
 
 [[package]]
@@ -1177,6 +1185,14 @@ version = "0.1.0"
 [[package]]
 name = "zulon-runtime-scheduler"
 version = "0.1.0"
+dependencies = [
+ "zulon-async-futures",
+ "zulon-runtime-io",
+]
+
+[[package]]
+name = "zulon-runtime-test"
+version = "0.1.0"
 
 [[package]]
 name = "zulon-std-core"
@@ -1240,6 +1256,11 @@ dependencies = [
  "serde",
  "serde_json",
  "toml",
+ "zulon-codegen-llvm",
+ "zulon-hir",
+ "zulon-lir",
+ "zulon-mir",
+ "zulon-parser",
 ]
 
 [[package]]

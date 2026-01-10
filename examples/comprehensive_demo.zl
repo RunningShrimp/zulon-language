@@ -1,0 +1,90 @@
+// Comprehensive ZULON demonstration
+// Shows all currently working language features
+
+fn main() -> i32 {
+    printf("╔════════════════════════════════════════╗\n");
+    printf("║   ZULON Programming Language Demo     ║\n");
+    printf("║   Version 0.1.0 - January 2026       ║\n");
+    printf("╚════════════════════════════════════════╝\n");
+    printf("\n");
+
+    printf("=== Language Features ===\n");
+    printf("\n");
+
+    printf("1. Arithmetic Operations:\n");
+    printf("   Addition: 10 + 20 = ");
+    add_test();
+    printf("\n");
+
+    printf("2. Function Calls:\n");
+    printf("   Calling greet()...\n");
+    greet();
+    printf("\n");
+
+    printf("3. If Expressions:\n");
+    printf("   Testing if (10 > 5): ");
+    test_if();
+    printf("\n");
+
+    printf("4. While Loops:\n");
+    printf("   Loop demonstration...\n");
+    test_loop();
+    printf("\n");
+
+    printf("5. Nested Function Calls:\n");
+    printf("   Calculating: compute(15)\n");
+    printf("   Result: ");
+    compute(15);
+    printf("\n");
+
+    printf("\n=== Compilation Pipeline ===\n");
+    printf("Parser → HIR → MIR → LIR → LLVM IR → Assembly → Executable\n");
+    printf("\n");
+
+    printf("=== Thank You ===\n");
+    printf("ZULON: A systems programming language with Rust-like syntax\n");
+    printf("Features: Effect handlers, async/await, memory safety\n");
+    printf("\n");
+
+    0
+}
+
+fn add_test() -> i32 {
+    let a = 10;
+    let b = 20;
+    let sum = a + b;
+    // Note: Can't print the number yet
+    sum
+}
+
+fn greet() -> i32 {
+    printf("   Hello from greet()!\n");
+    0
+}
+
+fn test_if() -> i32 {
+    let x = 10;
+    if x > 5 {
+        printf("x is greater than 5\n")
+    } else {
+        printf("x is not greater than 5\n")
+    };
+    0
+}
+
+fn test_loop() -> i32 {
+    let mut i = 0;
+    while i < 3 {
+        printf("   Loop iteration...\n");
+        i = i + 1
+    };
+    0
+}
+
+fn compute(x: i32) -> i32 {
+    if x > 10 {
+        x + 5
+    } else {
+        x + 10
+    }
+}

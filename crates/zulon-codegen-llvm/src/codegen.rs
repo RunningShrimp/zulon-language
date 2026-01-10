@@ -41,6 +41,8 @@ pub struct CodeGenerator<W: Write> {
     string_constants: Vec<StringConstant>,
     /// Mapping from vreg to string constant index
     string_vreg_map: HashMap<usize, usize>,
+    /// Temporary register counter for error returns
+    temp_reg_counter: usize,
 }
 
 impl<W: Write> CodeGenerator<W> {
@@ -56,6 +58,7 @@ impl<W: Write> CodeGenerator<W> {
             calling_convention: CallingConvention::SystemVAMD64, // Default
             string_constants: Vec::new(),
             string_vreg_map: HashMap::new(),
+            temp_reg_counter: 1000, // Start from 1000 to avoid conflicts with LIR vregs
         }
     }
 
@@ -75,6 +78,7 @@ impl<W: Write> CodeGenerator<W> {
             calling_convention: CallingConvention::SystemVAMD64,
             string_constants: Vec::new(),
             string_vreg_map: HashMap::new(),
+            temp_reg_counter: 1000,
         }
     }
 
@@ -129,7 +133,8 @@ impl<W: Write> CodeGenerator<W> {
     fn write_function_header(&mut self, func: &LirFunction) -> Result<()> {
         // Define return type
         let return_type: LlvmType = func.return_type.clone().into();
-        write!(self.writer, "define {}", return_type.to_llvm_ir()).unwrap();
+        // Use to_llvm_ref() for struct types to get just the name, not full definition
+        write!(self.writer, "define {}", return_type.to_llvm_ref()).unwrap();
 
         // Function name
         write!(self.writer, " @{}", func.name).unwrap();
@@ -297,6 +302,7 @@ impl<W: Write> CodeGenerator<W> {
     fn generate_const(&mut self, dest: zulon_lir::VReg, value: &zulon_lir::LirConstant, ty: &zulon_lir::LirTy) -> Result<()> {
         let llvm_ty: LlvmType = ty.clone().into();
 
+
         match value {
             zulon_lir::LirConstant::Integer(val) => {
                 if ty.is_float() {
@@ -331,19 +337,20 @@ impl<W: Write> CodeGenerator<W> {
                 ).unwrap();
             }
 
-            zulon_lir::LirConstant::String(s) => {
+            zulon_lir::LirConstant::String(_s) => {
                 // String constants are collected at module level
-                // Here we just generate the getelementptr to get the address
+                // Get pointer to first character with getelementptr
                 let str_id = self.string_vreg_map.get(&(dest as usize)).unwrap();
                 let global_name = format!("@.str{}", str_id);
+                let str_len = self.string_constants[*str_id].len;
 
+                // Get pointer to string data: getelementptr [N x i8], ptr @.strX, i64 0, i64 0
                 writeln!(
                     self.writer,
-                    "{}  %v{} = getelementptr inbounds [{} x i8], [{} x i8]* {}, i32 0, i32 0",
+                    "{}  %v{} = getelementptr [{} x i8], ptr {}, i64 0, i64 0",
                     "  ".repeat(self.indent),
                     dest,
-                    s.len() + 1, // +1 for null terminator
-                    s.len() + 1,
+                    str_len,
                     global_name
                 ).unwrap();
             }
@@ -563,19 +570,35 @@ impl<W: Write> CodeGenerator<W> {
         indices: &[LirOperand],
         ty: &zulon_lir::LirTy,
     ) -> Result<()> {
+        // GEP indices need type prefixes (e.g., "i32 0" not just "0")
         let indices_str: Vec<String> = indices
             .iter()
-            .map(|op| self.operand_to_llvm(op))
+            .map(|op| match op {
+                LirOperand::Imm(val) => Ok(format!("i32 {}", val)),
+                LirOperand::Reg(vreg) => Ok(format!("%v{}", vreg)),
+                LirOperand::ImmFloat(val) => Ok(val.to_string()),
+            })
             .collect::<Result<Vec<_>>>()?;
 
         // Convert LIR type to LLVM type string
         use crate::ty::LlvmType;
         let llvm_type = LlvmType::from(ty.clone());
-        let type_str = llvm_type.to_llvm_ir();
 
-        // Use ptr for the base pointer type (modern LLVM style)
+        // For GEP, use struct reference (just the name) for structs
+        // For other types, use the full type definition
+        let type_str = if matches!(ty, zulon_lir::LirTy::Struct { .. }) {
+            llvm_type.to_llvm_ref()
+        } else {
+            llvm_type.to_llvm_ir()
+        };
+
+        // For struct types, use the struct type for both parameters
+        // For other types, use pointer type
         let base_type = match ty {
-            zulon_lir::LirTy::Struct { .. } => "ptr".to_string(),
+            zulon_lir::LirTy::Struct { .. } => {
+                // Use struct type reference for GEP on structs
+                llvm_type.to_llvm_ref() + "*"
+            }
             _ => format!("{}*", type_str),
         };
 
@@ -605,15 +628,51 @@ impl<W: Write> CodeGenerator<W> {
         let return_llvm_ty: LlvmType = return_ty.clone().into();
 
         // Format arguments with types
+        // Add 'noundef' attribute for better optimization (matches Clang behavior)
         let args_str: Vec<String> = args.iter().enumerate().map(|(i, &arg_reg)| {
             if i < arg_types.len() {
                 let arg_ty: LlvmType = arg_types[i].clone().into();
-                format!("{} %v{}", arg_ty.to_llvm_ir(), arg_reg)
+                // Add noundef for all arguments (matches Clang's output for externals)
+                format!("{} noundef %v{}", arg_ty.to_llvm_ir(), arg_reg)
             } else {
                 // Default to i32 if no type info
-                format!("i32 %v{}", arg_reg)
+                format!("i32 noundef %v{}", arg_reg)
             }
         }).collect();
+
+        // Use to_llvm_ref() for struct types (definition vs reference)
+        // Struct types need just the name when used as return type, not the full definition
+        let return_type_str = return_llvm_ty.to_llvm_ref();
+
+        // Check if this is a variadic function call (like printf)
+        // For externals, we need to determine if the function is variadic
+        let is_variadic = self.is_external_variadic(func_name);
+
+        // Build function type signature for explicit type in call (matches Clang behavior)
+        // For variadic functions: only include FIXED parameters in the type signature
+        // For regular functions: include all parameters
+        let (arg_types_str, variadic_suffix) = if is_variadic {
+            // For variadic functions like printf, the format string is the only fixed parameter
+            // The number of fixed parameters equals param_types.len() (excluding variable args)
+            let fixed_count = self.get_external_fixed_param_count(func_name);
+            let fixed_types: Vec<String> = arg_types.iter()
+                .take(fixed_count)
+                .map(|ty| {
+                    let llvm_ty: LlvmType = ty.clone().into();
+                    llvm_ty.to_llvm_ir()
+                })
+                .collect();
+            (fixed_types, ", ...")
+        } else {
+            // For regular functions, include all parameter types
+            let all_types: Vec<String> = arg_types.iter().map(|ty| {
+                let llvm_ty: LlvmType = ty.clone().into();
+                llvm_ty.to_llvm_ir()
+            }).collect();
+            (all_types, "")
+        };
+
+        let func_type = format!("{} ({}{})", return_type_str, arg_types_str.join(", "), variadic_suffix);
 
         if let Some(dest_vreg) = dest {
             writeln!(
@@ -621,7 +680,7 @@ impl<W: Write> CodeGenerator<W> {
                 "{}  %v{} = call {} @{}({})",
                 "  ".repeat(self.indent),
                 dest_vreg,
-                return_llvm_ty.to_llvm_ir(),
+                func_type,
                 func_name,
                 args_str.join(", ")
             ).unwrap();
@@ -630,13 +689,45 @@ impl<W: Write> CodeGenerator<W> {
                 self.writer,
                 "{}  call {} @{}({})",
                 "  ".repeat(self.indent),
-                return_llvm_ty.to_llvm_ir(),
+                func_type,
                 func_name,
                 args_str.join(", ")
             ).unwrap();
         }
 
         Ok(())
+    }
+
+    /// Check if an external function is variadic
+    fn is_external_variadic(&self, func_name: &str) -> bool {
+        // Known variadic functions from C standard library
+        match func_name {
+            "printf" | "scanf" | "sprintf" | "sscanf" |
+            "fprintf" | "fscanf" | "vprintf" | "vscanf" |
+            "vsprintf" | "vsscanf" | "vfprintf" | "vfscanf" |
+            "open" | "ioctl" | "execl" | "execlp" | "execle" |
+            "execv" | "execvp" | "execvpe" | "fcntl" => true,
+            _ => false,
+        }
+    }
+
+    /// Get the number of fixed parameters for an external function
+    fn get_external_fixed_param_count(&self, func_name: &str) -> usize {
+        // For variadic functions, return the number of fixed (non-variable) parameters
+        // For printf/sprintf: 1 (the format string)
+        // For scanf/sscanf: 2 (the buffer and format string)
+        // For fprintf/fscanf: 2 (the file and format/buffer string)
+        // For open: 2 or 3 (path, flags, and optional mode)
+        match func_name {
+            "printf" | "vprintf" => 1,
+            "sprintf" | "vsprintf" => 2,
+            "scanf" | "sscanf" | "vscanf" | "vsscanf" => 2,
+            "fprintf" | "fscanf" | "vfprintf" | "vfscanf" => 2,
+            "open" => 2,  // pathname, flags (mode is variable for O_CREAT)
+            "ioctl" | "execl" | "execlp" | "execle" | "fcntl" => 2,
+            "execv" | "execvp" | "execvpe" => 2,
+            _ => 0,  // Default: assume no fixed parameters
+        }
     }
 
     /// Generate comparison instruction
@@ -754,10 +845,10 @@ impl<W: Write> CodeGenerator<W> {
                 if let Some(vreg) = value {
                     // Return with value
                     // If this is an error-returning function and the value isn't already wrapped,
-                    // we need to construct Outcome::Err
+                    // we need to construct Outcome::Ok for normal returns
                     if is_outcome && !self.is_outcome_value(*vreg) {
-                        // Construct Outcome::Err(error_value)
-                        self.generate_error_return(*vreg, &ret_ty)?;
+                        // Construct Outcome::Ok(value) for normal returns
+                        self.generate_ok_return(*vreg, &ret_ty)?;
                     } else {
                         // Normal return (value is already Outcome or not an error function)
                         writeln!(
@@ -783,6 +874,24 @@ impl<W: Write> CodeGenerator<W> {
                             ret_ty.to_llvm_ir()
                         ).unwrap();
                     }
+                }
+            }
+
+            LirTerminator::Throw(error_vreg) => {
+                let ret_ty: LlvmType = func.return_type.clone().into();
+
+                // Check if function returns Outcome type (error handling)
+                let is_outcome = match &func.return_type {
+                    zulon_lir::LirTy::Struct { name, .. } => name == "Outcome",
+                    _ => false,
+                };
+
+                // Throw should always construct Outcome::Err
+                if is_outcome {
+                    self.generate_error_return(*error_vreg, &ret_ty)?;
+                } else {
+                    // This shouldn't happen - throw without error type
+                    return Err(CodegenError::FunctionError("Throw terminator in non-error function".to_string()));
                 }
             }
 
@@ -907,8 +1016,12 @@ impl<W: Write> CodeGenerator<W> {
 
     /// Generate a complete LLVM IR module
     pub fn generate_module(&mut self, functions: &[LirFunction]) -> Result<()> {
-        // Module header
+        // Module header with target triple and datalayout
         writeln!(self.writer, "; Generated by ZULON compiler")
+            .map_err(|e| CodegenError::InstructionError(format!("IO error: {}", e)))?;
+        writeln!(self.writer, "target datalayout = \"{}\"", get_datalayout())
+            .map_err(|e| CodegenError::InstructionError(format!("IO error: {}", e)))?;
+        writeln!(self.writer, "target triple = \"{}\"", get_target_triple())
             .map_err(|e| CodegenError::InstructionError(format!("IO error: {}", e)))?;
         writeln!(self.writer)
             .map_err(|e| CodegenError::InstructionError(format!("IO error: {}", e)))?;
@@ -930,8 +1043,12 @@ impl<W: Write> CodeGenerator<W> {
         functions: &[LirFunction],
         externals: &[zulon_lir::LirExternal],
     ) -> Result<()> {
-        // Module header
+        // Module header with target triple and datalayout
         writeln!(self.writer, "; Generated by ZULON compiler")
+            .map_err(|e| CodegenError::InstructionError(format!("IO error: {}", e)))?;
+        writeln!(self.writer, "target datalayout = \"{}\"", get_datalayout())
+            .map_err(|e| CodegenError::InstructionError(format!("IO error: {}", e)))?;
+        writeln!(self.writer, "target triple = \"{}\"", get_target_triple())
             .map_err(|e| CodegenError::InstructionError(format!("IO error: {}", e)))?;
         writeln!(self.writer)
             .map_err(|e| CodegenError::InstructionError(format!("IO error: {}", e)))?;
@@ -985,14 +1102,19 @@ impl<W: Write> CodeGenerator<W> {
             external.name
         ).map_err(|e| CodegenError::InstructionError(format!("IO error: {}", e)))?;
 
-        // Parameter types
+        // Parameter types with noundef attribute (matches Clang)
         for (i, param_ty) in external.param_types.iter().enumerate() {
             if i > 0 {
                 write!(self.writer, ", ").map_err(|e| CodegenError::InstructionError(format!("IO error: {}", e)))?;
             }
             let llvm_ty: LlvmType = param_ty.clone().into();
-            write!(self.writer, "{}", llvm_ty.to_llvm_ir())
+            write!(self.writer, "{} noundef", llvm_ty.to_llvm_ir())
                 .map_err(|e| CodegenError::InstructionError(format!("IO error: {}", e)))?;
+        }
+
+        // Add "..." for variadic functions
+        if external.variadic {
+            write!(self.writer, ", ...").map_err(|e| CodegenError::InstructionError(format!("IO error: {}", e)))?;
         }
 
         writeln!(self.writer, ")")
@@ -1096,31 +1218,36 @@ impl<W: Write> CodeGenerator<W> {
         error_vreg: zulon_lir::VReg,
         ret_ty: &LlvmType,
     ) -> Result<()> {
-        // We need to generate new temporary registers
-        // Start from a high number to avoid conflicts with LIR vregs
-        let mut temp_reg = 1000usize;
+        // Use struct reference for all struct type operations
+        let type_ref = ret_ty.to_llvm_ref();
+
+        // Get current temp register and reserve space for 4 temps
+        let outcome_reg = self.temp_reg_counter;
+        self.temp_reg_counter = self.temp_reg_counter.wrapping_add(1);
+        let disc_ptr_reg = self.temp_reg_counter;
+        self.temp_reg_counter = self.temp_reg_counter.wrapping_add(1);
+        let data_ptr_reg = self.temp_reg_counter;
+        self.temp_reg_counter = self.temp_reg_counter.wrapping_add(1);
+        let outcome_loaded_reg = self.temp_reg_counter;
+        self.temp_reg_counter = self.temp_reg_counter.wrapping_add(1);
 
         // Step 1: Allocate stack space for Outcome
         // Outcome is represented as: { i32, <error_type> }
-        let outcome_reg = temp_reg;
-        temp_reg = temp_reg.wrapping_add(1);
         writeln!(
             self.writer,
             "{}  %v{} = alloca {}",
             "  ".repeat(self.indent),
             outcome_reg,
-            ret_ty.to_llvm_ir()
+            type_ref
         ).unwrap();
 
         // Step 2: Get pointer to discriminant field (field 0)
-        let disc_ptr_reg = temp_reg;
-        temp_reg = temp_reg.wrapping_add(1);
         writeln!(
             self.writer,
             "{}  %v{} = getelementptr {}, ptr %v{}, i32 0, i32 0",
             "  ".repeat(self.indent),
             disc_ptr_reg,
-            ret_ty.to_llvm_ir(),
+            type_ref,
             outcome_reg
         ).unwrap();
 
@@ -1133,46 +1260,32 @@ impl<W: Write> CodeGenerator<W> {
         ).unwrap();
 
         // Step 4: Get pointer to data field (field 1)
-        let data_ptr_reg = temp_reg;
-        temp_reg = temp_reg.wrapping_add(1);
         writeln!(
             self.writer,
             "{}  %v{} = getelementptr {}, ptr %v{}, i32 0, i32 1",
             "  ".repeat(self.indent),
             data_ptr_reg,
-            ret_ty.to_llvm_ir(),
+            type_ref,
             outcome_reg
         ).unwrap();
 
         // Step 5: Store error value in data field
-        // Need to load the error value first
-        let error_loaded_reg = temp_reg;
-        let _ = temp_reg.wrapping_add(1); // Increment but don't need the value
-        writeln!(
-            self.writer,
-            "{}  %v{} = load i32, ptr %v{}",
-            "  ".repeat(self.indent),
-            error_loaded_reg,
-            error_vreg
-        ).unwrap();
-
-        // Store the error value
+        // Store the error value directly (error_vreg is the actual value, not a pointer)
         writeln!(
             self.writer,
             "{}  store i32 %v{}, ptr %v{}",
             "  ".repeat(self.indent),
-            error_loaded_reg,
+            error_vreg,
             data_ptr_reg
         ).unwrap();
 
         // Step 6: Load the entire Outcome and return it
-        let outcome_loaded_reg = temp_reg;
         writeln!(
             self.writer,
             "{}  %v{} = load {}, ptr %v{}",
             "  ".repeat(self.indent),
             outcome_loaded_reg,
-            ret_ty.to_llvm_ir(),
+            type_ref,
             outcome_reg
         ).unwrap();
 
@@ -1181,10 +1294,171 @@ impl<W: Write> CodeGenerator<W> {
             self.writer,
             "{}  ret {} %v{}",
             "  ".repeat(self.indent),
-            ret_ty.to_llvm_ir(),
+            type_ref,
+            outcome_loaded_reg
+        ).unwrap();
+
+        Ok(())
+    }
+
+    /// Generate Outcome::Ok(value) return for normal returns from error functions
+    ///
+    /// This is used when a function with an error type performs a normal return
+    /// (not a throw). We need to wrap the return value in Outcome::Ok.
+    ///
+    /// Outcome layout: { i32 discriminant, <ok_type> data }
+    /// - discriminant = 0 for Ok, 1 for Err
+    /// - data field contains the actual value
+    fn generate_ok_return(
+        &mut self,
+        value_vreg: zulon_lir::VReg,
+        ret_ty: &LlvmType,
+    ) -> Result<()> {
+        // Use struct reference for all struct type operations
+        let type_ref = ret_ty.to_llvm_ref();
+
+        // Get current temp register and reserve space for 5 temps
+        let outcome_reg = self.temp_reg_counter;
+        self.temp_reg_counter = self.temp_reg_counter.wrapping_add(1);
+        let disc_ptr_reg = self.temp_reg_counter;
+        self.temp_reg_counter = self.temp_reg_counter.wrapping_add(1);
+        let data_ptr_reg = self.temp_reg_counter;
+        self.temp_reg_counter = self.temp_reg_counter.wrapping_add(1);
+        let outcome_loaded_reg = self.temp_reg_counter;
+        self.temp_reg_counter = self.temp_reg_counter.wrapping_add(1);
+
+        // Step 1: Allocate stack space for Outcome
+        writeln!(
+            self.writer,
+            "{}  %v{} = alloca {}",
+            "  ".repeat(self.indent),
+            outcome_reg,
+            type_ref
+        ).unwrap();
+
+        // Step 2: Get pointer to discriminant field (field 0)
+        writeln!(
+            self.writer,
+            "{}  %v{} = getelementptr {}, ptr %v{}, i32 0, i32 0",
+            "  ".repeat(self.indent),
+            disc_ptr_reg,
+            type_ref,
+            outcome_reg
+        ).unwrap();
+
+        // Step 3: Store discriminant value = 0 (Ok variant)
+        writeln!(
+            self.writer,
+            "{}  store i32 0, ptr %v{}",
+            "  ".repeat(self.indent),
+            disc_ptr_reg
+        ).unwrap();
+
+        // Step 4: Get pointer to data field (field 1)
+        writeln!(
+            self.writer,
+            "{}  %v{} = getelementptr {}, ptr %v{}, i32 0, i32 1",
+            "  ".repeat(self.indent),
+            data_ptr_reg,
+            type_ref,
+            outcome_reg
+        ).unwrap();
+
+        // Step 5: Store the actual value directly in data field
+        // Note: value_vreg is the actual computed value (e.g., result of sdiv)
+        writeln!(
+            self.writer,
+            "{}  store i32 %v{}, ptr %v{}",
+            "  ".repeat(self.indent),
+            value_vreg,
+            data_ptr_reg
+        ).unwrap();
+
+        // Step 6: Load the entire Outcome and return it
+        writeln!(
+            self.writer,
+            "{}  %v{} = load {}, ptr %v{}",
+            "  ".repeat(self.indent),
+            outcome_loaded_reg,
+            type_ref,
+            outcome_reg
+        ).unwrap();
+
+        // Return the constructed Outcome::Ok
+        writeln!(
+            self.writer,
+            "{}  ret {} %v{}",
+            "  ".repeat(self.indent),
+            type_ref,
             outcome_loaded_reg
         ).unwrap();
 
         Ok(())
     }
 }
+
+/// Get the target triple for the current host
+fn get_target_triple() -> String {
+    use std::env;
+
+    // Allow override via environment variable
+    if let Ok(triple) = env::var("ZULON_TARGET_TRIPLE") {
+        return triple;
+    }
+
+    // Detect host architecture and OS
+    let arch = match std::env::consts::ARCH {
+        "x86_64" => "x86_64",
+        "aarch64" => "aarch64",
+        "riscv64" => "riscv64",
+        _ => "unknown",
+    };
+
+    let os = match std::env::consts::OS {
+        "linux" => "unknown-linux-gnu",
+        "macos" => "apple-darwin",
+        "windows" => "unknown-windows-msvc",
+        "freebsd" => "unknown-freebsd",
+        "openbsd" => "unknown-openbsd",
+        _ => "unknown-none-unknown",
+    };
+
+    format!("{}-{}", arch, os)
+}
+
+/// Get the target datalayout for the current host
+fn get_datalayout() -> String {
+    use std::env;
+
+    // Allow override via environment variable
+    if let Ok(datalayout) = env::var("ZULON_DATALAYOUT") {
+        return datalayout;
+    }
+
+    // Detect host architecture and return appropriate datalayout
+    // These match Clang's default datalayouts for each platform
+    match std::env::consts::ARCH {
+        "x86_64" => {
+            match std::env::consts::OS {
+                "linux" => "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-i128:128-f80:128-n8:16:32:64-S128".to_string(),
+                "macos" => "e-m:o-p270:32:32-p271:32:32-p272:64:64-i64:64-i128:128-n32:64-S128-Fn32".to_string(),
+                _ => "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-i128:128-f80:128-n8:16:32:64-S128".to_string(),
+            }
+        }
+        "aarch64" => {
+            match std::env::consts::OS {
+                "linux" => "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-i128:128-n8:16:32:64-S128".to_string(),
+                "macos" => "e-m:o-p270:32:32-p271:32:32-p272:64:64-i64:64-i128:128-n32:64-S128-Fn32".to_string(),
+                _ => "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-i128:128-n8:16:32:64-S128".to_string(),
+            }
+        }
+        "riscv64" => {
+            "e-m:e-p:64:64-i64:64-i128:128-n32:64-S128".to_string()
+        }
+        _ => {
+            // Default generic datalayout
+            "e-m:e-p:64:64-i64:64-i128:128-n32:64-S128".to_string()
+        }
+    }
+}
+

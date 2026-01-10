@@ -455,6 +455,9 @@ pub enum ExpressionKind {
         /// Delimiter used: '(', '{', or '['
         delimiter: MacroDelimiter,
     },
+
+    /// Await expression: `future.await`
+    Await(Box<Expression>),
 }
 
 /// Binary operators

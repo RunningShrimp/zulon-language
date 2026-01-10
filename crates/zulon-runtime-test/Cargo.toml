@@ -1,0 +1,12 @@
+[package]
+name = "zulon-runtime-test"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+name = "zulon_runtime_test"
+path = "src/lib.rs"
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+# No external dependencies needed for basic panic support

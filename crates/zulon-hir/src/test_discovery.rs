@@ -103,6 +103,8 @@ mod tests {
             return_type: HirTy::Unit,
             error_type: None,
             effects: Vec::new(),
+            is_async: false,
+            is_unsafe: false,
             attributes: vec![
                 Attribute {
                     name: Identifier::new(Span::new(Position::new(0, 0), Position::new(0, 0)), "test"),
@@ -141,6 +143,8 @@ mod tests {
             return_type: HirTy::Unit,
             error_type: None,
             effects: Vec::new(),
+            is_async: false,
+            is_unsafe: false,
             attributes: vec![
                 Attribute {
                     name: Identifier::new(Span::new(Position::new(0, 0), Position::new(0, 0)), "test"),
@@ -181,6 +185,8 @@ mod tests {
             return_type: HirTy::Unit,
             error_type: None,
             effects: Vec::new(),
+            is_async: false,
+            is_unsafe: false,
             attributes: vec![
                 Attribute {
                     name: Identifier::new(Span::new(Position::new(0, 0), Position::new(0, 0)), "test"),

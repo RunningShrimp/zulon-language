@@ -24,6 +24,9 @@ pub enum MirError {
         field: String,
         reason: String,
     },
+
+    #[error("async transformation error: {0}")]
+    TransformError(String),
 }
 
 pub type Result<T> = std::result::Result<T, MirError>;

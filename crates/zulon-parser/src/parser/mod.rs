@@ -272,6 +272,13 @@ impl Parser {
                 func.attributes.extend(attributes);
                 ItemKind::Function(func)
             }
+            Some(TokenKind::Async) => {
+                // async fn should be handled by parse_function
+                let mut func = self.parse_function()?;
+                // Add attributes parsed before the item
+                func.attributes.extend(attributes);
+                ItemKind::Function(func)
+            }
             Some(TokenKind::Struct) => {
                 let struct_def = self.parse_struct()?;
                 ItemKind::Struct(struct_def)
@@ -325,6 +332,14 @@ impl Parser {
 
     /// Parse a function definition
     fn parse_function(&mut self) -> ParseResult<Function> {
+        // Check for async modifier
+        let is_async = if self.check(&TokenKind::Async) {
+            self.advance();
+            true
+        } else {
+            false
+        };
+
         self.consume(TokenKind::Fn)?;
 
         let name = self.parse_identifier()?;
@@ -417,7 +432,7 @@ impl Parser {
             effects,
             is_variadic,
             body,
-            is_async: false, // TODO: Parse async modifier
+            is_async,
             is_unsafe: false, // TODO: Parse unsafe modifier
             attributes: Vec::new(), // Will be populated by parse_item
         })
@@ -855,12 +870,20 @@ impl Parser {
                             ),
                         };
                     } else {
-                        // Named field access for structs: obj.field
+                        // Named field access for structs: obj.field OR await expression: obj.await
                         let field_name = self.parse_identifier()?;
 
-                        expr = Expression {
-                            span,
-                            kind: ExpressionKind::FieldAccess(Box::new(expr), field_name),
+                        // Check if this is an await expression
+                        if field_name.name == "await" {
+                            expr = Expression {
+                                span,
+                                kind: ExpressionKind::Await(Box::new(expr)),
+                            };
+                        } else {
+                            expr = Expression {
+                                span,
+                                kind: ExpressionKind::FieldAccess(Box::new(expr), field_name),
+                            };
                         };
                     }
                 }
@@ -1440,6 +1463,12 @@ impl Parser {
         // Consume the !
         self.consume(TokenKind::Bang)?;
 
+        // Check for built-in assertion/panic macros and expand them
+        let name = macro_name.name.as_str();
+        if matches!(name, "assert" | "assert_eq" | "assert_ne" | "panic") {
+            return self.parse_builtin_macro(macro_name, span);
+        }
+
         // Determine the delimiter and parse arguments
         let delimiter = match self.current_kind() {
             Some(TokenKind::LeftParen) => {
@@ -1484,6 +1513,243 @@ impl Parser {
                 delimiter,
             },
         })
+    }
+
+    /// Parse and expand built-in assertion/panic macros
+    fn parse_builtin_macro(&mut self, macro_name: Identifier, call_span: Span) -> ParseResult<Expression> {
+        use crate::ast::{ExpressionKind, Block};
+
+        // Consume the opening paren
+        self.consume(TokenKind::LeftParen)?;
+
+        match macro_name.name.as_str() {
+            "assert" => {
+                // assert!(condition) or assert!(condition, "message")
+                let condition = Box::new(self.parse_expression()?);
+
+                let has_message = self.check(&TokenKind::Comma);
+                if has_message {
+                    self.consume(TokenKind::Comma)?;
+                    // Parse message but we'll ignore it for now (will use in future)
+                    let _message = self.parse_expression()?;
+                    self.consume(TokenKind::RightParen)?;
+                } else {
+                    self.consume(TokenKind::RightParen)?;
+                }
+
+                // Expand to: if !condition { panic!("assertion failed"); }
+                Ok(Expression {
+                    span: call_span,
+                    kind: ExpressionKind::If(
+                        Box::new(Expression {
+                            span: condition.span.clone(),
+                            kind: ExpressionKind::Unary(
+                                crate::ast::UnaryOp::Not,
+                                condition.clone(),
+                            ),
+                        }),
+                        Block {
+                            span: call_span.clone(),
+                            statements: vec![
+                                crate::ast::Statement {
+                                    span: call_span.clone(),
+                                    kind: crate::ast::StatementKind::Expr(Expression {
+                                        span: call_span.clone(),
+                                        kind: ExpressionKind::Call(
+                                            Box::new(Expression {
+                                                span: call_span.clone(),
+                                                kind: ExpressionKind::Path(vec![
+                                                    Identifier { name: "builtin_panic".to_string(), span: call_span.clone() }
+                                                ]),
+                                            }),
+                                            vec![Box::new(Expression {
+                                                span: call_span.clone(),
+                                                kind: ExpressionKind::Literal(crate::ast::Literal::String(
+                                                    "assertion failed".to_string()
+                                                )),
+                                            })],
+                                        ),
+                                    })
+                                }
+                            ],
+                            trailing_expr: None,
+                        },
+                        None,
+                    ),
+                })
+            }
+            "assert_eq" => {
+                // assert_eq!(left, right) or assert_eq!(left, right, "message")
+                let left = Box::new(self.parse_expression()?);
+                self.consume(TokenKind::Comma)?;
+                let right = Box::new(self.parse_expression()?);
+
+                let has_message = self.check(&TokenKind::Comma);
+                if has_message {
+                    self.consume(TokenKind::Comma)?;
+                    let _message = self.parse_expression()?;
+                    self.consume(TokenKind::RightParen)?;
+                } else {
+                    self.consume(TokenKind::RightParen)?;
+                }
+
+                // Expand to: if left != right { panic!(...); }
+                // TODO: In the future, include actual values in the error message
+                let error_msg = "assertion failed: `(left == right)`".to_string();
+
+                Ok(Expression {
+                    span: call_span,
+                    kind: ExpressionKind::If(
+                        Box::new(Expression {
+                            span: call_span.clone(),
+                            kind: ExpressionKind::Binary(
+                                crate::ast::BinaryOp::NotEq,
+                                left.clone(),
+                                right.clone(),
+                            ),
+                        }),
+                        Block {
+                            span: call_span.clone(),
+                            statements: vec![
+                                crate::ast::Statement {
+                                    span: call_span.clone(),
+                                    kind: crate::ast::StatementKind::Expr(Expression {
+                                        span: call_span.clone(),
+                                        kind: ExpressionKind::Call(
+                                            Box::new(Expression {
+                                                span: call_span.clone(),
+                                                kind: ExpressionKind::Path(vec![
+                                                    Identifier { name: "builtin_panic".to_string(), span: call_span.clone() }
+                                                ]),
+                                            }),
+                                            vec![Box::new(Expression {
+                                                span: call_span.clone(),
+                                                kind: ExpressionKind::Literal(crate::ast::Literal::String(
+                                                    error_msg
+                                                )),
+                                            })],
+                                        ),
+                                    })
+                                }
+                            ],
+                            trailing_expr: None,
+                        },
+                        None,
+                    ),
+                })
+            }
+            "assert_ne" => {
+                // assert_ne!(left, right) or assert_ne!(left, right, "message")
+                let left = Box::new(self.parse_expression()?);
+                self.consume(TokenKind::Comma)?;
+                let right = Box::new(self.parse_expression()?);
+
+                let has_message = self.check(&TokenKind::Comma);
+                if has_message {
+                    self.consume(TokenKind::Comma)?;
+                    let _message = self.parse_expression()?;
+                    self.consume(TokenKind::RightParen)?;
+                } else {
+                    self.consume(TokenKind::RightParen)?;
+                }
+
+                // Expand to: if left == right { panic!(...); }
+                let error_msg = "assertion failed: `(left != right)`".to_string();
+
+                Ok(Expression {
+                    span: call_span,
+                    kind: ExpressionKind::If(
+                        Box::new(Expression {
+                            span: call_span.clone(),
+                            kind: ExpressionKind::Binary(
+                                crate::ast::BinaryOp::Eq,
+                                left.clone(),
+                                right.clone(),
+                            ),
+                        }),
+                        Block {
+                            span: call_span.clone(),
+                            statements: vec![
+                                crate::ast::Statement {
+                                    span: call_span.clone(),
+                                    kind: crate::ast::StatementKind::Expr(Expression {
+                                        span: call_span.clone(),
+                                        kind: ExpressionKind::Call(
+                                            Box::new(Expression {
+                                                span: call_span.clone(),
+                                                kind: ExpressionKind::Path(vec![
+                                                    Identifier { name: "builtin_panic".to_string(), span: call_span.clone() }
+                                                ]),
+                                            }),
+                                            vec![Box::new(Expression {
+                                                span: call_span.clone(),
+                                                kind: ExpressionKind::Literal(crate::ast::Literal::String(
+                                                    error_msg
+                                                )),
+                                            })],
+                                        ),
+                                    })
+                                }
+                            ],
+                            trailing_expr: None,
+                        },
+                        None,
+                    ),
+                })
+            }
+            "panic" => {
+                // panic!() or panic!("message")
+                let has_args = !self.check(&TokenKind::RightParen);
+
+                if has_args {
+                    let message = self.parse_expression()?;
+                    self.consume(TokenKind::RightParen)?;
+
+                    // Expand to: builtin_panic(message)
+                    Ok(Expression {
+                        span: call_span,
+                        kind: ExpressionKind::Call(
+                            Box::new(Expression {
+                                span: call_span.clone(),
+                                kind: ExpressionKind::Path(vec![
+                                    Identifier { name: "builtin_panic".to_string(), span: call_span.clone() }
+                                ]),
+                            }),
+                            vec![Box::new(message)],
+                        ),
+                    })
+                } else {
+                    self.consume(TokenKind::RightParen)?;
+
+                    // Expand to: builtin_panic("panicked")
+                    Ok(Expression {
+                        span: call_span,
+                        kind: ExpressionKind::Call(
+                            Box::new(Expression {
+                                span: call_span.clone(),
+                                kind: ExpressionKind::Path(vec![
+                                    Identifier { name: "builtin_panic".to_string(), span: call_span.clone() }
+                                ]),
+                            }),
+                            vec![Box::new(Expression {
+                                span: call_span.clone(),
+                                kind: ExpressionKind::Literal(crate::ast::Literal::String(
+                                    "panicked".to_string()
+                                )),
+                            })],
+                        ),
+                    })
+                }
+            }
+            _ => {
+                // Should not reach here due to earlier check
+                Err(ParseError::UnexpectedToken {
+                    expected: "built-in macro".to_string(),
+                    found: self.current_kind().cloned().unwrap_or(TokenKind::Unknown),
+                    span: self.current_span(),
+                })
+            }
+        }
     }
 
     /// Get the closing delimiter for a macro invocation

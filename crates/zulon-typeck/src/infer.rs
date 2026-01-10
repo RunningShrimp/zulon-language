@@ -189,7 +189,15 @@ pub fn unify_with_subst(
         }
 
         // Functions
-        (Ty::Function { params: params1, return_type: ret1 }, Ty::Function { params: params2, return_type: ret2 }) => {
+        (Ty::Function { params: params1, return_type: ret1, variadic: var1 }, Ty::Function { params: params2, return_type: ret2, variadic: var2 }) => {
+            // Variadic flags must match
+            if var1 != var2 {
+                return Err(TypeError::TypeMismatch {
+                    expected: Ty::Function { params: params1.clone(), return_type: ret1.clone(), variadic: var1 },
+                    found: Ty::Function { params: params2.clone(), return_type: ret2.clone(), variadic: var2 },
+                    span: span.clone(),
+                });
+            }
             if params1.len() != params2.len() {
                 return Err(TypeError::ArityMismatch {
                     expected: params1.len(),
@@ -311,9 +319,10 @@ fn occurs_in(ty_var: TyVarId, ty: &Ty) -> bool {
         Ty::Array { inner, .. } => occurs_in(ty_var, inner),
         Ty::Slice(inner) => occurs_in(ty_var, inner),
         Ty::Tuple(tys) => tys.iter().any(|t| occurs_in(ty_var, t)),
-        Ty::Function { params, return_type } => {
+        Ty::Function { params, return_type, variadic } => {
             params.iter().any(|t| occurs_in(ty_var, t))
                 || occurs_in(ty_var, return_type)
+                || *variadic && occurs_in(ty_var, &Ty::Bool) // variadic implies presence of extra bool
         }
         Ty::Struct { generics, .. } | Ty::Enum { generics, .. } => {
             generics.iter().any(|t| occurs_in(ty_var, t))

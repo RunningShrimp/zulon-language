@@ -108,6 +108,7 @@ impl TypeChecker {
         let func_ty = Ty::Function {
             params: param_types.clone(),
             return_type: Box::new(return_type.clone()),
+            variadic: false,
         };
 
         // Insert function into environment
@@ -227,9 +228,13 @@ impl TypeChecker {
             .map(|ty| self.ast_type_to_ty(ty))
             .unwrap_or(Ty::Unit);
 
+        // Mark known C variadic functions
+        let is_varadic = matches!(func.name.name.as_str(), "printf" | "scanf");
+
         let func_ty = Ty::Function {
             params: param_types.clone(),
             return_type: Box::new(return_type.clone()),
+            variadic: is_varadic,
         };
 
         // Insert extern function into environment
@@ -551,6 +556,7 @@ impl TypeChecker {
                         return Ok(Ty::Function {
                             params: op.param_types.clone(),
                             return_type: Box::new(op.return_type.clone()),
+                            variadic: false,
                         });
                     }
                 }
@@ -686,9 +692,18 @@ impl TypeChecker {
         let func_ty = self.check_expression(func)?;
 
         match func_ty {
-            Ty::Function { params, return_type } => {
+            Ty::Function { params, return_type, variadic } => {
                 // Check arity
-                if params.len() != args.len() {
+                // For variadic functions, allow args >= params
+                // For normal functions, require args == params
+                if !variadic && params.len() != args.len() {
+                    return Err(TypeError::ArityMismatch {
+                        expected: params.len(),
+                        found: args.len(),
+                        span: func.span,
+                    });
+                } else if variadic && args.len() < params.len() {
+                    // Variadic functions must have at least as many args as params
                     return Err(TypeError::ArityMismatch {
                         expected: params.len(),
                         found: args.len(),
@@ -697,6 +712,7 @@ impl TypeChecker {
                 }
 
                 // Check arguments and unify with parameter types
+                // Only check up to params.len() - variadic args aren't type-checked
                 for (arg, param_ty) in args.iter().zip(params.iter()) {
                     let arg_ty = self.check_expression(arg)?;
                     self.unify(&arg_ty, param_ty, &arg.span)?;
@@ -810,6 +826,7 @@ impl TypeChecker {
         then_block: &ast::Block,
         else_block: &Option<ast::Block>,
     ) -> Result<Ty> {
+        eprintln!("DEBUG check_if called!");
         // Condition must be bool
         let cond_ty = self.check_expression(condition)?;
         self.unify(&cond_ty, &Ty::Bool, &condition.span)?;
@@ -831,6 +848,20 @@ impl TypeChecker {
         if matches!(else_ty, Ty::Never) {
             // Else branch diverges, so result is then branch type
             return Ok(then_ty);
+        }
+
+        // Check if this if expression is used as a statement (both blocks have no trailing expr)
+        let then_is_stmt = then_block.trailing_expr.is_none();
+        let else_is_stmt = else_block.as_ref().map_or(true, |b| b.trailing_expr.is_none());
+
+        eprintln!("DEBUG HIR: then_is_stmt={}, else_is_stmt={}, then_has_trailing={:?}, else_has_trailing={:?}", 
+            then_is_stmt, else_is_stmt, then_block.trailing_expr.is_some(), 
+            else_block.as_ref().map(|b| b.trailing_expr.is_some()));
+
+        if then_is_stmt && else_is_stmt {
+            // Both branches are statements (no trailing expressions)
+            // The if expression itself is a statement, so return Unit
+            return Ok(Ty::Unit);
         }
 
         // Normal case: unify branch types
@@ -937,6 +968,7 @@ impl TypeChecker {
         let closure_ty = Ty::Function {
             params: param_tys,
             return_type: Box::new(return_ty),
+            variadic: false,
         };
 
         Ok(closure_ty)
@@ -1106,6 +1138,7 @@ impl TypeChecker {
                 Ty::Function {
                     params: params.iter().map(|p| self.ast_type_to_ty(p)).collect(),
                     return_type: Box::new(self.ast_type_to_ty(return_type)),
+                    variadic: false,
                 }
             }
             Type::Pipe(left, right) => {

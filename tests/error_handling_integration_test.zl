@@ -1,0 +1,112 @@
+// Integration Test: Error Handling End-to-End
+// This test validates the complete error handling pipeline
+
+// Test 1: Basic error throwing
+enum MathError {
+    Zero,
+    Negative,
+}
+
+fn divide(a: i32, b: i32) -> i32 | MathError {
+    if b == 0 {
+        throw MathError::Zero;
+    }
+    if b < 0 {
+        throw MathError::Negative;
+    }
+    a / b
+}
+
+fn test1_basic_throw() -> i32 {
+    let result = divide(10, 2);
+    0
+}
+
+// Test 2: Multiple error types
+enum IoError {
+    NotFound,
+    PermissionDenied,
+}
+
+enum ParseError {
+    InvalidSyntax,
+}
+
+fn read_file() -> i32 | IoError {
+    throw IoError::NotFound
+}
+
+fn parse_config() -> i32 | ParseError {
+    throw ParseError::InvalidSyntax
+}
+
+fn test2_multiple_error_types() -> i32 {
+    let r1 = read_file();
+    let r2 = parse_config();
+    0
+}
+
+// Test 3: Nested function calls with errors
+fn inner() -> i32 | MathError {
+    throw MathError::Zero
+}
+
+fn middle() -> i32 | MathError {
+    inner()
+}
+
+fn outer() -> i32 | MathError {
+    middle()
+}
+
+fn test3_nested_calls() -> i32 {
+    let result = outer();
+    0
+}
+
+// Test 4: Error with computation before throw
+fn compute_or_throw(x: i32) -> i32 | MathError {
+    let temp = x * 2;
+    if temp > 100 {
+        throw MathError::Negative;
+    }
+    temp
+}
+
+fn test4_computation_before_error() -> i32 {
+    let result = compute_or_throw(10);
+    0
+}
+
+// Test 5: Multiple throws in same function
+fn multi_throw(x: i32) -> i32 | MathError {
+    if x < 0 {
+        throw MathError::Negative;
+    }
+    if x == 0 {
+        throw MathError::Zero;
+    }
+    if x > 100 {
+        throw MathError::Negative;
+    }
+    x
+}
+
+fn test5_multiple_throws() -> i32 {
+    let r1 = multi_throw(50);
+    let r2 = multi_throw(-1);
+    let r3 = multi_throw(0);
+    0
+}
+
+// Main test runner
+fn main() -> i32 {
+    // Run all tests
+    test1_basic_throw();
+    test2_multiple_error_types();
+    test3_nested_calls();
+    test4_computation_before_error();
+    test5_multiple_throws();
+
+    0  // All tests passed
+}

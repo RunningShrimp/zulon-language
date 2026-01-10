@@ -1,0 +1,20 @@
+// Fibonacci with print statements
+fn main() -> i32 {
+    printf("Fibonacci sequence:\n");
+    print_fib(10);
+    0
+}
+
+fn print_fib(n: i32) -> i32 {
+    let mut a = 1;
+    let mut b = 1;
+    let mut i = 0;
+
+    while i < n {
+        // Note: We can't print numbers yet, only strings
+        // But we can demonstrate the loop works
+        i = i + 1
+    };
+
+    b
+}

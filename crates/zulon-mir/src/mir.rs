@@ -38,6 +38,12 @@ pub struct MirFunction {
     /// Effects declared by this function (e.g., ["Log"] for fn() -> i32 | Log)
     pub effects: Vec<String>,
 
+    /// Whether this is an async function (needs state machine transformation)
+    pub is_async: bool,
+
+    /// State machine states for async functions (if is_async)
+    pub state_machine: Option<AsyncStateMachine>,
+
     /// Next available node ID
     pub next_id: MirNodeId,
 
@@ -57,6 +63,8 @@ impl MirFunction {
             entry_block,
             handlers: Vec::new(),
             effects: Vec::new(),
+            is_async: false,
+            state_machine: None,
             next_id: 1,
             next_temp: 0,
         };
@@ -282,8 +290,11 @@ pub enum MirUnaryOp {
 /// Terminator - ends a basic block with control flow
 #[derive(Debug, Clone)]
 pub enum MirTerminator {
-    /// Return from function
+    /// Return from function (normal return)
     Return(Option<MirPlace>),
+
+    /// Throw an error (error return from functions with error types)
+    Throw(MirPlace),
 
     /// Unconditional jump
     Goto {
@@ -352,3 +363,55 @@ impl MirBody {
         self.functions.push(func);
     }
 }
+
+/// Async state machine for async functions
+///
+/// When an async function is lowered to MIR, it's transformed into a state machine
+/// that can suspend and resume at await points.
+#[derive(Debug, Clone)]
+pub struct AsyncStateMachine {
+    /// States in the state machine (each await point creates a new state)
+    pub states: Vec<StateMachineState>,
+
+    /// Local variables that need to be preserved across suspensions
+    pub preserved_locals: Vec<TempVar>,
+
+    /// The return type (Future's Output type)
+    pub output_type: MirTy,
+}
+
+/// A single state in the async state machine
+#[derive(Debug, Clone)]
+pub struct StateMachineState {
+    /// State ID (0 = start, 1 = after first await, etc.)
+    pub id: usize,
+
+    /// Basic block ID for this state
+    pub block_id: MirNodeId,
+
+    /// Variables captured in this state
+    pub captured: Vec<TempVar>,
+}
+
+impl AsyncStateMachine {
+    /// Create a new async state machine
+    pub fn new(output_type: MirTy) -> Self {
+        AsyncStateMachine {
+            states: Vec::new(),
+            preserved_locals: Vec::new(),
+            output_type,
+        }
+    }
+
+    /// Add a state to the state machine
+    pub fn add_state(&mut self, block_id: MirNodeId, captured: Vec<TempVar>) -> usize {
+        let id = self.states.len();
+        self.states.push(StateMachineState {
+            id,
+            block_id,
+            captured,
+        });
+        id
+    }
+}
+

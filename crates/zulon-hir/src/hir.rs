@@ -42,6 +42,10 @@ pub struct HirFunction {
     pub error_type: Option<HirTy>,
     /// Effects for functions using `fn() -> T | E | Effect1 + Effect2` syntax
     pub effects: Vec<HirTy>,
+    /// Whether this is an async function
+    pub is_async: bool,
+    /// Whether this is an unsafe function
+    pub is_unsafe: bool,
     /// Attributes on this function (e.g., #[test], #[ignore])
     pub attributes: Vec<zulon_parser::ast::Attribute>,
     pub body: HirBlock,
@@ -276,6 +280,13 @@ pub enum HirExpression {
         ty: HirTy,
         span: Span,
     },
+
+    /// Await expression: `future.await`
+    Await {
+        future: Box<HirExpression>,
+        ty: HirTy,
+        span: Span,
+    },
 }
 
 /// Template string part
@@ -314,6 +325,7 @@ impl HirExpression {
             HirExpression::QuestionMark(_, ty, _) => ty,  // ? returns the success type
             HirExpression::Try(try_block) => &try_block.try_block.ty,
             HirExpression::TemplateString { ty, .. } => ty,
+            HirExpression::Await { ty, .. } => ty,  // await returns the Future's Output type
         }
     }
 
@@ -345,6 +357,7 @@ impl HirExpression {
             HirExpression::QuestionMark(_, _, span) => span,
             HirExpression::Try(try_block) => &try_block.span,
             HirExpression::TemplateString { span, .. } => span,
+            HirExpression::Await { span, .. } => span,
         }
     }
 }
@@ -551,6 +564,41 @@ pub struct HirEffectMethod {
     pub return_type: HirTy,
     pub body: HirBlock,
     pub span: Span,
+}
+
+// Convenience methods for HirFunction
+impl HirFunction {
+    /// Check if this function has a specific attribute
+    pub fn has_attribute(&self, attr_name: &str) -> bool {
+        self.attributes.iter().any(|attr| attr.name.name == attr_name)
+    }
+
+    /// Check if this is a test function (marked with #[test])
+    pub fn is_test(&self) -> bool {
+        self.has_attribute("test")
+    }
+
+    /// Check if this test should be ignored (marked with #[ignore])
+    pub fn is_ignored_test(&self) -> bool {
+        self.is_test() && self.has_attribute("ignore")
+    }
+
+    /// Get all test functions from a list of items
+    pub fn filter_tests(items: &[HirItem]) -> Vec<&HirFunction> {
+        items.iter()
+            .filter_map(|item| {
+                if let HirItem::Function(func) = item {
+                    if func.is_test() {
+                        Some(func)
+                    } else {
+                        None
+                    }
+                } else {
+                    None
+                }
+            })
+            .collect()
+    }
 }
 
 // Add span() method to HirItem

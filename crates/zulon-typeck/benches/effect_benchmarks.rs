@@ -13,12 +13,12 @@ mod benchmarks {
     use zulon_typeck::TypeChecker;
 
     /// Benchmark helper: measure execution time
-    fn bench<T>(name: &str, f: impl Fn() -> T) -> T {
+    fn bench<T>(name: &str, f: impl Fn() -> T) -> (T, std::time::Duration) {
         let start = Instant::now();
         let result = f();
         let duration = start.elapsed();
         println!("  {:<50} {:?}", name, duration);
-        result
+        (result, duration)
     }
 
     /// Parse and type check source code
@@ -378,11 +378,11 @@ mod benchmarks {
         "#;
 
         println!("\n=== Comparison Benchmarks ===");
-        let time_no_effects = bench("No effects (baseline)", || {
+        let (_, time_no_effects) = bench("No effects (baseline)", || {
             check_source(source_no_effects)
         });
 
-        let time_with_effects = bench("With effects (IO)", || {
+        let (_, time_with_effects) = bench("With effects (IO)", || {
             check_source(source_with_effects)
         });
 

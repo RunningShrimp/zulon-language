@@ -172,6 +172,9 @@ fn format_terminator(terminator: &zulon_mir::MirTerminator) -> String {
                 "return".to_string()
             }
         }
+        zulon_mir::MirTerminator::Throw(place) => {
+            format!("throw {}", format_place(place))
+        }
         zulon_mir::MirTerminator::Goto { target } => {
             format!("goto -> block{}", target)
         }

@@ -74,6 +74,7 @@ impl Default for EffectInference {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::effect::Effect;
 
     #[test]
     fn test_inference_creation() {

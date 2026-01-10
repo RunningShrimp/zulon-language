@@ -29,6 +29,8 @@ members = [
     "crates/zulon-runtime-actor",
     "crates/zulon-runtime-io",
     "crates/zulon-runtime-net",
+    "crates/zulon-runtime-test",
+    "crates/zulon-async-futures",
     
     # 标准库
     "crates/zulon-std-core",
@@ -58,7 +60,7 @@ members = [
     "crates/zulon-compiler",
     "crates/zulon-ci",
     "crates/zulon-diagnostic",
-    "crates/zulon-macros",
+    "crates/zulon-macros", "crates/zulon-codegen",
 ]
 
 # 默认成员（快速构建）

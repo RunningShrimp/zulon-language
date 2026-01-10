@@ -339,10 +339,14 @@ extern fn printf(format: &u8, ...) -> i32;
                     .map(|ty| self.ast_type_to_lir_type(ty))
                     .unwrap_or(LirTy::Unit);
 
+                // Mark known variadic C functions
+                let is_varadic = matches!(func.name.name.as_str(), "printf" | "scanf");
+
                 externs.push(LirExternal {
                     name: func.name.name.clone(),
                     param_types,
                     return_type,
+                    variadic: is_varadic,
                 });
             }
         }

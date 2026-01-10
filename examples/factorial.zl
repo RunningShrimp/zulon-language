@@ -1,0 +1,75 @@
+// Factorial阶乘计算示例
+// 展示递归和迭代两种实现方式
+
+fn main() -> i32 {
+    printf("=== Factorial Calculation Examples ===\n\n");
+
+    // 测试递归版本
+    printf("Recursive Factorial:\n");
+    let mut i = 0;
+    while i <= 10 {
+        let n = factorial_recursive(i);
+        printf("  %d! = %d\n", i, n);
+        i = i + 1;
+    }
+
+    printf("\n");
+
+    // 测试迭代版本
+    printf("Iterative Factorial:\n");
+    i = 0;
+    while i <= 10 {
+        let n = factorial_iterative(i);
+        printf("  %d! = %d\n", i, n);
+        i = i + 1;
+    }
+
+    // 验证两种实现结果一致
+    printf("\nVerifying consistency:\n");
+    i = 0;
+    let mut all_match = 1;
+    while i <= 10 {
+        let r = factorial_recursive(i);
+        let it = factorial_iterative(i);
+        if r == it {
+            printf("  %d! matches: both = %d\n", i, r);
+        } else {
+            printf("  ERROR: %d! mismatch: recursive=%d, iterative=%d\n", i, r, it);
+            all_match = 0;
+        }
+        i = i + 1;
+    }
+
+    if all_match == 1 {
+        printf("\n=== All Tests Passed ===\n");
+    } else {
+        printf("\n=== TESTS FAILED ===\n");
+    }
+
+    0
+}
+
+// 递归版本的阶乘
+fn factorial_recursive(n: i32) -> i32 {
+    if n <= 1 {
+        1
+    } else {
+        let n1 = factorial_recursive(n - 1);
+        n * n1
+    }
+}
+
+// 迭代版本的阶乘
+fn factorial_iterative(n: i32) -> i32 {
+    if n <= 1 {
+        1
+    } else {
+        let mut result = 1;
+        let mut i = 2;
+        while i <= n {
+            result = result * i;
+            i = i + 1;
+        }
+        result
+    }
+}

@@ -72,10 +72,8 @@ fn main() -> i32 {
     let mut buffer = Cursor::new(Vec::new());
     let mut codegen = CodeGenerator::new(&mut buffer);
 
-    // Generate all functions
-    for func in &lir.functions {
-        codegen.generate_function(func)?;
-    }
+    // Generate module with target triple
+    codegen.generate_module(&lir.functions)?;
 
     let llvm_ir = String::from_utf8(buffer.into_inner())?;
 

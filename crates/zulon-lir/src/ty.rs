@@ -153,10 +153,23 @@ impl From<zulon_mir::MirTy> for LirTy {
 
             // Structs (simplified - placeholder size)
             zulon_mir::MirTy::Struct { name, .. } => {
-                LirTy::Struct {
-                    name,
-                    fields: Vec::new(), // TODO: Extract field types
-                    size: 8, // Placeholder
+                // Special handling for Outcome<T,E> (error handling)
+                // Outcome layout: { i32 discriminant, <data_type> data }
+                if name == "Outcome" {
+                    // For now, assume Outcome<i32, E> (discriminant + error value as i32)
+                    // TODO: Extract actual type parameters from HIR
+                    LirTy::Struct {
+                        name: "Outcome".to_string(),
+                        fields: vec![LirTy::I32, LirTy::I32], // discriminant + data
+                        size: 8, // 2 * i32 = 8 bytes
+                    }
+                } else {
+                    // Generic struct - placeholder
+                    LirTy::Struct {
+                        name,
+                        fields: Vec::new(), // TODO: Extract field types
+                        size: 8, // Placeholder
+                    }
                 }
             }
 

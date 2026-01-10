@@ -84,6 +84,7 @@ pub enum Ty {
     Function {
         params: Vec<Ty>,
         return_type: Box<Ty>,
+        variadic: bool,
     },
 
     /// Struct type
@@ -230,13 +231,16 @@ impl fmt::Display for Ty {
                 }
                 write!(f, ")")
             }
-            Ty::Function { params, return_type } => {
+            Ty::Function { params, return_type, variadic } => {
                 write!(f, "fn(")?;
                 for (i, param) in params.iter().enumerate() {
                     if i > 0 {
                         write!(f, ", ")?;
                     }
                     write!(f, "{}", param)?;
+                }
+                if *variadic {
+                    write!(f, ", ...")?;
                 }
                 write!(f, ") -> {}", return_type)
             }
@@ -336,9 +340,10 @@ pub fn subst_ty(substs: &Substs, ty: &Ty) -> Ty {
         },
         Ty::Slice(inner) => Ty::Slice(Box::new(subst_ty(substs, inner))),
         Ty::Tuple(tys) => Ty::Tuple(tys.iter().map(|t| subst_ty(substs, t)).collect()),
-        Ty::Function { params, return_type } => Ty::Function {
+        Ty::Function { params, return_type, variadic } => Ty::Function {
             params: params.iter().map(|t| subst_ty(substs, t)).collect(),
             return_type: Box::new(subst_ty(substs, return_type)),
+            variadic: *variadic,
         },
         Ty::Struct { name, generics } => Ty::Struct {
             name: name.clone(),

@@ -134,6 +134,8 @@ impl SimpleLoweringContext {
             effects,
             attributes,
             body,
+            is_async: false,
+            is_unsafe: false,
             span: func.name.span.clone(),
         })
     }
@@ -492,7 +494,17 @@ impl SimpleLoweringContext {
                     Some(block) => Some(Box::new(self.lower_block(block)?)),
                     None => None,
                 };
-                let ty = HirTy::I32;  // TODO: Unify branch types
+
+                // Check if this if expression is a statement (Unit) or produces a value
+                // If both branches lack trailing expressions, the if is Unit (statement)
+                let then_is_stmt = then_block.trailing_expr.is_none();
+                let else_is_stmt = else_block.as_ref().map_or(true, |b| b.trailing_expr.is_none());
+
+                let ty = if then_is_stmt && else_is_stmt {
+                    HirTy::Unit  // Both branches are statements
+                } else {
+                    HirTy::I32  // At least one branch produces a value
+                };
 
                 Ok(HirExpression::If {
                     condition: Box::new(condition_expr),
@@ -597,7 +609,7 @@ impl SimpleLoweringContext {
 
                 // Extract parameter and return types from inferred closure type
                 let (inferred_param_tys, inferred_return_ty) = match &closure_ty {
-                    Ty::Function { params, return_type } => (params, return_type.as_ref()),
+                    Ty::Function { params, return_type, variadic: _ } => (params, return_type.as_ref()),
                     _ => {
                         // Fallback - shouldn't happen in normal operation
                         return Err(LoweringError::UnsupportedFeature {

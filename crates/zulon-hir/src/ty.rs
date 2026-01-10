@@ -232,7 +232,7 @@ impl From<zulon_typeck::Ty> for HirTy {
                 HirTy::Tuple(tys.into_iter().map(|ty| ty.into()).collect())
             }
 
-            zulon_typeck::Ty::Function { params, return_type } => {
+            zulon_typeck::Ty::Function { params, return_type, variadic: _ } => {
                 HirTy::Function {
                     params: params.into_iter().map(|ty| ty.into()).collect(),
                     return_type: Box::new((*return_type).into()),

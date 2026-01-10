@@ -1,0 +1,20 @@
+[package]
+name = "zulon-async-futures"
+version = "0.1.0"
+edition = "2024"
+description = "Future trait and async primitives for ZULON"
+license = "Apache-2.0 OR MIT"
+authors = ["ZULON Language Team"]
+
+[dependencies]
+# std library is needed for Arc, atomic types, etc.
+# No external dependencies for now - keeping it minimal
+
+[lib]
+name = "zulon_async_futures"
+path = "src/lib.rs"
+
+[features]
+default = ["std"]
+std = []
+alloc = []
