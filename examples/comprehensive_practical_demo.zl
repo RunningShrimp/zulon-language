@@ -1,0 +1,200 @@
+// ZULON Comprehensive Practical Demo
+// Demonstrates all working language features
+
+// External function declaration (injected by prelude)
+// extern fn printf(format: &u8, ...) -> i32;
+
+fn main() -> i32 {
+    printf("╔════════════════════════════════════════╗\n");
+    printf("║     ZULON Language - Practical Demo        ║\n");
+    printf("║     Version 0.1.0 - MVP Complete           ║\n");
+    printf("╚════════════════════════════════════════╝\n\n");
+
+    // 1. Variables and Types
+    printf("=== 1. Variables and Types ===\n");
+    demo_variables();
+
+    // 2. Arithmetic Operations
+    printf("\n=== 2. Arithmetic ===\n");
+    demo_arithmetic();
+
+    // 3. Functions with Forward Declarations
+    printf("\n=== 3. Functions ===\n");
+    demo_functions();
+
+    // 4. Recursion
+    printf("\n=== 4. Recursion ===\n");
+    demo_recursion();
+
+    // 5. While Loops
+    printf("\n=== 5. While Loops ===\n");
+    demo_loops();
+
+    // 6. Conditionals
+    printf("\n=== 6. Conditionals ===\n");
+    demo_conditionals();
+
+    // 7. Advanced Function Calls
+    printf("\n=== 7. Advanced Features ===\n");
+    demo_advanced();
+
+    printf("\n╔════════════════════════════════════════╗\n");
+    printf("║     All Features Working Perfectly!       ║\n");
+    printf("╚════════════════════════════════════════╝\n");
+
+    0
+}
+
+// Demonstrates variables and basic types
+fn demo_variables() -> i32 {
+    // Integers
+    let int_val: i32 = 42;
+    printf("Integer: %d\n", int_val);
+
+    // Mutable variables
+    let mut counter: i32 = 0;
+    counter = counter + 1;
+    printf("Counter: %d\n", counter);
+
+    0
+}
+
+// Demonstrates arithmetic operations
+fn demo_arithmetic() -> i32 {
+    let a: i32 = 20;
+    let b: i32 = 8;
+
+    let sum = a + b;
+    let diff = a - b;
+    let product = a * b;
+    let quotient = a / b;
+    let remainder = a % b;
+
+    printf("a = %d, b = %d\n", a, b);
+    printf("Sum (a + b): %d\n", sum);
+    printf("Difference (a - b): %d\n", diff);
+    printf("Product (a * b): %d\n", product);
+    printf("Quotient (a / b): %d\n", quotient);
+    printf("Remainder (a %% b): %d\n", remainder);
+
+    0
+}
+
+// Demonstrates function calls
+fn demo_functions() -> i32 {
+    let x = 10;
+    let y = 25;
+
+    let result = add(x, y);
+    printf("add(%d, %d) = %d\n", x, y, result);
+
+    let result2 = multiply(x, y);
+    printf("multiply(%d, %d) = %d\n", x, y, result2);
+
+    0
+}
+
+// Demonstrates recursion
+fn demo_recursion() -> i32 {
+    printf("Calculating factorial(5):\n");
+
+    let result = factorial(5);
+    printf("factorial(5) = %d\n", result);
+
+    printf("\nCalculating fibonacci(10):\n");
+    let fib_result = fibonacci(10);
+    printf("fibonacci(10) = %d\n", fib_result);
+
+    0
+}
+
+// Demonstrates while loops
+fn demo_loops() -> i32 {
+    printf("Counting to 5:\n");
+
+    let mut i = 0;
+    while i < 5 {
+        printf("  Count: %d\n", i);
+        i = i + 1;
+    };
+
+    printf("Done!\n");
+    0
+}
+
+// Demonstrates conditionals
+fn demo_conditionals() -> i32 {
+    let value = 15;
+
+    printf("Testing value %d:\n", value);
+
+    if value < 10 {
+        printf("  Value is small (< 10)\n");
+    } else if value < 20 {
+        printf("  Value is medium (10-20)\n");
+    } else {
+        printf("  Value is large (> 20)\n");
+    }
+
+    0
+}
+
+// Demonstrates advanced features
+fn demo_advanced() -> i32 {
+    // Multiple function calls
+    let a = 5;
+    let b = 10;
+    let c = 15;
+
+    let sum = add(add(a, b), c);
+    printf("Nested add: add(add(%d, %d), %d) = %d\n", a, b, c, sum);
+
+    // Recursive calls
+    printf("Testing is_even(8): %d\n", is_even(8));
+    printf("Testing is_even(7): %d\n", is_even(7));
+
+    0
+}
+
+// Helper functions (can be called before definition - forward declaration works!)
+
+fn add(a: i32, b: i32) -> i32 {
+    a + b
+}
+
+fn multiply(a: i32, b: i32) -> i32 {
+    a * b
+}
+
+fn factorial(n: i32) -> i32 {
+    if n <= 1 {
+        1
+    } else {
+        n * factorial(n - 1)
+    }
+}
+
+fn fibonacci(n: i32) -> i32 {
+    if n <= 1 {
+        n
+    } else {
+        fibonacci(n - 1) + fibonacci(n - 2)
+    }
+}
+
+// Mutual recursion example
+fn is_even(n: i32) -> i32 {
+    if n == 0 {
+        1  // true
+    } else {
+        is_odd(n - 1)
+    }
+}
+
+fn is_odd(n: i32) -> i32 {
+    if n == 0 {
+        0  // false
+    } else {
+        is_even(n - 1)
+    }
+}

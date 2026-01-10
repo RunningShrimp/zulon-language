@@ -358,8 +358,6 @@ impl LirLoweringContext {
             .map(|(id, _)| *id)
             .collect();
 
-        eprintln!("DEBUG: Found {} empty blocks", empty_join_blocks.len());
-
         for empty_block in empty_join_blocks {
             // Find all blocks that branch to this empty block
             let predecessors: Vec<MirNodeId> = func.blocks.iter()
@@ -369,10 +367,21 @@ impl LirLoweringContext {
                 .map(|(id, _)| *id)
                 .collect();
 
-            eprintln!("DEBUG: Empty block {} has {} predecessors", empty_block, predecessors.len());
-
             if predecessors.is_empty() {
                 // No predecessors, this block is truly dead
+                continue;
+            }
+
+            // CRITICAL FIX: Don't eliminate empty blocks that are targets of conditional branches
+            // If a predecessor uses a Branch terminator (if-else), we cannot eliminate the empty block
+            // because both branches must be distinct blocks for PHI nodes to work correctly
+            let has_conditional_pred = predecessors.iter().any(|&pred_id| {
+                func.blocks.get(&pred_id).map_or(false, |block| {
+                    matches!(&block.terminator, Some(LirTerminator::Branch { .. }))
+                })
+            });
+
+            if has_conditional_pred {
                 continue;
             }
 
@@ -393,12 +402,9 @@ impl LirLoweringContext {
                 None
             };
 
-            eprintln!("DEBUG: Empty block {}, successor: {:?}", empty_block, successor);
-
             if let Some(succ_block) = successor {
                 // Redirect all predecessors to the successor
                 for pred_id in predecessors {
-                    eprintln!("DEBUG: Redirecting {} from {} to {}", pred_id, empty_block, succ_block);
                     if let Some(pred_block) = func.blocks.get_mut(&pred_id) {
                         match &mut pred_block.terminator {
                             Some(LirTerminator::Jump { target }) if *target == empty_block => {
