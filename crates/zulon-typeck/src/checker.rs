@@ -58,9 +58,52 @@ impl TypeChecker {
 
     /// Type check an entire AST
     pub fn check(&mut self, ast: &Ast) -> Result<()> {
+        // Pass 1: Collect all function and extern function signatures
+        // This enables forward declarations - functions can call functions
+        // that are defined later in the file
+        for item in &ast.items {
+            match &item.kind {
+                ItemKind::Function(func) => self.collect_function_signature(func)?,
+                ItemKind::ExternFunction(func) => self.collect_function_signature(func)?,
+                _ => {}
+            }
+        }
+
+        // Pass 2: Type check all items (including function bodies)
         for item in &ast.items {
             self.check_item(item)?;
         }
+        Ok(())
+    }
+
+    /// Collect function signature (for forward declarations)
+    /// This is called in Pass 1 to register all functions before checking bodies
+    fn collect_function_signature(&mut self, func: &ast::Function) -> Result<()> {
+        // Create function type from signature
+        let param_types: Vec<Ty> = func.params.iter()
+            .map(|p| {
+                p.type_annotation.as_ref()
+                    .map(|ty| self.ast_type_to_ty(ty))
+                    .unwrap_or(Ty::Unit)
+            })
+            .collect();
+
+        let return_type = func.return_type.as_ref()
+            .map(|ty| self.ast_type_to_ty(ty))
+            .unwrap_or(Ty::Unit);
+
+        // Mark known variadic C functions
+        let is_varadic = matches!(func.name.name.as_str(), "printf" | "scanf");
+
+        let func_ty = Ty::Function {
+            params: param_types,
+            return_type: Box::new(return_type),
+            variadic: is_varadic,
+        };
+
+        // Insert function into environment (signature only, no body yet)
+        self.env.insert_function(func.name.name.clone(), func_ty);
+
         Ok(())
     }
 
