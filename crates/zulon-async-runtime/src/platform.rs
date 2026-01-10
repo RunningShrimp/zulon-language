@@ -82,6 +82,8 @@ mod linux {
     pub struct EpollEventLoop {
         epoll_fd: i32,
         max_events: usize,
+        edge_triggered: bool,
+        one_shot: bool,
         handlers: std::collections::HashMap<Fd, Box<dyn EventHandler>>,
     }
 
@@ -98,8 +100,29 @@ mod linux {
             Ok(Self {
                 epoll_fd,
                 max_events: config.max_events.max(1),
+                edge_triggered: config.edge_triggered,
+                one_shot: config.one_shot,
                 handlers: std::collections::HashMap::new(),
             })
+        }
+
+        /// Convert configuration to epoll events flags
+        fn epoll_events(&self, for_read: bool) -> u32 {
+            let mut events = if for_read {
+                libc::EPOLLIN
+            } else {
+                libc::EPOLLOUT
+            };
+
+            if self.edge_triggered {
+                events |= libc::EPOLLET;
+            }
+
+            if self.one_shot {
+                events |= libc::EPOLLONESHOT;
+            }
+
+            events as u32
         }
     }
 
@@ -114,7 +137,7 @@ mod linux {
     impl EventLoop for EpollEventLoop {
         fn register_read(&mut self, fd: Fd, handler: Box<dyn EventHandler>) -> Result<(), EventLoopError> {
             let mut event = libc::epoll_event {
-                events: libc::EPOLLIN as u32,
+                events: self.epoll_events(true),
                 u64: fd as u64,
             };
 
@@ -128,9 +151,9 @@ mod linux {
             Ok(())
         }
 
-        fn register_write(&mut self, fd: Fd, _handler: Box<dyn EventHandler>) -> Result<(), EventLoopError> {
+        fn register_write(&mut self, fd: Fd, handler: Box<dyn EventHandler>) -> Result<(), EventLoopError> {
             let mut event = libc::epoll_event {
-                events: libc::EPOLLOUT as u32,
+                events: self.epoll_events(false),
                 u64: fd as u64,
             };
 
@@ -140,8 +163,7 @@ mod linux {
                 return Err(EventLoopError::Io(std::io::Error::last_os_error()));
             }
 
-            // Store handler (even though we don't use it in this stub)
-            // TODO: Implement proper write handling
+            self.handlers.insert(fd, handler);
             Ok(())
         }
 
@@ -177,22 +199,58 @@ mod linux {
 
             unsafe { events.set_len(ret as usize) };
 
+            let mut events_processed = 0;
+
             // Process events
             for event in &events {
                 let fd = event.u64 as Fd;
                 if let Some(handler) = self.handlers.get_mut(&fd) {
+                    let mut has_error = false;
+
+                    // Handle read events
                     if (event.events & libc::EPOLLIN as u32) != 0 {
-                        let _ = handler.on_read(fd);
+                        match handler.on_read(fd) {
+                            Ok(_) => {},
+                            Err(e) => {
+                                handler.on_error(fd, e);
+                                has_error = true;
+                            }
+                        }
                     }
+
+                    // Handle write events
+                    if (event.events & libc::EPOLLOUT as u32) != 0 && !has_error {
+                        // For write events, we'd typically have buffered data
+                        // For now, this is a placeholder
+                    }
+
+                    // Handle errors
+                    if (event.events & (libc::EPOLLERR as u32 | libc::EPOLLHUP as u32)) != 0 {
+                        handler.on_error(fd, EventLoopError::Io(std::io::Error::new(
+                            std::io::ErrorKind::BrokenPipe,
+                            "epoll error or hangup",
+                        )));
+                    }
+
+                    events_processed += 1;
                 }
             }
 
-            Ok(ret as usize)
+            Ok(events_processed)
         }
 
-        fn submit(&mut self, _operation: crate::effect::AsyncOperation) -> Result<Vec<u8>, EventLoopError> {
-            // TODO: Implement async operation submission
-            Err(EventLoopError::NotSupported)
+        fn submit(&mut self, operation: crate::effect::AsyncOperation) -> Result<Vec<u8>, EventLoopError> {
+            use crate::effect::AsyncOperation;
+
+            match operation {
+                AsyncOperation::Sleep { duration_ms } => {
+                    // For sleep operations, we can use the event loop timeout
+                    // This is a simplified implementation - a real one would use timers
+                    std::thread::sleep(std::time::Duration::from_millis(duration_ms));
+                    Ok(vec![])
+                }
+                _ => Err(EventLoopError::NotSupported),
+            }
         }
 
         fn is_empty(&self) -> bool {
@@ -260,8 +318,18 @@ mod macos {
             Ok(self.handlers.len())
         }
 
-        fn submit(&mut self, _operation: crate::effect::AsyncOperation) -> Result<Vec<u8>, EventLoopError> {
-            Err(EventLoopError::NotSupported)
+        fn submit(&mut self, operation: crate::effect::AsyncOperation) -> Result<Vec<u8>, EventLoopError> {
+            use crate::effect::AsyncOperation;
+
+            match operation {
+                AsyncOperation::Sleep { duration_ms } => {
+                    // For sleep operations, we can use the event loop timeout
+                    // This is a simplified implementation - a real one would use timers
+                    std::thread::sleep(std::time::Duration::from_millis(duration_ms));
+                    Ok(vec![])
+                }
+                _ => Err(EventLoopError::NotSupported),
+            }
         }
 
         fn is_empty(&self) -> bool {
@@ -316,5 +384,49 @@ mod tests {
         assert_eq!(config.max_events, 0); // Default value
         assert!(!config.edge_triggered);
         assert!(!config.one_shot);
+    }
+
+    #[test]
+    fn test_platform_config_custom() {
+        let config = PlatformConfig {
+            max_events: 1024,
+            edge_triggered: true,
+            one_shot: true,
+        };
+
+        assert_eq!(config.max_events, 1024);
+        assert!(config.edge_triggered);
+        assert!(config.one_shot);
+    }
+
+    #[test]
+    fn test_sleep_operation() {
+        let config = PlatformConfig::default();
+        if let Ok(mut event_loop) = EventLoopFactory::create(config) {
+            use crate::effect::AsyncOperation;
+
+            let start = std::time::Instant::now();
+            let result = event_loop.submit(AsyncOperation::Sleep { duration_ms: 10 });
+            let elapsed = start.elapsed();
+
+            assert!(result.is_ok());
+            assert!(elapsed >= std::time::Duration::from_millis(10));
+            assert!(elapsed < std::time::Duration::from_millis(100)); // Should not be too slow
+        }
+    }
+
+    #[test]
+    fn test_unsupported_operation() {
+        let config = PlatformConfig::default();
+        if let Ok(mut event_loop) = EventLoopFactory::create(config) {
+            use crate::effect::AsyncOperation;
+
+            // File operations should not be supported yet
+            let result = event_loop.submit(AsyncOperation::FileRead {
+                path: "/tmp/test.txt".to_string(),
+            });
+
+            assert!(matches!(result, Err(EventLoopError::NotSupported)));
+        }
     }
 }

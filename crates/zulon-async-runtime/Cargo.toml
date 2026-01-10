@@ -9,6 +9,10 @@ description = "Effect-based async runtime for ZULON language"
 name = "zulon_async_runtime"
 path = "src/lib.rs"
 
+[[example]]
+name = "async_runtime_demo"
+path = "../../examples/async_runtime_demo.rs"
+
 [dependencies]
 thiserror = "2.0"
 libc = "0.2"  # For epoll/kqueue syscalls
