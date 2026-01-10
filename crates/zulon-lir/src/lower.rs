@@ -56,6 +56,10 @@ impl LirLoweringContext {
     pub fn lower_body(&mut self, mir_body: &MirBody) -> Result<LirBody> {
         let mut lir_body = LirBody::new();
 
+        // NOTE: External functions like printf should be declared in the source code
+        // with `extern fn` declarations. They will be extracted by the compiler
+        // and added to lir_body.externals, preventing duplicate declarations.
+
         for func in &mir_body.functions {
             let lir_func = self.lower_function(func)?;
             lir_body.push_function(lir_func);
@@ -263,6 +267,7 @@ impl LirLoweringContext {
                 result
             }
             MirTerminator::Return { .. } => vec![],
+            MirTerminator::Throw(_) => vec![],
             MirTerminator::Unreachable => vec![],
             MirTerminator::EffectCall { resume_block, .. } => vec![*resume_block],
         }
@@ -279,6 +284,9 @@ impl LirLoweringContext {
     /// Complete CFG by adding terminators to blocks that are missing them
     /// This handles cases where MIR creates blocks (like loop exits) without terminators
     fn complete_cfg(&mut self, func: &mut LirFunction) -> Result<()> {
+        // First, eliminate empty join blocks that would become unreachable
+        self.eliminate_empty_join_blocks(func)?;
+
         let mut blocks_to_fix: Vec<MirNodeId> = Vec::new();
 
         // Find all blocks without terminators
@@ -310,14 +318,125 @@ impl LirLoweringContext {
                     }
                 } else {
                     // Block without phi and without terminator
-                    // This is likely dead code or unreachable
-                    // Add unreachable as a safe default
-                    block.terminator = Some(LirTerminator::Unreachable);
+                    // Check if there's a value-producing instruction that should be returned
+                    let last_value_vreg = block.instructions.iter()
+                        .rev()
+                        .find_map(|inst| match inst {
+                            LirInstruction::Copy { dest, .. } => Some(*dest),
+                            LirInstruction::BinaryOp { dest, .. } => Some(*dest),
+                            LirInstruction::UnaryOp { dest, .. } => Some(*dest),
+                            LirInstruction::Load { dest, .. } => Some(*dest),
+                            LirInstruction::Call { dest, .. } => *dest,
+                            LirInstruction::Gep { dest, .. } => Some(*dest),
+                            LirInstruction::Const { dest, .. } => Some(*dest),
+                            _ => None,
+                        });
+
+                    if let Some(vreg) = last_value_vreg {
+                        // Found a value to return
+                        block.terminator = Some(LirTerminator::Return(Some(vreg)));
+                    } else {
+                        // No value found, this is likely dead code or unreachable
+                        block.terminator = Some(LirTerminator::Unreachable);
+                    }
                 }
             }
         }
 
         Ok(())
+    }
+
+    /// Eliminate empty join blocks by redirecting predecessors to successors
+    fn eliminate_empty_join_blocks(&mut self, func: &mut LirFunction) -> Result<()> {
+        // Find empty blocks (no instructions, no phi) that would become unreachable
+        // These blocks may or may not have terminators yet
+        let empty_join_blocks: Vec<MirNodeId> = func.blocks.iter()
+            .filter(|(_, block)| {
+                block.instructions.is_empty()
+                    && block.phi_nodes.is_empty()
+            })
+            .map(|(id, _)| *id)
+            .collect();
+
+        eprintln!("DEBUG: Found {} empty blocks", empty_join_blocks.len());
+
+        for empty_block in empty_join_blocks {
+            // Find all blocks that branch to this empty block
+            let predecessors: Vec<MirNodeId> = func.blocks.iter()
+                .filter(|(_, block)| {
+                    self.branches_to(block, empty_block)
+                })
+                .map(|(id, _)| *id)
+                .collect();
+
+            eprintln!("DEBUG: Empty block {} has {} predecessors", empty_block, predecessors.len());
+
+            if predecessors.is_empty() {
+                // No predecessors, this block is truly dead
+                continue;
+            }
+
+            // Find a suitable successor block
+            // Look for blocks that come after this one in ID order
+            let mut block_ids: Vec<_> = func.blocks.keys().copied().collect();
+            block_ids.sort();
+
+            let empty_idx = block_ids.iter().position(|&id| id == empty_block);
+            let successor = if let Some(idx) = empty_idx {
+                // Try the next block after this one
+                if idx + 1 < block_ids.len() {
+                    Some(block_ids[idx + 1])
+                } else {
+                    None
+                }
+            } else {
+                None
+            };
+
+            eprintln!("DEBUG: Empty block {}, successor: {:?}", empty_block, successor);
+
+            if let Some(succ_block) = successor {
+                // Redirect all predecessors to the successor
+                for pred_id in predecessors {
+                    eprintln!("DEBUG: Redirecting {} from {} to {}", pred_id, empty_block, succ_block);
+                    if let Some(pred_block) = func.blocks.get_mut(&pred_id) {
+                        match &mut pred_block.terminator {
+                            Some(LirTerminator::Jump { target }) if *target == empty_block => {
+                                *target = succ_block;
+                            }
+                            Some(LirTerminator::Branch { then_block, else_block, .. }) => {
+                                if *then_block == empty_block {
+                                    *then_block = succ_block;
+                                }
+                                if *else_block == empty_block {
+                                    *else_block = succ_block;
+                                }
+                            }
+                            _ => {}
+                        }
+                    }
+                }
+
+                // Mark the empty block as removed by clearing its terminator
+                // This prevents it from getting Unreachable later
+                if let Some(empty_block_obj) = func.blocks.get_mut(&empty_block) {
+                    empty_block_obj.terminator = None;
+                }
+            }
+        }
+
+        Ok(())
+    }
+
+    /// Check if a block's terminator branches to the target block
+    fn branches_to(&self, block: &LirBlock, target: MirNodeId) -> bool {
+        match &block.terminator {
+            Some(LirTerminator::Jump { target: t }) => t == &target,
+            Some(LirTerminator::Branch { then_block, else_block, .. }) => {
+                then_block == &target || else_block == &target
+            }
+            _ => false,
+        }
     }
 
     /// Inject Load instructions before Return terminators that return mutable locals
@@ -692,23 +811,53 @@ impl LirLoweringContext {
                         }
                     };
 
+                    // Check if base is a struct value (not a pointer)
+                    // If so, we need to store it to an alloca first before doing GEP
+                    let base_type = self.get_place_type(base);
+                    let mut instructions = Vec::new();
+
+                    let (base_for_gep, gep_ty) = if matches!(base_type, LirTy::Struct { .. }) {
+                        // Base is a struct value - need to store it first
+                        let temp_slot = func.alloc_vreg();
+                        let base_type_lir: LirTy = base_type.clone();
+
+                        // Allocate stack slot
+                        instructions.push(LirInstruction::Alloca(crate::lir::LirAlloca {
+                            dest: temp_slot,
+                            ty: base_type_lir.clone(),
+                        }));
+
+                        // Store struct value to stack slot
+                        instructions.push(LirInstruction::Store {
+                            dest: LirOperand::Reg(temp_slot),
+                            src: base_vreg,
+                            ty: base_type_lir.clone(),
+                        });
+
+                        // Use the stack slot for GEP, and use struct type for GEP
+                        (temp_slot, base_type_lir)
+                    } else {
+                        // Base is already a pointer
+                        (base_vreg, ty.clone().into())
+                    };
+
                     // Generate GEP + Load
-                    Ok(vec![
-                        LirInstruction::Gep {
-                            dest: gep_vreg,
-                            base: base_vreg,
-                            indices: vec![
-                                LirOperand::Imm(0),  // struct pointer
-                                LirOperand::Imm(field_index),  // field index
-                            ],
-                            ty: ty.clone().into(),
-                        },
-                        LirInstruction::Load {
-                            dest: dest_vreg,
-                            src: LirOperand::Reg(gep_vreg),  // Load from GEP result
-                            ty: ty.clone().into(),
-                        },
-                    ])
+                    instructions.push(LirInstruction::Gep {
+                        dest: gep_vreg,
+                        base: base_for_gep,
+                        indices: vec![
+                            LirOperand::Imm(0),  // struct pointer
+                            LirOperand::Imm(field_index),  // field index
+                        ],
+                        ty: gep_ty,
+                    });
+                    instructions.push(LirInstruction::Load {
+                        dest: dest_vreg,
+                        src: LirOperand::Reg(gep_vreg),  // Load from GEP result
+                        ty: ty.clone().into(),
+                    });
+
+                    Ok(instructions)
                 } else if let MirPlace::Local(name) = src {
                     // Check if this is a load from a mutable local
                     if self.mutable_locals.contains(name) {
@@ -868,6 +1017,28 @@ impl LirLoweringContext {
                 });
 
                 Ok(LirTerminator::Return(vreg))
+            }
+
+            MirTerminator::Throw(place) => {
+                let vreg = match place {
+                    zulon_mir::MirPlace::Temp(t) => {
+                        // Look up the temp in temp_map to get the actual vreg
+                        self.temp_map.get(t).copied()
+                    }
+                    zulon_mir::MirPlace::Local(name) => {
+                        // Check if this is a mutable local
+                        if self.mutable_locals.contains(name) {
+                            // Return the stack slot
+                            self.local_stack_slots.get(name).copied()
+                        } else {
+                            // Immutable local - look up in local_map
+                            self.local_map.get(name).copied()
+                        }
+                    }
+                    _ => None,
+                }.ok_or_else(|| crate::error::LirError::LoweringError("Throw terminator has invalid place".to_string()))?;
+
+                Ok(LirTerminator::Throw(vreg))
             }
 
             MirTerminator::Goto { target } => {
