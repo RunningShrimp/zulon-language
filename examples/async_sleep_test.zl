@@ -1,0 +1,20 @@
+// Async Sleep Test
+//
+// This test verifies that async runtime external declarations
+// are properly injected and that effect calls can be generated.
+
+effect Async {
+    fn sleep(duration_ms: i64) -> ()
+}
+
+fn main() -> i32 {
+    try {
+        // This should generate a call to async_sleep
+        Async::sleep(1000)
+    } with Async {
+        printf("Sleep completed\n")
+    }
+
+    printf("Test passed\n")
+    0
+}
