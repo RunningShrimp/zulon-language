@@ -33,6 +33,7 @@ pub mod capture;
 // pub mod lower;  // TEMPORARILY DISABLED - has compilation errors, using simple_lower instead
 pub mod simple_lower;
 pub mod test_discovery;
+pub mod test_main_gen;
 
 pub use ty::HirTy;
 pub use hir::*;
@@ -41,3 +42,4 @@ pub use capture::{CaptureAnalyzer, CaptureAnalysis, analyze_captures, Environmen
 // pub use lower::{LoweringContext, lower_ast};  // TEMPORARILY DISABLED
 pub use simple_lower::{SimpleLoweringContext, lower_ast_simple};
 pub use test_discovery::{discover_tests, DiscoveredTest};
+pub use test_main_gen::{generate_test_main_source, generate_test_file};
