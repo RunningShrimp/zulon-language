@@ -1050,11 +1050,15 @@ impl TypeChecker {
 
     /// Type check a throw statement
     fn check_throw(&mut self, error_expr: &Expression) -> Result<Ty> {
+        // Cache the error type before checking the expression
+        // This preserves context across nested expression checking
+        let expected_error_type = self.current_error_type.clone();
+
         // Type check the error expression
         let error_ty = self.check_expression(error_expr)?;
 
-        // Check against current function's error type
-        if let Some(expected_error_ty) = &self.current_error_type {
+        // Check against the cached error type
+        if let Some(expected_error_ty) = &expected_error_type {
             if &error_ty != expected_error_ty {
                 return Err(TypeError::TypeMismatch {
                     expected: expected_error_ty.clone(),

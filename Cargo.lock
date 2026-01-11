@@ -1003,6 +1003,14 @@ name = "zulon-async-futures"
 version = "0.1.0"
 
 [[package]]
+name = "zulon-async-runtime"
+version = "0.1.0"
+dependencies = [
+ "libc",
+ "thiserror 2.0.17",
+]
+
+[[package]]
 name = "zulon-build"
 version = "0.1.0"
 dependencies = [
@@ -1218,6 +1226,7 @@ name = "zulon-tests-integration"
 version = "0.1.0"
 dependencies = [
  "zulon-hir",
+ "zulon-lir",
  "zulon-mir",
  "zulon-parser",
  "zulon-typeck",
