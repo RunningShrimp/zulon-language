@@ -12,5 +12,10 @@ zulon-parser = { path = "../zulon-parser" }
 zulon-hir = { path = "../zulon-hir" }
 zulon-typeck = { path = "../zulon-typeck" }
 zulon-mir = { path = "../zulon-mir" }
+zulon-lir = { path = "../zulon-lir" }
+
+[[example]]
+name = "e2e_async_tests"
+path = "src/e2e_async_tests.rs"
 
 [dev-dependencies]
