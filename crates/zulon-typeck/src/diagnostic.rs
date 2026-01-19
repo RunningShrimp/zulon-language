@@ -4,15 +4,19 @@
 //! Integration with zulon-diagnostic
 
 use crate::TypeError;
-use zulon_diagnostic::{Diagnostic, Span, Suggestion, Loc};
-use zulon_parser::Span as ParserSpan;
 use std::path::PathBuf;
+use zulon_diagnostic::{Diagnostic, Loc, Span, Suggestion};
+use zulon_parser::Span as ParserSpan;
 
 impl TypeError {
     /// Convert to a Diagnostic
     pub fn to_diagnostic(&self, source_code: &str) -> Diagnostic {
         match self {
-            TypeError::TypeMismatch { expected, found, span } => {
+            TypeError::TypeMismatch {
+                expected,
+                found,
+                span,
+            } => {
                 let diagnostic_span = parser_span_to_diagnostic_span(span, source_code);
 
                 let mut diagnostic = Diagnostic::error()
@@ -78,21 +82,37 @@ impl TypeError {
                     .message(format!("cannot call non-function type"))
                     .span(diagnostic_span.clone())
                     .code("E0618")
-                    .label(diagnostic_span.clone(), &format!("{} is not a function", ty))
+                    .label(
+                        diagnostic_span.clone(),
+                        &format!("{} is not a function", ty),
+                    )
                     .build()
             }
 
-            TypeError::ArityMismatch { expected, found, span } => {
+            TypeError::ArityMismatch {
+                expected,
+                found,
+                span,
+            } => {
                 let diagnostic_span = parser_span_to_diagnostic_span(span, source_code);
 
                 Diagnostic::error()
-                    .message(format!("expected {} argument{}, found {}",
-                        expected, if *expected == 1 { "" } else { "s" }, found))
+                    .message(format!(
+                        "expected {} argument{}, found {}",
+                        expected,
+                        if *expected == 1 { "" } else { "s" },
+                        found
+                    ))
                     .span(diagnostic_span.clone())
                     .code("E0061")
-                    .label(diagnostic_span.clone(),
-                        &format!("expected {} argument{}", expected,
-                            if *expected == 1 { "" } else { "s" }))
+                    .label(
+                        diagnostic_span.clone(),
+                        &format!(
+                            "expected {} argument{}",
+                            expected,
+                            if *expected == 1 { "" } else { "s" }
+                        ),
+                    )
                     .build()
             }
 
@@ -126,7 +146,10 @@ impl TypeError {
                     .message("cannot assign to immutable value")
                     .span(diagnostic_span.clone())
                     .code("E0384")
-                    .label(diagnostic_span.clone(), "cannot assign twice to immutable variable")
+                    .label(
+                        diagnostic_span.clone(),
+                        "cannot assign twice to immutable variable",
+                    )
                     .suggestion(Suggestion::new(
                         "consider using a mutable variable",
                         diagnostic_span.clone(),
@@ -169,14 +192,24 @@ impl TypeError {
                     .build()
             }
 
-            TypeError::TraitBoundNotSatisfied { trait_name, ty, span } => {
+            TypeError::TraitBoundNotSatisfied {
+                trait_name,
+                ty,
+                span,
+            } => {
                 let diagnostic_span = parser_span_to_diagnostic_span(span, source_code);
 
                 Diagnostic::error()
-                    .message(format!("the trait `{}` is not implemented for `{}`", trait_name, ty))
+                    .message(format!(
+                        "the trait `{}` is not implemented for `{}`",
+                        trait_name, ty
+                    ))
                     .span(diagnostic_span.clone())
                     .code("E0277")
-                    .label(diagnostic_span.clone(), &format!("{} doesn't implement {}", ty, trait_name))
+                    .label(
+                        diagnostic_span.clone(),
+                        &format!("{} doesn't implement {}", ty, trait_name),
+                    )
                     .build()
             }
 
@@ -244,7 +277,12 @@ fn parser_span_to_diagnostic_span(span: &ParserSpan, source_code: &str) -> Span 
     let start_offset = estimate_byte_offset(source_code, span.start.line, span.start.column);
     let end_offset = estimate_byte_offset(source_code, span.end.line, span.end.column);
 
-    let lo = Loc::new(file.clone(), span.start.line, span.start.column, start_offset);
+    let lo = Loc::new(
+        file.clone(),
+        span.start.line,
+        span.start.column,
+        start_offset,
+    );
     let hi = Loc::new(file, span.end.line, span.end.column, end_offset);
 
     Span { lo, hi }
@@ -294,7 +332,10 @@ mod tests {
         let source = "let x: i32 = \"hello\";";
         let span = ParserSpan::new(
             zulon_parser::Position { line: 1, column: 9 },
-            zulon_parser::Position { line: 1, column: 18 },
+            zulon_parser::Position {
+                line: 1,
+                column: 18,
+            },
         );
 
         let error = TypeError::TypeMismatch {
@@ -313,7 +354,10 @@ mod tests {
         let source = "undefined_var = 42";
         let span = ParserSpan::new(
             zulon_parser::Position { line: 1, column: 1 },
-            zulon_parser::Position { line: 1, column: 14 },
+            zulon_parser::Position {
+                line: 1,
+                column: 14,
+            },
         );
 
         let error = TypeError::UndefinedVariable {

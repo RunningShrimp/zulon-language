@@ -5,14 +5,14 @@
 //!
 //! This module implements type checking for ZULON.
 
-use crate::env::Env;
-use crate::error::{Result, TypeError};
-use crate::ty::Ty;
-use crate::infer::Substitution;
 use crate::effect::EffectSet;
 use crate::effect_inference::EffectInference;
+use crate::env::Env;
+use crate::error::{Result, TypeError};
+use crate::infer::Substitution;
+use crate::ty::Ty;
 use zulon_parser::ast::{self, Ast};
-use zulon_parser::ast::{Expression, Statement, Item, ItemKind, Type, Identifier};
+use zulon_parser::ast::{Expression, Identifier, Item, ItemKind, Statement, Type};
 
 /// Type checker with type inference support
 pub struct TypeChecker {
@@ -80,15 +80,20 @@ impl TypeChecker {
     /// This is called in Pass 1 to register all functions before checking bodies
     fn collect_function_signature(&mut self, func: &ast::Function) -> Result<()> {
         // Create function type from signature
-        let param_types: Vec<Ty> = func.params.iter()
+        let param_types: Vec<Ty> = func
+            .params
+            .iter()
             .map(|p| {
-                p.type_annotation.as_ref()
+                p.type_annotation
+                    .as_ref()
                     .map(|ty| self.ast_type_to_ty(ty))
                     .unwrap_or(Ty::Unit)
             })
             .collect();
 
-        let return_type = func.return_type.as_ref()
+        let return_type = func
+            .return_type
+            .as_ref()
             .map(|ty| self.ast_type_to_ty(ty))
             .unwrap_or(Ty::Unit);
 
@@ -129,15 +134,20 @@ impl TypeChecker {
     /// Type check a function
     fn check_function(&mut self, func: &ast::Function) -> Result<()> {
         // Create function type from signature
-        let param_types: Vec<Ty> = func.params.iter()
+        let param_types: Vec<Ty> = func
+            .params
+            .iter()
             .map(|p| {
-                p.type_annotation.as_ref()
+                p.type_annotation
+                    .as_ref()
                     .map(|ty| self.ast_type_to_ty(ty))
                     .unwrap_or(Ty::Unit)
             })
             .collect();
 
-        let return_type = func.return_type.as_ref()
+        let return_type = func
+            .return_type
+            .as_ref()
             .map(|ty| self.ast_type_to_ty(ty))
             .unwrap_or(Ty::Unit);
 
@@ -163,7 +173,9 @@ impl TypeChecker {
 
         // Bind parameters
         for param in &func.params {
-            let param_ty = param.type_annotation.as_ref()
+            let param_ty = param
+                .type_annotation
+                .as_ref()
                 .map(|ty| self.ast_type_to_ty(ty))
                 .unwrap_or(Ty::Unit);
             self.env.insert_binding(param.name.name.clone(), param_ty);
@@ -211,25 +223,21 @@ impl TypeChecker {
         let body_result_ty = self.check_block(&func.body)?;
 
         // EFFECT CHECKING: Validate that declared effects match inferred effects
-        if !self.effect_inference.check_effect_declaration(
-            &self.declared_effects,
-            &self.current_effect_set,
-        ) {
+        if !self
+            .effect_inference
+            .check_effect_declaration(&self.declared_effects, &self.current_effect_set)
+        {
             // TODO: Make this an actual error when effect checking is fully implemented
             // For now, we'll log it as a warning
             eprintln!(
                 "Warning: Function '{}' declared effects {} but inferred {}",
-                func.name.name,
-                self.declared_effects,
-                self.current_effect_set
+                func.name.name, self.declared_effects, self.current_effect_set
             );
         }
 
         // Store the function's effect set in the environment
-        self.env.insert_function_effects(
-            func.name.name.clone(),
-            self.current_effect_set.clone(),
-        );
+        self.env
+            .insert_function_effects(func.name.name.clone(), self.current_effect_set.clone());
 
         // Validate that the body's result type matches the declared return type
         if &body_result_ty != &return_type {
@@ -259,15 +267,20 @@ impl TypeChecker {
     /// Type check an extern function declaration
     fn check_extern_function(&mut self, func: &ast::Function) -> Result<()> {
         // Similar to regular function, but no body to check
-        let param_types: Vec<Ty> = func.params.iter()
+        let param_types: Vec<Ty> = func
+            .params
+            .iter()
             .map(|p| {
-                p.type_annotation.as_ref()
+                p.type_annotation
+                    .as_ref()
                     .map(|ty| self.ast_type_to_ty(ty))
                     .unwrap_or(Ty::Unit)
             })
             .collect();
 
-        let return_type = func.return_type.as_ref()
+        let return_type = func
+            .return_type
+            .as_ref()
             .map(|ty| self.ast_type_to_ty(ty))
             .unwrap_or(Ty::Unit);
 
@@ -295,7 +308,8 @@ impl TypeChecker {
             generics: vec![],
         };
 
-        self.env.insert_type_def(struct_def.name.name.clone(), struct_ty);
+        self.env
+            .insert_type_def(struct_def.name.name.clone(), struct_ty);
         Ok(())
     }
 
@@ -308,7 +322,8 @@ impl TypeChecker {
             generics: vec![],
         };
 
-        self.env.insert_type_def(enum_def.name.name.clone(), enum_ty);
+        self.env
+            .insert_type_def(enum_def.name.name.clone(), enum_ty);
         Ok(())
     }
 
@@ -366,19 +381,26 @@ impl TypeChecker {
         // Future work: check operation signatures, validate generic parameters
 
         // Pre-collect all operations to avoid borrow issues
-        let operations: Vec<crate::ty::EffectOperation> = effect.operations.iter()
+        let operations: Vec<crate::ty::EffectOperation> = effect
+            .operations
+            .iter()
             .map(|op| {
                 // Convert parameter types
-                let param_types: Vec<Ty> = op.params.iter()
+                let param_types: Vec<Ty> = op
+                    .params
+                    .iter()
                     .map(|p| {
-                        p.type_annotation.as_ref()
+                        p.type_annotation
+                            .as_ref()
                             .map(|ty| self.ast_type_to_ty(ty))
                             .unwrap_or_else(|| Ty::TyVar(0)) // Temporary, will be replaced
                     })
                     .collect();
 
                 // Convert return type
-                let return_type = op.return_type.as_ref()
+                let return_type = op
+                    .return_type
+                    .as_ref()
                     .map(|ty| self.ast_type_to_ty(ty))
                     .unwrap_or(Ty::Unit);
 
@@ -396,7 +418,7 @@ impl TypeChecker {
             crate::ty::Effect {
                 name: effect.name.name.clone(),
                 operations,
-            }
+            },
         );
 
         Ok(())
@@ -451,7 +473,9 @@ impl TypeChecker {
             self.check_expression(init)?
         } else {
             // No initializer, use type annotation or create fresh type variable
-            local.type_annotation.as_ref()
+            local
+                .type_annotation
+                .as_ref()
                 .map(|ty| self.ast_type_to_ty(ty))
                 .unwrap_or_else(|| self.env.fresh_ty_var())
         };
@@ -481,45 +505,25 @@ impl TypeChecker {
             ast::ExpressionKind::Literal(literal) => self.check_literal(literal),
             ast::ExpressionKind::Path(path) => self.check_path(path),
             ast::ExpressionKind::Block(block) => self.check_block(block),
-            ast::ExpressionKind::Binary(op, left, right) => {
-                self.check_binary_op(op, left, right)
-            }
-            ast::ExpressionKind::Unary(op, operand) => {
-                self.check_unary_op(op, operand)
-            }
-            ast::ExpressionKind::Call(func, args) => {
-                self.check_call(func, args)
-            }
-            ast::ExpressionKind::FieldAccess(obj, field) => {
-                self.check_field_access(obj, field)
-            }
-            ast::ExpressionKind::Index(obj, index) => {
-                self.check_index(obj, index)
-            }
-            ast::ExpressionKind::Array(elements) => {
-                self.check_array(elements)
-            }
-            ast::ExpressionKind::Tuple(elements) => {
-                self.check_tuple(elements)
-            }
+            ast::ExpressionKind::Binary(op, left, right) => self.check_binary_op(op, left, right),
+            ast::ExpressionKind::Unary(op, operand) => self.check_unary_op(op, operand),
+            ast::ExpressionKind::Call(func, args) => self.check_call(func, args),
+            ast::ExpressionKind::FieldAccess(obj, field) => self.check_field_access(obj, field),
+            ast::ExpressionKind::Index(obj, index) => self.check_index(obj, index),
+            ast::ExpressionKind::Array(elements) => self.check_array(elements),
+            ast::ExpressionKind::Tuple(elements) => self.check_tuple(elements),
             ast::ExpressionKind::If(condition, then_block, else_block) => {
                 self.check_if(condition, then_block, else_block)
             }
-            ast::ExpressionKind::Match(scrutinee, arms) => {
-                self.check_match(scrutinee, arms)
-            }
-            ast::ExpressionKind::Loop(body, _) => {
-                self.check_loop(body)
-            }
-            ast::ExpressionKind::While(condition, body, _) => {
-                self.check_while(condition, body)
-            }
-            ast::ExpressionKind::For(local, iter, body, _) => {
-                self.check_for(local, iter, body)
-            }
-            ast::ExpressionKind::Closure { params, return_type, body } => {
-                self.check_closure(params, return_type, body)
-            }
+            ast::ExpressionKind::Match(scrutinee, arms) => self.check_match(scrutinee, arms),
+            ast::ExpressionKind::Loop(body, _) => self.check_loop(body),
+            ast::ExpressionKind::While(condition, body, _) => self.check_while(condition, body),
+            ast::ExpressionKind::For(local, iter, body, _) => self.check_for(local, iter, body),
+            ast::ExpressionKind::Closure {
+                params,
+                return_type,
+                body,
+            } => self.check_closure(params, return_type, body),
             ast::ExpressionKind::Break(_) => Ok(Ty::Never),
             ast::ExpressionKind::Continue(_) => Ok(Ty::Never),
             ast::ExpressionKind::Return(value) => self.check_return(value),
@@ -530,7 +534,9 @@ impl TypeChecker {
             ast::ExpressionKind::AssignOp(op, target, value) => {
                 self.check_assign_op(op, target, value)
             }
-            ast::ExpressionKind::MacroInvocation { macro_name, args, .. } => {
+            ast::ExpressionKind::MacroInvocation {
+                macro_name, args, ..
+            } => {
                 // For builtin macros, check the arguments
                 match macro_name.name.as_str() {
                     "assert_eq" | "assert" => {
@@ -557,7 +563,7 @@ impl TypeChecker {
     /// Type check a literal
     fn check_literal(&mut self, literal: &ast::Literal) -> Result<Ty> {
         match literal {
-            ast::Literal::Int(_) => Ok(Ty::I32),  // Default to i32
+            ast::Literal::Int(_) => Ok(Ty::I32), // Default to i32
             ast::Literal::Float(_) => Ok(Ty::F64),
             // String literals are pointers to u8 (for C compatibility)
             ast::Literal::String(_) => Ok(Ty::Ref {
@@ -646,11 +652,11 @@ impl TypeChecker {
         // Unify operand types based on operator
         let result_ty = match op {
             // Arithmetic operators: require numeric types, return same type
-            ast::BinaryOp::Add |
-            ast::BinaryOp::Sub |
-            ast::BinaryOp::Mul |
-            ast::BinaryOp::Div |
-            ast::BinaryOp::Mod => {
+            ast::BinaryOp::Add
+            | ast::BinaryOp::Sub
+            | ast::BinaryOp::Mul
+            | ast::BinaryOp::Div
+            | ast::BinaryOp::Mod => {
                 // Both operands must be the same numeric type
                 self.unify(&left_ty, &right_ty, &left.span)?;
 
@@ -670,12 +676,12 @@ impl TypeChecker {
             }
 
             // Comparison operators: return bool
-            ast::BinaryOp::Eq |
-            ast::BinaryOp::NotEq |
-            ast::BinaryOp::Less |
-            ast::BinaryOp::LessEq |
-            ast::BinaryOp::Greater |
-            ast::BinaryOp::GreaterEq => {
+            ast::BinaryOp::Eq
+            | ast::BinaryOp::NotEq
+            | ast::BinaryOp::Less
+            | ast::BinaryOp::LessEq
+            | ast::BinaryOp::Greater
+            | ast::BinaryOp::GreaterEq => {
                 // Operands must be the same type
                 self.unify(&left_ty, &right_ty, &left.span)?;
 
@@ -692,8 +698,7 @@ impl TypeChecker {
             }
 
             // Logical operators: require bool, return bool
-            ast::BinaryOp::And |
-            ast::BinaryOp::Or => {
+            ast::BinaryOp::And | ast::BinaryOp::Or => {
                 self.unify(&left_ty, &Ty::Bool, &left.span)?;
                 self.unify(&right_ty, &Ty::Bool, &right.span)?;
 
@@ -701,11 +706,11 @@ impl TypeChecker {
             }
 
             // Bitwise operators: require integer types
-            ast::BinaryOp::BitAnd |
-            ast::BinaryOp::BitOr |
-            ast::BinaryOp::BitXor |
-            ast::BinaryOp::LeftShift |
-            ast::BinaryOp::RightShift => {
+            ast::BinaryOp::BitAnd
+            | ast::BinaryOp::BitOr
+            | ast::BinaryOp::BitXor
+            | ast::BinaryOp::LeftShift
+            | ast::BinaryOp::RightShift => {
                 self.unify(&left_ty, &right_ty, &left.span)?;
 
                 let unified = self.apply_subst(&left_ty);
@@ -735,7 +740,11 @@ impl TypeChecker {
         let func_ty = self.check_expression(func)?;
 
         match func_ty {
-            Ty::Function { params, return_type, variadic } => {
+            Ty::Function {
+                params,
+                return_type,
+                variadic,
+            } => {
                 // Check arity
                 // For variadic functions, allow args >= params
                 // For normal functions, require args == params
@@ -766,7 +775,8 @@ impl TypeChecker {
                 if let Expression {
                     kind: ast::ExpressionKind::Path(path),
                     ..
-                } = func {
+                } = func
+                {
                     if !path.is_empty() {
                         let func_name = &path[0].name;
 
@@ -895,7 +905,9 @@ impl TypeChecker {
 
         // Check if this if expression is used as a statement (both blocks have no trailing expr)
         let then_is_stmt = then_block.trailing_expr.is_none();
-        let else_is_stmt = else_block.as_ref().map_or(true, |b| b.trailing_expr.is_none());
+        let else_is_stmt = else_block
+            .as_ref()
+            .map_or(true, |b| b.trailing_expr.is_none());
 
         eprintln!("DEBUG HIR: then_is_stmt={}, else_is_stmt={}, then_has_trailing={:?}, else_has_trailing={:?}", 
             then_is_stmt, else_is_stmt, then_block.trailing_expr.is_some(), 
@@ -940,7 +952,12 @@ impl TypeChecker {
     }
 
     /// Type check a for loop
-    fn check_for(&mut self, _local: &ast::Local, _iter: &Expression, _body: &ast::Block) -> Result<Ty> {
+    fn check_for(
+        &mut self,
+        _local: &ast::Local,
+        _iter: &Expression,
+        _body: &ast::Block,
+    ) -> Result<Ty> {
         // TODO: Implement for loop checking
         Ok(Ty::Unit)
     }
@@ -981,7 +998,8 @@ impl TypeChecker {
             };
 
             // Bind parameter name to its type in the closure's environment
-            self.env.insert_binding(param.name.name.clone(), param_ty.clone());
+            self.env
+                .insert_binding(param.name.name.clone(), param_ty.clone());
             param_tys.push(param_ty);
         }
 
@@ -1027,15 +1045,13 @@ impl TypeChecker {
         // Check against current return type
         if let Some(expected_ty) = &self.current_return_type {
             if &value_ty != expected_ty {
-                let span = value.as_ref()
-                    .map(|v| v.span)
-                    .unwrap_or_else(|| {
-                        // Use a default span if expression is None
-                        zulon_parser::lexer::Span::new(
-                            zulon_parser::lexer::Position::new(1, 1),
-                            zulon_parser::lexer::Position::new(1, 1),
-                        )
-                    });
+                let span = value.as_ref().map(|v| v.span).unwrap_or_else(|| {
+                    // Use a default span if expression is None
+                    zulon_parser::lexer::Span::new(
+                        zulon_parser::lexer::Position::new(1, 1),
+                        zulon_parser::lexer::Position::new(1, 1),
+                    )
+                });
 
                 return Err(TypeError::TypeMismatch {
                     expected: expected_ty.clone(),
@@ -1154,13 +1170,12 @@ impl TypeChecker {
                 }
 
                 // Look up type in environment
-                self.env.lookup_type_def(&ident.name)
+                self.env
+                    .lookup_type_def(&ident.name)
                     .unwrap_or(Ty::TyVar(self.env.peek_next_ty_var()))
             }
             Type::Tuple(types) => {
-                let elem_tys: Vec<Ty> = types.iter()
-                    .map(|t| self.ast_type_to_ty(t))
-                    .collect();
+                let elem_tys: Vec<Ty> = types.iter().map(|t| self.ast_type_to_ty(t)).collect();
                 Ty::Tuple(elem_tys)
             }
             Type::Array(inner, size) => {
@@ -1168,31 +1183,25 @@ impl TypeChecker {
                     inner: Box::new(self.ast_type_to_ty(inner)),
                     len: size.as_ref().map(|_s| {
                         // TODO: Evaluate constant expression
-                        42  // Placeholder
+                        42 // Placeholder
                     }),
                 }
             }
-            Type::Slice(inner) => {
-                Ty::Slice(Box::new(self.ast_type_to_ty(inner)))
-            }
-            Type::Ref(inner, mutable) => {
-                Ty::Ref {
-                    inner: Box::new(self.ast_type_to_ty(inner)),
-                    mutable: *mutable,
-                }
-            }
-            Type::Function(params, return_type) => {
-                Ty::Function {
-                    params: params.iter().map(|p| self.ast_type_to_ty(p)).collect(),
-                    return_type: Box::new(self.ast_type_to_ty(return_type)),
-                    variadic: false,
-                }
-            }
+            Type::Slice(inner) => Ty::Slice(Box::new(self.ast_type_to_ty(inner))),
+            Type::Ref(inner, mutable) => Ty::Ref {
+                inner: Box::new(self.ast_type_to_ty(inner)),
+                mutable: *mutable,
+            },
+            Type::Function(params, return_type) => Ty::Function {
+                params: params.iter().map(|p| self.ast_type_to_ty(p)).collect(),
+                return_type: Box::new(self.ast_type_to_ty(return_type)),
+                variadic: false,
+            },
             Type::Pipe(left, right) => {
                 // T | E syntax is desugared to Outcome<T, E>
                 // Create Outcome struct with type parameters
                 use zulon_parser::ast::Identifier;
-                use zulon_parser::{Span, Position};
+                use zulon_parser::{Position, Span};
 
                 Ty::Struct {
                     name: Identifier {
@@ -1205,7 +1214,7 @@ impl TypeChecker {
             Type::Optional(inner) => {
                 // T? syntax is desugared to Optional<T>
                 use zulon_parser::ast::Identifier;
-                use zulon_parser::{Span, Position};
+                use zulon_parser::{Position, Span};
 
                 Ty::Struct {
                     name: Identifier {
@@ -1219,16 +1228,15 @@ impl TypeChecker {
             Type::Unit => Ty::Unit,
             Type::TraitObject(inner) => Ty::TraitObject(Box::new(self.ast_type_to_ty(inner))),
             Type::ImplTrait(inner) => Ty::ImplTrait(Box::new(self.ast_type_to_ty(inner))),
-            Type::Pointer(inner, mutable) => {
-                Ty::Ref {
-                    inner: Box::new(self.ast_type_to_ty(inner)),
-                    mutable: *mutable,
-                }
-            }
+            Type::Pointer(inner, mutable) => Ty::Ref {
+                inner: Box::new(self.ast_type_to_ty(inner)),
+                mutable: *mutable,
+            },
             Type::Path(path) => {
                 // For now, treat paths as simple types (first component)
                 if let Some(ident) = path.first() {
-                    self.env.lookup_type_def(&ident.name)
+                    self.env
+                        .lookup_type_def(&ident.name)
                         .unwrap_or(Ty::TyVar(self.env.peek_next_ty_var()))
                 } else {
                     Ty::TyVar(self.env.peek_next_ty_var())
@@ -1238,7 +1246,8 @@ impl TypeChecker {
                 // Handle generic types like Outcome<i32, Error>
                 // For now, treat as struct with generic parameters
                 if let Some(ident) = path.first() {
-                    let args = generic_args.as_ref()
+                    let args = generic_args
+                        .as_ref()
                         .map(|args| args.iter().map(|t| self.ast_type_to_ty(t)).collect())
                         .unwrap_or_default();
 

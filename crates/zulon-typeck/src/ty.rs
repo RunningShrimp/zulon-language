@@ -5,8 +5,8 @@
 //!
 //! This module defines the core types used in type checking and inference.
 
-use std::fmt;
 use std::collections::HashMap;
+use std::fmt;
 use zulon_parser::ast;
 
 /// A unique identifier for a type variable
@@ -27,7 +27,7 @@ pub enum Ty {
     I32,
     I64,
     I128,
-    ISize,  // Platform-dependent integer
+    ISize, // Platform-dependent integer
 
     /// Unsigned integer types
     U8,
@@ -35,7 +35,7 @@ pub enum Ty {
     U32,
     U64,
     U128,
-    USize,  // Platform-dependent unsigned integer
+    USize, // Platform-dependent unsigned integer
 
     /// Floating point types
     F32,
@@ -147,9 +147,20 @@ impl Ty {
     pub fn is_numeric(&self) -> bool {
         matches!(
             self,
-            Ty::I8 | Ty::I16 | Ty::I32 | Ty::I64 | Ty::I128 | Ty::ISize |
-                Ty::U8 | Ty::U16 | Ty::U32 | Ty::U64 | Ty::U128 | Ty::USize |
-                Ty::F32 | Ty::F64
+            Ty::I8
+                | Ty::I16
+                | Ty::I32
+                | Ty::I64
+                | Ty::I128
+                | Ty::ISize
+                | Ty::U8
+                | Ty::U16
+                | Ty::U32
+                | Ty::U64
+                | Ty::U128
+                | Ty::USize
+                | Ty::F32
+                | Ty::F64
         )
     }
 
@@ -214,11 +225,26 @@ impl fmt::Display for Ty {
             Ty::Unit => write!(f, "()"),
             Ty::Never => write!(f, "!"),
             Ty::TyVar(id) => write!(f, "?{}", id),
-            Ty::Ref { inner, mutable: false } => write!(f, "&{}", inner),
-            Ty::Ref { inner, mutable: true } => write!(f, "&mut {}", inner),
-            Ty::Ptr { inner, mutable: false } => write!(f, "*const {}", inner),
-            Ty::Ptr { inner, mutable: true } => write!(f, "*mut {}", inner),
-            Ty::Array { inner, len: Some(n) } => write!(f, "[{}; {}]", inner, n),
+            Ty::Ref {
+                inner,
+                mutable: false,
+            } => write!(f, "&{}", inner),
+            Ty::Ref {
+                inner,
+                mutable: true,
+            } => write!(f, "&mut {}", inner),
+            Ty::Ptr {
+                inner,
+                mutable: false,
+            } => write!(f, "*const {}", inner),
+            Ty::Ptr {
+                inner,
+                mutable: true,
+            } => write!(f, "*mut {}", inner),
+            Ty::Array {
+                inner,
+                len: Some(n),
+            } => write!(f, "[{}; {}]", inner, n),
             Ty::Array { inner, len: None } => write!(f, "[{}; _]", inner),
             Ty::Slice(inner) => write!(f, "[{}]", inner),
             Ty::Tuple(tys) => {
@@ -231,7 +257,11 @@ impl fmt::Display for Ty {
                 }
                 write!(f, ")")
             }
-            Ty::Function { params, return_type, variadic } => {
+            Ty::Function {
+                params,
+                return_type,
+                variadic,
+            } => {
                 write!(f, "fn(")?;
                 for (i, param) in params.iter().enumerate() {
                     if i > 0 {
@@ -296,10 +326,7 @@ pub enum GenericParam {
         ty: Box<Ty>,
     },
     /// Lifetime parameter: 'a
-    Lifetime {
-        name: String,
-        id: GenericParamId,
-    },
+    Lifetime { name: String, id: GenericParamId },
 }
 
 /// Trait bound
@@ -340,7 +367,11 @@ pub fn subst_ty(substs: &Substs, ty: &Ty) -> Ty {
         },
         Ty::Slice(inner) => Ty::Slice(Box::new(subst_ty(substs, inner))),
         Ty::Tuple(tys) => Ty::Tuple(tys.iter().map(|t| subst_ty(substs, t)).collect()),
-        Ty::Function { params, return_type, variadic } => Ty::Function {
+        Ty::Function {
+            params,
+            return_type,
+            variadic,
+        } => Ty::Function {
             params: params.iter().map(|t| subst_ty(substs, t)).collect(),
             return_type: Box::new(subst_ty(substs, return_type)),
             variadic: *variadic,
@@ -358,10 +389,26 @@ pub fn subst_ty(substs: &Substs, ty: &Ty) -> Ty {
         Ty::Optional(inner) => Ty::Optional(Box::new(subst_ty(substs, inner))),
 
         // Non-recursive types - return as is
-        Ty::Bool | Ty::I8 | Ty::I16 | Ty::I32 | Ty::I64 | Ty::I128 | Ty::ISize |
-        Ty::U8 | Ty::U16 | Ty::U32 | Ty::U64 | Ty::U128 | Ty::USize |
-        Ty::F32 | Ty::F64 | Ty::Char | Ty::String | Ty::Unit | Ty::Never |
-        Ty::Effect(_) => ty.clone(),
+        Ty::Bool
+        | Ty::I8
+        | Ty::I16
+        | Ty::I32
+        | Ty::I64
+        | Ty::I128
+        | Ty::ISize
+        | Ty::U8
+        | Ty::U16
+        | Ty::U32
+        | Ty::U64
+        | Ty::U128
+        | Ty::USize
+        | Ty::F32
+        | Ty::F64
+        | Ty::Char
+        | Ty::String
+        | Ty::Unit
+        | Ty::Never
+        | Ty::Effect(_) => ty.clone(),
     }
 }
 

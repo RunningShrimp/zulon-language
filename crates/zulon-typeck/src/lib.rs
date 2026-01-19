@@ -35,19 +35,19 @@
 //! }
 //! ```
 
-pub mod ty;
-pub mod env;
-pub mod error;
 pub mod checker;
-pub mod infer;
 pub mod diagnostic;
 pub mod effect;
 pub mod effect_inference;
+pub mod env;
+pub mod error;
+pub mod infer;
+pub mod ty;
 
-pub use ty::{Ty, TyVarId, GenericParam, TraitBound, subst_ty};
-pub use env::Env;
-pub use error::{TypeError, Result};
 pub use checker::TypeChecker;
-pub use infer::{Substitution, unify};
 pub use effect::{Effect, EffectSet};
 pub use effect_inference::EffectInference;
+pub use env::Env;
+pub use error::{Result, TypeError};
+pub use infer::{unify, Substitution};
+pub use ty::{subst_ty, GenericParam, TraitBound, Ty, TyVarId};

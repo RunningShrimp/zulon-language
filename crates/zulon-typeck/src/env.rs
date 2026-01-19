@@ -6,9 +6,9 @@
 //! The type environment tracks variable bindings, function signatures,
 //! and type definitions during type checking.
 
-use std::collections::HashMap;
-use crate::ty::{Ty, TyVarId};
 use crate::effect::EffectSet;
+use crate::ty::{Ty, TyVarId};
+use std::collections::HashMap;
 
 // Import for backward compatibility
 use crate::ty::Effect as LegacyEffect;

@@ -33,11 +33,7 @@ fn assert_type_error(source: &str) {
 /// Helper function to assert type checking succeeds
 fn assert_type_check_passes(source: &str) {
     let result = type_check(source);
-    assert!(
-        result.is_ok(),
-        "Type checking failed: {:?}",
-        result.err()
-    );
+    assert!(result.is_ok(), "Type checking failed: {:?}", result.err());
 }
 
 //
@@ -740,9 +736,7 @@ fn test_enum_with_generic_syntax() {
 
     // Note: This may fail due to incomplete generic type instantiation
     // Documenting current limitation
-    let _result = std::panic::catch_unwind(|| {
-        type_check(source)
-    });
+    let _result = std::panic::catch_unwind(|| type_check(source));
     // Don't assert either way - this documents current state
 }
 
@@ -836,9 +830,7 @@ fn test_duplicate_function_parameter() {
     "#;
 
     // This should fail during parsing or type checking
-    let _result = std::panic::catch_unwind(|| {
-        type_check(source)
-    });
+    let _result = std::panic::catch_unwind(|| type_check(source));
     // Documenting current behavior
 }
 

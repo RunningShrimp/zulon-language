@@ -54,11 +54,7 @@ impl EffectInference {
     }
 
     /// Check if a function's declared effects match its inferred effects
-    pub fn check_effect_declaration(
-        &self,
-        _declared: &EffectSet,
-        _inferred: &EffectSet,
-    ) -> bool {
+    pub fn check_effect_declaration(&self, _declared: &EffectSet, _inferred: &EffectSet) -> bool {
         // TODO: Implement effect declaration checking
         // For now, always return true (allow any declaration)
         true
@@ -90,11 +86,7 @@ mod tests {
         let mut callee_effects = EffectSet::new();
         callee_effects.insert(Effect::IO);
 
-        inference.propagate_call_effects(
-            &mut caller_effects,
-            "println",
-            &callee_effects,
-        );
+        inference.propagate_call_effects(&mut caller_effects, "println", &callee_effects);
 
         // Caller should now have IO effect
         assert!(caller_effects.contains(&Effect::IO));
@@ -109,11 +101,7 @@ mod tests {
         callee_effects.insert(Effect::IO);
         callee_effects.insert(Effect::Alloc);
 
-        inference.propagate_call_effects(
-            &mut caller_effects,
-            "complex_function",
-            &callee_effects,
-        );
+        inference.propagate_call_effects(&mut caller_effects, "complex_function", &callee_effects);
 
         // Caller should have both effects
         assert!(caller_effects.contains(&Effect::IO));

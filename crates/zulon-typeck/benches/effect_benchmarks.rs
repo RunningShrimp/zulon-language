@@ -40,9 +40,7 @@ mod benchmarks {
         "#;
 
         println!("\n=== Baseline Benchmarks ===");
-        bench("Pure function (no effects)", || {
-            check_source(source)
-        });
+        bench("Pure function (no effects)", || check_source(source));
     }
 
     #[test]
@@ -81,9 +79,7 @@ mod benchmarks {
         "#;
 
         println!("\n=== Effect Checking Benchmarks ===");
-        bench("Single effect (IO)", || {
-            check_source(source)
-        });
+        bench("Single effect (IO)", || check_source(source));
     }
 
     #[test]
@@ -98,9 +94,7 @@ mod benchmarks {
             }
         "#;
 
-        bench("Multiple effects (IO + Alloc)", || {
-            check_source(source)
-        });
+        bench("Multiple effects (IO + Alloc)", || check_source(source));
     }
 
     #[test]
@@ -119,9 +113,7 @@ mod benchmarks {
             }
         "#;
 
-        bench("Effect propagation (1 level)", || {
-            check_source(source)
-        });
+        bench("Effect propagation (1 level)", || check_source(source));
     }
 
     #[test]
@@ -152,9 +144,7 @@ mod benchmarks {
             }
         "#;
 
-        bench("Effect propagation (5 levels)", || {
-            check_source(source)
-        });
+        bench("Effect propagation (5 levels)", || check_source(source));
     }
 
     // ========== Complex Scenarios ==========
@@ -201,9 +191,7 @@ mod benchmarks {
         "#;
 
         println!("\n=== Complex Scenario Benchmarks ===");
-        bench("Multiple function calls (5 calls)", || {
-            check_source(source)
-        });
+        bench("Multiple function calls (5 calls)", || check_source(source));
     }
 
     #[test]
@@ -233,9 +221,7 @@ mod benchmarks {
             }
         "#;
 
-        bench("Mixed pure and impure functions", || {
-            check_source(source)
-        });
+        bench("Mixed pure and impure functions", || check_source(source));
     }
 
     #[test]
@@ -301,8 +287,8 @@ mod benchmarks {
 
     #[test]
     fn bench_effectset_operations() {
-        use zulon_typeck::EffectSet;
         use zulon_typeck::Effect;
+        use zulon_typeck::EffectSet;
 
         println!("\n=== EffectSet Operation Benchmarks ===");
 
@@ -378,16 +364,17 @@ mod benchmarks {
         "#;
 
         println!("\n=== Comparison Benchmarks ===");
-        let (_, time_no_effects) = bench("No effects (baseline)", || {
-            check_source(source_no_effects)
-        });
+        let (_, time_no_effects) =
+            bench("No effects (baseline)", || check_source(source_no_effects));
 
-        let (_, time_with_effects) = bench("With effects (IO)", || {
-            check_source(source_with_effects)
-        });
+        let (_, time_with_effects) =
+            bench("With effects (IO)", || check_source(source_with_effects));
 
         let overhead = time_with_effects.as_nanos() as f64 / time_no_effects.as_nanos() as f64;
-        println!("  {:<50} {:.2}x overhead", "Effect checking overhead", overhead);
+        println!(
+            "  {:<50} {:.2}x overhead",
+            "Effect checking overhead", overhead
+        );
     }
 
     // ========== Stress Tests ==========
@@ -399,10 +386,7 @@ mod benchmarks {
 
         // Generate 50 functions with IO effects
         for i in 0..50 {
-            source.push_str(&format!(
-                "fn func{}() -> i32 | IO {{ read() }}\n",
-                i
-            ));
+            source.push_str(&format!("fn func{}() -> i32 | IO {{ read() }}\n", i));
         }
 
         // Generate a main function that calls all of them
@@ -413,9 +397,7 @@ mod benchmarks {
         source.push_str("    0\n");
 
         println!("\n=== Stress Test Benchmarks ===");
-        bench("50 functions with IO effects", || {
-            check_source(&source)
-        });
+        bench("50 functions with IO effects", || check_source(&source));
     }
 
     #[test]
@@ -428,13 +410,12 @@ mod benchmarks {
         for i in (1..30).rev() {
             source.push_str(&format!(
                 "fn level{}() -> i32 | IO {{ level{}() }}\n",
-                i, i + 1
+                i,
+                i + 1
             ));
         }
 
-        bench("30 levels of effect propagation", || {
-            check_source(&source)
-        });
+        bench("30 levels of effect propagation", || check_source(&source));
     }
 
     // ========== Summary ==========

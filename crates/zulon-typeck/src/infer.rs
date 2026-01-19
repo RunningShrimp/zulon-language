@@ -6,7 +6,7 @@
 //! This module implements type inference using a unification-based algorithm.
 
 use crate::error::{Result, TypeError};
-use crate::ty::{Ty, TyVarId, Substs, subst_ty};
+use crate::ty::{subst_ty, Substs, Ty, TyVarId};
 use std::collections::HashMap;
 use zulon_parser::ast::Span;
 
@@ -88,12 +88,7 @@ pub fn unify(ty1: &Ty, ty2: &Ty, span: &Span) -> Result<Substitution> {
 }
 
 /// Internal unification with existing substitution
-pub fn unify_with_subst(
-    ty1: &Ty,
-    ty2: &Ty,
-    span: &Span,
-    subst: &mut Substitution,
-) -> Result<()> {
+pub fn unify_with_subst(ty1: &Ty, ty2: &Ty, span: &Span, subst: &mut Substitution) -> Result<()> {
     // Apply current substitution to both types
     let ty1 = subst.apply(ty1);
     let ty2 = subst.apply(ty2);
@@ -105,25 +100,25 @@ pub fn unify_with_subst(
         }
 
         // Primitive types - must be exactly equal
-        (Ty::Bool, Ty::Bool) |
-        (Ty::I8, Ty::I8) |
-        (Ty::I16, Ty::I16) |
-        (Ty::I32, Ty::I32) |
-        (Ty::I64, Ty::I64) |
-        (Ty::I128, Ty::I128) |
-        (Ty::ISize, Ty::ISize) |
-        (Ty::U8, Ty::U8) |
-        (Ty::U16, Ty::U16) |
-        (Ty::U32, Ty::U32) |
-        (Ty::U64, Ty::U64) |
-        (Ty::U128, Ty::U128) |
-        (Ty::USize, Ty::USize) |
-        (Ty::F32, Ty::F32) |
-        (Ty::F64, Ty::F64) |
-        (Ty::Char, Ty::Char) |
-        (Ty::String, Ty::String) |
-        (Ty::Unit, Ty::Unit) |
-        (Ty::Never, Ty::Never) => {
+        (Ty::Bool, Ty::Bool)
+        | (Ty::I8, Ty::I8)
+        | (Ty::I16, Ty::I16)
+        | (Ty::I32, Ty::I32)
+        | (Ty::I64, Ty::I64)
+        | (Ty::I128, Ty::I128)
+        | (Ty::ISize, Ty::ISize)
+        | (Ty::U8, Ty::U8)
+        | (Ty::U16, Ty::U16)
+        | (Ty::U32, Ty::U32)
+        | (Ty::U64, Ty::U64)
+        | (Ty::U128, Ty::U128)
+        | (Ty::USize, Ty::USize)
+        | (Ty::F32, Ty::F32)
+        | (Ty::F64, Ty::F64)
+        | (Ty::Char, Ty::Char)
+        | (Ty::String, Ty::String)
+        | (Ty::Unit, Ty::Unit)
+        | (Ty::Never, Ty::Never) => {
             // Equal, nothing to do
         }
 
@@ -134,11 +129,26 @@ pub fn unify_with_subst(
         }
 
         // References
-        (Ty::Ref { inner: inner1, mutable: mut1 }, Ty::Ref { inner: inner2, mutable: mut2 }) => {
+        (
+            Ty::Ref {
+                inner: inner1,
+                mutable: mut1,
+            },
+            Ty::Ref {
+                inner: inner2,
+                mutable: mut2,
+            },
+        ) => {
             if mut1 != mut2 {
                 return Err(TypeError::TypeMismatch {
-                    expected: Ty::Ref { inner: inner1.clone(), mutable: mut1 },
-                    found: Ty::Ref { inner: inner2.clone(), mutable: mut2 },
+                    expected: Ty::Ref {
+                        inner: inner1.clone(),
+                        mutable: mut1,
+                    },
+                    found: Ty::Ref {
+                        inner: inner2.clone(),
+                        mutable: mut2,
+                    },
                     span: span.clone(),
                 });
             }
@@ -146,11 +156,26 @@ pub fn unify_with_subst(
         }
 
         // Pointers
-        (Ty::Ptr { inner: inner1, mutable: mut1 }, Ty::Ptr { inner: inner2, mutable: mut2 }) => {
+        (
+            Ty::Ptr {
+                inner: inner1,
+                mutable: mut1,
+            },
+            Ty::Ptr {
+                inner: inner2,
+                mutable: mut2,
+            },
+        ) => {
             if mut1 != mut2 {
                 return Err(TypeError::TypeMismatch {
-                    expected: Ty::Ptr { inner: inner1.clone(), mutable: mut1 },
-                    found: Ty::Ptr { inner: inner2.clone(), mutable: mut2 },
+                    expected: Ty::Ptr {
+                        inner: inner1.clone(),
+                        mutable: mut1,
+                    },
+                    found: Ty::Ptr {
+                        inner: inner2.clone(),
+                        mutable: mut2,
+                    },
                     span: span.clone(),
                 });
             }
@@ -158,11 +183,26 @@ pub fn unify_with_subst(
         }
 
         // Arrays
-        (Ty::Array { inner: inner1, len: len1 }, Ty::Array { inner: inner2, len: len2 }) => {
+        (
+            Ty::Array {
+                inner: inner1,
+                len: len1,
+            },
+            Ty::Array {
+                inner: inner2,
+                len: len2,
+            },
+        ) => {
             if len1 != len2 {
                 return Err(TypeError::TypeMismatch {
-                    expected: Ty::Array { inner: inner1.clone(), len: len1 },
-                    found: Ty::Array { inner: inner2.clone(), len: len2 },
+                    expected: Ty::Array {
+                        inner: inner1.clone(),
+                        len: len1,
+                    },
+                    found: Ty::Array {
+                        inner: inner2.clone(),
+                        len: len2,
+                    },
                     span: span.clone(),
                 });
             }
@@ -189,12 +229,31 @@ pub fn unify_with_subst(
         }
 
         // Functions
-        (Ty::Function { params: params1, return_type: ret1, variadic: var1 }, Ty::Function { params: params2, return_type: ret2, variadic: var2 }) => {
+        (
+            Ty::Function {
+                params: params1,
+                return_type: ret1,
+                variadic: var1,
+            },
+            Ty::Function {
+                params: params2,
+                return_type: ret2,
+                variadic: var2,
+            },
+        ) => {
             // Variadic flags must match
             if var1 != var2 {
                 return Err(TypeError::TypeMismatch {
-                    expected: Ty::Function { params: params1.clone(), return_type: ret1.clone(), variadic: var1 },
-                    found: Ty::Function { params: params2.clone(), return_type: ret2.clone(), variadic: var2 },
+                    expected: Ty::Function {
+                        params: params1.clone(),
+                        return_type: ret1.clone(),
+                        variadic: var1,
+                    },
+                    found: Ty::Function {
+                        params: params2.clone(),
+                        return_type: ret2.clone(),
+                        variadic: var2,
+                    },
                     span: span.clone(),
                 });
             }
@@ -212,11 +271,26 @@ pub fn unify_with_subst(
         }
 
         // Structs - nominal equality
-        (Ty::Struct { name: name1, generics: gens1 }, Ty::Struct { name: name2, generics: gens2 }) => {
+        (
+            Ty::Struct {
+                name: name1,
+                generics: gens1,
+            },
+            Ty::Struct {
+                name: name2,
+                generics: gens2,
+            },
+        ) => {
             if name1.name != name2.name {
                 return Err(TypeError::TypeMismatch {
-                    expected: Ty::Struct { name: name1.clone(), generics: gens1.clone() },
-                    found: Ty::Struct { name: name2.clone(), generics: gens2.clone() },
+                    expected: Ty::Struct {
+                        name: name1.clone(),
+                        generics: gens1.clone(),
+                    },
+                    found: Ty::Struct {
+                        name: name2.clone(),
+                        generics: gens2.clone(),
+                    },
                     span: span.clone(),
                 });
             }
@@ -233,11 +307,26 @@ pub fn unify_with_subst(
         }
 
         // Enums - nominal equality
-        (Ty::Enum { name: name1, generics: gens1 }, Ty::Enum { name: name2, generics: gens2 }) => {
+        (
+            Ty::Enum {
+                name: name1,
+                generics: gens1,
+            },
+            Ty::Enum {
+                name: name2,
+                generics: gens2,
+            },
+        ) => {
             if name1.name != name2.name {
                 return Err(TypeError::TypeMismatch {
-                    expected: Ty::Enum { name: name1.clone(), generics: gens1.clone() },
-                    found: Ty::Enum { name: name2.clone(), generics: gens2.clone() },
+                    expected: Ty::Enum {
+                        name: name1.clone(),
+                        generics: gens1.clone(),
+                    },
+                    found: Ty::Enum {
+                        name: name2.clone(),
+                        generics: gens2.clone(),
+                    },
                     span: span.clone(),
                 });
             }
@@ -319,7 +408,11 @@ fn occurs_in(ty_var: TyVarId, ty: &Ty) -> bool {
         Ty::Array { inner, .. } => occurs_in(ty_var, inner),
         Ty::Slice(inner) => occurs_in(ty_var, inner),
         Ty::Tuple(tys) => tys.iter().any(|t| occurs_in(ty_var, t)),
-        Ty::Function { params, return_type, variadic } => {
+        Ty::Function {
+            params,
+            return_type,
+            variadic,
+        } => {
             params.iter().any(|t| occurs_in(ty_var, t))
                 || occurs_in(ty_var, return_type)
                 || *variadic && occurs_in(ty_var, &Ty::Bool) // variadic implies presence of extra bool
@@ -383,24 +476,45 @@ mod tests {
 
         // Same ref types should unify
         assert!(unify(
-            &Ty::Ref { inner: Box::new(Ty::I32), mutable: false },
-            &Ty::Ref { inner: Box::new(Ty::I32), mutable: false },
+            &Ty::Ref {
+                inner: Box::new(Ty::I32),
+                mutable: false
+            },
+            &Ty::Ref {
+                inner: Box::new(Ty::I32),
+                mutable: false
+            },
             &span
-        ).is_ok());
+        )
+        .is_ok());
 
         // Different mutability should not unify
         assert!(unify(
-            &Ty::Ref { inner: Box::new(Ty::I32), mutable: false },
-            &Ty::Ref { inner: Box::new(Ty::I32), mutable: true },
+            &Ty::Ref {
+                inner: Box::new(Ty::I32),
+                mutable: false
+            },
+            &Ty::Ref {
+                inner: Box::new(Ty::I32),
+                mutable: true
+            },
             &span
-        ).is_err());
+        )
+        .is_err());
 
         // Type vars in refs should unify
         let subst = unify(
-            &Ty::Ref { inner: Box::new(Ty::TyVar(0)), mutable: false },
-            &Ty::Ref { inner: Box::new(Ty::I32), mutable: false },
-            &span
-        ).unwrap();
+            &Ty::Ref {
+                inner: Box::new(Ty::TyVar(0)),
+                mutable: false,
+            },
+            &Ty::Ref {
+                inner: Box::new(Ty::I32),
+                mutable: false,
+            },
+            &span,
+        )
+        .unwrap();
         assert_eq!(subst.lookup(0), Some(&Ty::I32));
     }
 
@@ -412,11 +526,7 @@ mod tests {
         };
 
         // ?0 = Vec<?0> should fail occurs check
-        let result = unify(
-            &Ty::TyVar(0),
-            &Ty::Optional(Box::new(Ty::TyVar(0))),
-            &span
-        );
+        let result = unify(&Ty::TyVar(0), &Ty::Optional(Box::new(Ty::TyVar(0))), &span);
         assert!(result.is_err());
     }
 

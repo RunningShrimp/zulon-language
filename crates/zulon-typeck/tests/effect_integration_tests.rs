@@ -12,10 +12,14 @@ use zulon_typeck::TypeChecker;
 /// Helper function to parse and type check a source string
 fn check_source(source: &str) -> Result<(), String> {
     let mut parser = Parser::from_source(source);
-    let ast = parser.parse().map_err(|e| format!("Parse error: {:?}", e))?;
+    let ast = parser
+        .parse()
+        .map_err(|e| format!("Parse error: {:?}", e))?;
 
     let mut checker = TypeChecker::new();
-    checker.check(&ast).map_err(|e| format!("Type error: {:?}", e))
+    checker
+        .check(&ast)
+        .map_err(|e| format!("Type error: {:?}", e))
 }
 
 // ========== Basic Effect Tests ==========

@@ -281,7 +281,10 @@ mod tests {
         assert_eq!(EffectSet::from_str("IO"), Some(Effect::IO));
         assert_eq!(EffectSet::from_str("Alloc"), Some(Effect::Alloc));
         assert_eq!(EffectSet::from_str("Async"), Some(Effect::Async));
-        assert_eq!(EffectSet::from_str("Mut(x)"), Some(Effect::Mut("x".to_string())));
+        assert_eq!(
+            EffectSet::from_str("Mut(x)"),
+            Some(Effect::Mut("x".to_string()))
+        );
         assert_eq!(
             EffectSet::from_str("Throws(Error)"),
             Some(Effect::Throws("Error".to_string()))
