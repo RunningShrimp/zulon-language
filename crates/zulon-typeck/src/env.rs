@@ -75,6 +75,21 @@ impl Env {
         self.bindings.insert(name, ty);
     }
 
+    /// Insert an import binding
+    pub fn insert_import(&mut self, name: String, _ty: Ty) {
+        self.bindings.insert(name, Ty::Unit);
+    }
+
+    /// Insert a module binding
+    pub fn insert_module(&mut self, name: String) {
+        self.bindings.insert(name, Ty::Unit);
+    }
+
+    /// Insert a static binding
+    pub fn insert_static_binding(&mut self, name: String, _ty: Ty) {
+        self.bindings.insert(format!("static {}", name), Ty::Unit);
+    }
+
     /// Lookup a variable binding
     pub fn lookup_binding(&self, name: &str) -> Option<Ty> {
         // Check current environment
