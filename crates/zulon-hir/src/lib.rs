@@ -26,20 +26,22 @@
 //! - **Desugared**: Complex syntax simplified to canonical forms
 //! - **Validated**: All type checking complete
 
-pub mod ty;
-pub mod hir;
-pub mod error;
 pub mod capture;
+pub mod error;
+pub mod hir;
+pub mod ty;
 // pub mod lower;  // TEMPORARILY DISABLED - has compilation errors, using simple_lower instead
 pub mod simple_lower;
 pub mod test_discovery;
 pub mod test_main_gen;
 
-pub use ty::HirTy;
-pub use hir::*;
+pub use capture::{
+    analyze_captures, CaptureAnalysis, CaptureAnalyzer, Environment, SimpleEnvironment,
+};
 pub use error::{LoweringError, Result};
-pub use capture::{CaptureAnalyzer, CaptureAnalysis, analyze_captures, Environment, SimpleEnvironment};
+pub use hir::*;
+pub use ty::HirTy;
 // pub use lower::{LoweringContext, lower_ast};  // TEMPORARILY DISABLED
-pub use simple_lower::{SimpleLoweringContext, lower_ast_simple};
+pub use simple_lower::{lower_ast_simple, SimpleLoweringContext};
 pub use test_discovery::{discover_tests, DiscoveredTest};
-pub use test_main_gen::{generate_test_main_source, generate_test_file};
+pub use test_main_gen::{generate_test_file, generate_test_main_source};

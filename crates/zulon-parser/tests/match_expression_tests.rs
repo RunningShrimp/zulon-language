@@ -463,7 +463,7 @@ fn test_match_comprehensive() {
     "#;
 
     let ast = parse(source);
-    assert_eq!(ast.items.len(), 4);  // println, print_int, classify_number, main
+    assert_eq!(ast.items.len(), 4); // println, print_int, classify_number, main
 }
 
 #[test]
@@ -543,5 +543,5 @@ fn test_parse_match_with_complex_blocks() {
     "#;
 
     let ast = parse(source);
-    assert_eq!(ast.items.len(), 3);  // println, print_int, main
+    assert_eq!(ast.items.len(), 3); // println, print_int, main
 }

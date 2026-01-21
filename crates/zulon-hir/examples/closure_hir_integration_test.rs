@@ -133,7 +133,8 @@ fn examine_closure_in_block(block: &zulon_hir::HirBlock) {
                 ty,
                 captures,
                 ..
-            } = &local.init.as_ref().unwrap() {
+            } = &local.init.as_ref().unwrap()
+            {
                 println!("    Closure: {}", local.name);
                 println!("      Type: {:?}", ty);
                 println!("      Parameters: {}", params.len());

@@ -99,7 +99,10 @@ impl StructLayout {
 
     /// Get field offset by name
     pub fn field_offset(&self, name: &str) -> Option<u64> {
-        self.fields.iter().find(|f| f.name == name).map(|f| f.offset)
+        self.fields
+            .iter()
+            .find(|f| f.name == name)
+            .map(|f| f.offset)
     }
 
     /// Get field index by name
@@ -114,7 +117,8 @@ impl StructLayout {
 
     /// Get LLVM struct type string
     pub fn to_llvm_type(&self) -> String {
-        let field_types: Vec<String> = self.fields
+        let field_types: Vec<String> = self
+            .fields
             .iter()
             .map(|f| {
                 let llvm_ty: crate::ty::LlvmType = f.ty.clone().into();
@@ -132,7 +136,8 @@ impl StructLayout {
 
     /// Get LLVM struct definition
     pub fn to_llvm_definition(&self) -> String {
-        let field_types: Vec<String> = self.fields
+        let field_types: Vec<String> = self
+            .fields
             .iter()
             .map(|f| {
                 let llvm_ty: crate::ty::LlvmType = f.ty.clone().into();
@@ -144,7 +149,11 @@ impl StructLayout {
             // Empty struct
             format!("%struct.{} = type {{ i8 }}", self.name)
         } else {
-            format!("%struct.{} = type {{ {} }}", self.name, field_types.join(", "))
+            format!(
+                "%struct.{} = type {{ {} }}",
+                self.name,
+                field_types.join(", ")
+            )
         }
     }
 }
@@ -164,7 +173,11 @@ impl LayoutCache {
     }
 
     /// Get or compute struct layout
-    pub fn get_layout(&mut self, name: &str, fields: &[(String, zulon_lir::LirTy)]) -> Result<StructLayout> {
+    pub fn get_layout(
+        &mut self,
+        name: &str,
+        fields: &[(String, zulon_lir::LirTy)],
+    ) -> Result<StructLayout> {
         // Use cached version if available
         if let Some(layout) = self.layouts.get(name) {
             return Ok(layout.clone());
@@ -205,8 +218,12 @@ mod tests {
         let mut layout = StructLayout::new("Test".to_string());
 
         // struct { a: i32, b: i64 }
-        layout.add_field("a".to_string(), zulon_lir::LirTy::I32).unwrap();
-        layout.add_field("b".to_string(), zulon_lir::LirTy::I64).unwrap();
+        layout
+            .add_field("a".to_string(), zulon_lir::LirTy::I32)
+            .unwrap();
+        layout
+            .add_field("b".to_string(), zulon_lir::LirTy::I64)
+            .unwrap();
         layout.finalize();
 
         // i32 at offset 0 (size 4, align 4)
@@ -229,9 +246,15 @@ mod tests {
         let mut layout = StructLayout::new("Packed".to_string());
 
         // struct { a: i8, b: i32, c: i8 }
-        layout.add_field("a".to_string(), zulon_lir::LirTy::I8).unwrap();
-        layout.add_field("b".to_string(), zulon_lir::LirTy::I32).unwrap();
-        layout.add_field("c".to_string(), zulon_lir::LirTy::I8).unwrap();
+        layout
+            .add_field("a".to_string(), zulon_lir::LirTy::I8)
+            .unwrap();
+        layout
+            .add_field("b".to_string(), zulon_lir::LirTy::I32)
+            .unwrap();
+        layout
+            .add_field("c".to_string(), zulon_lir::LirTy::I8)
+            .unwrap();
         layout.finalize();
 
         // i8 at offset 0
@@ -270,7 +293,9 @@ mod tests {
 
         let mut layout = StructLayout::new("Outer".to_string());
         layout.add_field("inner".to_string(), inner_ty).unwrap();
-        layout.add_field("c".to_string(), zulon_lir::LirTy::I64).unwrap();
+        layout
+            .add_field("c".to_string(), zulon_lir::LirTy::I64)
+            .unwrap();
         layout.finalize();
 
         // Inner at offset 0

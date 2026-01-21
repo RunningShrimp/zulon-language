@@ -1,13 +1,21 @@
 // Copyright 2026 ZULON Language Team
 // SPDX-License-Identifier: Apache-2.0 OR MIT
 
-//! # ZULON Runtime IO
+//! # ZULON Runtime IO (Minimal)
 //!
-//! This crate provides IO primitives for ZULON programs:
+//! Simplified IO crate using standard library types only.
+//! This eliminates type system conflicts between crates.
 //!
-//! - **`print`** - Standard output functions
-//! - **`File`** - File operations
-//! - **`IoError`** - IO error type
+//! ## Purpose
+//!
+//! - Provides minimal IO functionality for ZULON
+//! - Uses std::fs, std::io, std::path directly
+//! - Removes dependency on zulon-std-core (circular dependency)
+//!
+//! ## Exports
+//!
+//! - `print` - Simple output
+//! - `println` - Simple output with newline
 //!
 //! ## Example
 //!
@@ -18,27 +26,6 @@
 //! println("world!");
 //! ```
 
-mod error;
 mod stdout;
-mod file;
-pub mod event_loop;
 
-pub use error::{IoError, IoResult};
-pub use stdout::{print, println};
-pub use file::File;
-pub use event_loop::{EventLoop, EventHandler, EventSource, Token, Interest, TimerHandle};
-
-// TODO: Re-enable when modules are complete
-// mod channel;
-// mod io;
-// mod sys;
-// mod select;
-
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn test_io_module_exists() {
-        // Verify IO module is available
-        assert!(true);
-    }
-}
+pub use std::io::{self, Write};

@@ -42,7 +42,10 @@ fn main() {
         },
         LirExternal {
             name: "zulon_strcmp".to_string(),
-            param_types: vec![LirTy::Ptr(Box::new(LirTy::I8)), LirTy::Ptr(Box::new(LirTy::I8))],
+            param_types: vec![
+                LirTy::Ptr(Box::new(LirTy::I8)),
+                LirTy::Ptr(Box::new(LirTy::I8)),
+            ],
             return_type: LirTy::I32,
         },
     ];
@@ -55,7 +58,7 @@ fn main() {
         output: "string_utils_demo".into(),
         keep_intermediates: true,
         target: None,
-        ..Default::default()  // Uses opt_level: 2 (-O2)
+        ..Default::default() // Uses opt_level: 2 (-O2)
     };
 
     println!("📦 Building executable...");
@@ -144,7 +147,6 @@ fn create_demo_function() -> LirFunction {
                 arg_types: vec![LirTy::I64],
                 return_type: LirTy::Unit,
             },
-
             // ===== Test strcmp (different strings) =====
             // Load string "apple"
             LirInstruction::Const {
@@ -163,7 +165,10 @@ fn create_demo_function() -> LirFunction {
                 dest: Some(5),
                 func_name: "zulon_strcmp".to_string(),
                 args: vec![3, 4],
-                arg_types: vec![LirTy::Ptr(Box::new(LirTy::I8)), LirTy::Ptr(Box::new(LirTy::I8))],
+                arg_types: vec![
+                    LirTy::Ptr(Box::new(LirTy::I8)),
+                    LirTy::Ptr(Box::new(LirTy::I8)),
+                ],
                 return_type: LirTy::I32,
             },
             // Print result
@@ -186,7 +191,6 @@ fn create_demo_function() -> LirFunction {
                 arg_types: vec![LirTy::I32],
                 return_type: LirTy::Unit,
             },
-
             // ===== Test strcmp (same strings) =====
             // Load "test" twice
             LirInstruction::Const {
@@ -204,7 +208,10 @@ fn create_demo_function() -> LirFunction {
                 dest: Some(9),
                 func_name: "zulon_strcmp".to_string(),
                 args: vec![7, 8],
-                arg_types: vec![LirTy::Ptr(Box::new(LirTy::I8)), LirTy::Ptr(Box::new(LirTy::I8))],
+                arg_types: vec![
+                    LirTy::Ptr(Box::new(LirTy::I8)),
+                    LirTy::Ptr(Box::new(LirTy::I8)),
+                ],
                 return_type: LirTy::I32,
             },
             // Print result
@@ -227,7 +234,6 @@ fn create_demo_function() -> LirFunction {
                 arg_types: vec![LirTy::I32],
                 return_type: LirTy::Unit,
             },
-
             // Return success
             LirInstruction::Const {
                 dest: 11,

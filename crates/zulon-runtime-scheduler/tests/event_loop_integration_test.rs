@@ -6,9 +6,9 @@
 //! These tests validate that IntegratedEventLoopExecutor correctly
 //! integrates with Phase 2.2's EventLoop implementations (epoll/kqueue).
 
-use zulon_runtime_scheduler::{Executor, IntegratedEventLoopExecutor};
-use zulon_async_futures::{Future, Poll, Context};
 use std::os::unix::io::RawFd;
+use zulon_async_futures::{Context, Future, Poll};
+use zulon_runtime_scheduler::{Executor, IntegratedEventLoopExecutor};
 
 /// A future that simulates async I/O by becoming Pending once, then Ready
 ///
@@ -21,9 +21,7 @@ struct SimulatedAsyncIO {
 
 impl SimulatedAsyncIO {
     fn new() -> Self {
-        Self {
-            polled_once: false,
-        }
+        Self { polled_once: false }
     }
 }
 
@@ -84,7 +82,11 @@ fn test_integrated_executor_basic_spawn() {
     // Run should complete the task
     executor.run();
 
-    assert_eq!(executor.task_count(), 0, "Task should be completed and removed");
+    assert_eq!(
+        executor.task_count(),
+        0,
+        "Task should be completed and removed"
+    );
 }
 
 #[test]
@@ -117,7 +119,11 @@ fn test_integrated_executor_with_pending() {
     executor.run();
 
     // Task should still be pending (not completed yet)
-    assert_eq!(executor.task_count(), 1, "Task should still be pending after first poll");
+    assert_eq!(
+        executor.task_count(),
+        1,
+        "Task should still be pending after first poll"
+    );
 
     // Note: In a real scenario with event loop integration, the task would
     // be woken up by the event loop when I/O is ready. For this test, we're
@@ -240,7 +246,7 @@ fn test_event_interest_conversions() {
 #[cfg(target_os = "linux")]
 mod with_real_event_loop {
     use super::*;
-    use zulon_runtime_io::event_loop::{EpollEventLoop, EventLoop, EventHandler};
+    use zulon_runtime_io::event_loop::{EpollEventLoop, EventHandler, EventLoop};
 
     /// A simple test that validates executor can be integrated with real event loop
     #[test]
@@ -273,7 +279,7 @@ mod with_real_event_loop {
     /// Test EventHandler implementation for IntegratedEventLoopExecutor
     #[test]
     fn test_event_handler_implementation() {
-        use zulon_runtime_io::event_loop::{Token, EventHandler};
+        use zulon_runtime_io::event_loop::{EventHandler, Token};
         use zulon_runtime_io::IoError;
 
         let mut executor = IntegratedEventLoopExecutor::new();
@@ -307,7 +313,7 @@ mod with_real_event_loop {
 #[cfg(target_os = "linux")]
 mod with_real_event_loop {
     use super::*;
-    use zulon_runtime_io::event_loop::{EpollEventLoop, EventLoop, EventHandler};
+    use zulon_runtime_io::event_loop::{EpollEventLoop, EventHandler, EventLoop};
 
     /// A simple test that validates executor can be integrated with real event loop
     #[test]
@@ -340,7 +346,7 @@ mod with_real_event_loop {
     /// Test EventHandler implementation for IntegratedEventLoopExecutor
     #[test]
     fn test_event_handler_implementation() {
-        use zulon_runtime_io::event_loop::{Token, EventHandler};
+        use zulon_runtime_io::event_loop::{EventHandler, Token};
         use zulon_runtime_io::IoError;
 
         let mut executor = IntegratedEventLoopExecutor::new();
@@ -387,8 +393,14 @@ fn test_executor_performance() {
     let run_time = run_start.elapsed();
 
     // Performance assertions
-    assert!(spawn_time.as_millis() < 100, "Spawning 1000 tasks should take < 100ms");
-    assert!(run_time.as_millis() < 100, "Running 1000 tasks should take < 100ms");
+    assert!(
+        spawn_time.as_millis() < 100,
+        "Spawning 1000 tasks should take < 100ms"
+    );
+    assert!(
+        run_time.as_millis() < 100,
+        "Running 1000 tasks should take < 100ms"
+    );
 
     println!("Spawn time: {:?}", spawn_time);
     println!("Run time: {:?}", run_time);

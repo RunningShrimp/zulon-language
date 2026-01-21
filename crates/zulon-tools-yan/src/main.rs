@@ -6,8 +6,8 @@
 //! The yan tool provides a command-line interface for managing ZULON projects,
 //! including building, running, and creating new projects.
 
+use anyhow::{Context, Result};
 use clap::{Parser, Subcommand};
-use anyhow::{Result, Context};
 use std::path::Path;
 
 mod build;
@@ -111,7 +111,14 @@ fn main() -> Result<()> {
     let cli = Cli::parse();
 
     match cli.command {
-        Commands::Build { release, package: _, jobs: _, example, file, run } => {
+        Commands::Build {
+            release,
+            package: _,
+            jobs: _,
+            example,
+            file,
+            run,
+        } => {
             build::check_project_dir()?;
 
             let executable_path = if let Some(source_file) = &file {
@@ -149,7 +156,12 @@ fn main() -> Result<()> {
             Ok(())
         }
 
-        Commands::Run { bin, example, args, release } => {
+        Commands::Run {
+            bin,
+            example,
+            args,
+            release,
+        } => {
             println!("🚀 Running ZULON project...");
 
             if let Some(ex) = example {
@@ -175,7 +187,11 @@ fn main() -> Result<()> {
             Ok(())
         }
 
-        Commands::Test { filter, verbose, release } => {
+        Commands::Test {
+            filter,
+            verbose,
+            release,
+        } => {
             run_tests(filter, verbose, release)?;
             Ok(())
         }
@@ -196,7 +212,8 @@ fn run_binary(bin: &str, args: &[String], release: bool) -> Result<()> {
 
     if !std::path::Path::new(&binary_path).exists() {
         return Err(anyhow::anyhow!(
-            "Binary not found: {}. Run `yan build` first.", binary_path
+            "Binary not found: {}. Run `yan build` first.",
+            binary_path
         ));
     }
 
@@ -209,7 +226,10 @@ fn run_binary(bin: &str, args: &[String], release: bool) -> Result<()> {
         println!("✅ Run complete!");
         Ok(())
     } else {
-        Err(anyhow::anyhow!("Run failed with exit code: {:?}", status.code()))
+        Err(anyhow::anyhow!(
+            "Run failed with exit code: {:?}",
+            status.code()
+        ))
     }
 }
 
@@ -228,7 +248,8 @@ fn run_example(example: &str, args: &[String], release: bool) -> Result<()> {
     if !std::path::Path::new(&example_path).exists() {
         return Err(anyhow::anyhow!(
             "Example not found: {}. Run `yan build --example {}` first.",
-            example_path, example
+            example_path,
+            example
         ));
     }
 
@@ -241,7 +262,10 @@ fn run_example(example: &str, args: &[String], release: bool) -> Result<()> {
         println!("✅ Run complete!");
         Ok(())
     } else {
-        Err(anyhow::anyhow!("Run failed with exit code: {:?}", status.code()))
+        Err(anyhow::anyhow!(
+            "Run failed with exit code: {:?}",
+            status.code()
+        ))
     }
 }
 
@@ -249,24 +273,29 @@ fn run_example(example: &str, args: &[String], release: bool) -> Result<()> {
 fn get_default_binary() -> Result<String> {
     use std::fs::read_to_string;
 
-    let cargo_toml = read_to_string("Cargo.toml")
-        .with_context(|| "Failed to read Cargo.toml".to_string())?;
+    let cargo_toml =
+        read_to_string("Cargo.toml").with_context(|| "Failed to read Cargo.toml".to_string())?;
 
     // Simple parsing to find package name
     for line in cargo_toml.lines() {
         if line.trim().starts_with("name = ") {
-            let name = line.split("=\"").nth(1)
+            let name = line
+                .split("=\"")
+                .nth(1)
                 .ok_or_else(|| anyhow::anyhow!("Failed to parse package name"))?;
-            let name = name.split("\"").next()
+            let name = name
+                .split("\"")
+                .next()
                 .ok_or_else(|| anyhow::anyhow!("Failed to parse package name"))?;
             return Ok(name.replace("-", "_"));
         }
     }
 
     // Fallback: use directory name
-    let current_dir = std::env::current_dir()
-        .with_context(|| "Failed to get current directory".to_string())?;
-    let dir_name = current_dir.file_name()
+    let current_dir =
+        std::env::current_dir().with_context(|| "Failed to get current directory".to_string())?;
+    let dir_name = current_dir
+        .file_name()
         .ok_or_else(|| anyhow::anyhow!("Failed to get directory name"))?;
     let name = dir_name.to_string_lossy().replace("-", "_");
     Ok(name)
@@ -283,7 +312,8 @@ fn create_project(name: &str, path: Option<&str>) -> Result<()> {
     // Check if directory already exists
     if std::path::Path::new(project_path).exists() {
         return Err(anyhow::anyhow!(
-            "Directory '{}' already exists", project_path
+            "Directory '{}' already exists",
+            project_path
         ));
     }
 
@@ -310,13 +340,12 @@ zulon-std-core = {{ path = "../zulon-std-core" }}
 name = "{}"
 path = "src/main.zl"
 "#,
-        name, name.replace("-", "_")
+        name,
+        name.replace("-", "_")
     );
 
-    std::fs::write(
-        format!("{}/Cargo.toml", project_path),
-        cargo_toml,
-    ).with_context(|| format!("Failed to write Cargo.toml for {}", project_path))?;
+    std::fs::write(format!("{}/Cargo.toml", project_path), cargo_toml)
+        .with_context(|| format!("Failed to write Cargo.toml for {}", project_path))?;
 
     // Create a sample main.zl
     let main_zl = format!(
@@ -330,10 +359,8 @@ fn main() {{
         name, name
     );
 
-    std::fs::write(
-        format!("{}/src/main.zl", project_path),
-        main_zl,
-    ).with_context(|| format!("Failed to write main.zl for {}", project_path))?;
+    std::fs::write(format!("{}/src/main.zl", project_path), main_zl)
+        .with_context(|| format!("Failed to write main.zl for {}", project_path))?;
 
     // Create .gitignore
     let gitignore = r#"# ZULON build artifacts
@@ -348,10 +375,8 @@ Cargo.lock
 *~
 "#;
 
-    std::fs::write(
-        format!("{}/.gitignore", project_path),
-        gitignore,
-    ).with_context(|| format!("Failed to write .gitignore for {}", project_path))?;
+    std::fs::write(format!("{}/.gitignore", project_path), gitignore)
+        .with_context(|| format!("Failed to write .gitignore for {}", project_path))?;
 
     // Create README.md
     let readme = format!(
@@ -378,10 +403,8 @@ Check out the ZULON documentation for more information about the language.
         name
     );
 
-    std::fs::write(
-        format!("{}/README.md", project_path),
-        readme,
-    ).with_context(|| format!("Failed to write README.md for {}", project_path))?;
+    std::fs::write(format!("{}/README.md", project_path), readme)
+        .with_context(|| format!("Failed to write README.md for {}", project_path))?;
 
     println!("✅ Project created successfully!");
     println!();
@@ -419,7 +442,10 @@ fn clean_project(all: bool, package: Option<&str>) -> Result<()> {
         println!("✅ Clean complete!");
         Ok(())
     } else {
-        Err(anyhow::anyhow!("Clean failed with exit code: {:?}", status.code()))
+        Err(anyhow::anyhow!(
+            "Clean failed with exit code: {:?}",
+            status.code()
+        ))
     }
 }
 

@@ -123,7 +123,7 @@ macro_rules! assert_ne {
 macro_rules! assert_matches {
     ($value:expr, $pat:pat $(, $msg:expr)?) => {
         match $value {
-            $pat => {},
+            $pat => {}
             _ => panic!("assertion failed: value doesn't match pattern"),
         }
     };

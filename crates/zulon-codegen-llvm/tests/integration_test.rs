@@ -3,18 +3,18 @@
 
 //! Integration tests for complete LLVM IR generation
 
-use std::io::Cursor;
-use zulon_codegen_llvm::{CodeGenerator, CallingConvention, StructLayout, EnumLayout};
-use zulon_lir::{LirFunction, LirBlock, LirInstruction, LirTerminator, LirTy};
 use std::collections::HashMap;
+use std::io::Cursor;
+use zulon_codegen_llvm::{CallingConvention, CodeGenerator, EnumLayout, StructLayout};
 use zulon_lir::LirBinOp;
+use zulon_lir::{LirBlock, LirFunction, LirInstruction, LirTerminator, LirTy};
 
 #[test]
 fn test_simple_function_generation() {
     // Create a simple add function: fn add(a: i32, b: i32) -> i32 { a + b }
     let mut func = LirFunction {
         name: "add".to_string(),
-        params: vec![0, 1],  // v0, v1
+        params: vec![0, 1], // v0, v1
         param_types: vec![LirTy::I32, LirTy::I32],
         return_type: LirTy::I32,
         blocks: HashMap::new(),
@@ -75,15 +75,13 @@ fn test_module_generation() {
     let add_block = LirBlock {
         id: 0,
         phi_nodes: HashMap::new(),
-        instructions: vec![
-            LirInstruction::BinaryOp {
-                dest: 2,
-                op: LirBinOp::Add,
-                left: 0,
-                right: 1,
-                ty: LirTy::I32,
-            },
-        ],
+        instructions: vec![LirInstruction::BinaryOp {
+            dest: 2,
+            op: LirBinOp::Add,
+            left: 0,
+            right: 1,
+            ty: LirTy::I32,
+        }],
         terminator: Some(LirTerminator::Return(Some(2))),
     };
     add_func.blocks.insert(0, add_block);
@@ -103,15 +101,13 @@ fn test_module_generation() {
     let sub_block = LirBlock {
         id: 1,
         phi_nodes: HashMap::new(),
-        instructions: vec![
-            LirInstruction::BinaryOp {
-                dest: 5,
-                op: LirBinOp::Sub,
-                left: 3,
-                right: 4,
-                ty: LirTy::I32,
-            },
-        ],
+        instructions: vec![LirInstruction::BinaryOp {
+            dest: 5,
+            op: LirBinOp::Sub,
+            left: 3,
+            right: 4,
+            ty: LirTy::I32,
+        }],
         terminator: Some(LirTerminator::Return(Some(5))),
     };
     sub_func.blocks.insert(1, sub_block);
@@ -135,7 +131,7 @@ fn test_abi_function_generation() {
     // Test function with ABI information
     let mut func = LirFunction {
         name: "compute".to_string(),
-        params: vec![0, 1, 2],  // 3 parameters
+        params: vec![0, 1, 2], // 3 parameters
         param_types: vec![LirTy::I32, LirTy::I64, LirTy::I32],
         return_type: LirTy::I64,
         blocks: HashMap::new(),
@@ -149,14 +145,14 @@ fn test_abi_function_generation() {
         id: 0,
         phi_nodes: HashMap::new(),
         instructions: vec![],
-        terminator: Some(LirTerminator::Return(Some(1))),  // Return second param (i64)
+        terminator: Some(LirTerminator::Return(Some(1))), // Return second param (i64)
     };
     func.blocks.insert(0, block);
 
     // Generate with System V AMD64 ABI
     let mut buffer = Cursor::new(Vec::new());
-    let mut codegen = CodeGenerator::new(&mut buffer)
-        .with_calling_convention(CallingConvention::SystemVAMD64);
+    let mut codegen =
+        CodeGenerator::new(&mut buffer).with_calling_convention(CallingConvention::SystemVAMD64);
 
     codegen.generate_function_with_abi(&func).unwrap();
 
@@ -216,9 +212,13 @@ fn test_enum_type_declaration() {
     // Create an enum type
     let mut layout = EnumLayout::new("Option".to_string(), LirTy::I8);
     layout.add_variant("None".to_string(), 0, vec![]).unwrap();
-    layout.add_variant("Some".to_string(), 1, vec![
-        ("value".to_string(), LirTy::I32)
-    ]).unwrap();
+    layout
+        .add_variant(
+            "Some".to_string(),
+            1,
+            vec![("value".to_string(), LirTy::I32)],
+        )
+        .unwrap();
     layout.finalize();
 
     // Create a simple function

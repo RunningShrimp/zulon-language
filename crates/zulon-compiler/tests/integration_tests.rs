@@ -29,7 +29,8 @@ impl TestCompilation {
 
         // Write source code
         let mut file = File::create(&source_path).expect("Failed to create source file");
-        file.write_all(source.as_bytes()).expect("Failed to write source");
+        file.write_all(source.as_bytes())
+            .expect("Failed to write source");
 
         TestCompilation {
             _temp_dir: temp_dir,
@@ -52,7 +53,11 @@ impl TestCompilation {
             .output()?;
 
         if !output.status.success() {
-            return Err(format!("Compilation failed: {}", String::from_utf8_lossy(&output.stderr)).into());
+            return Err(format!(
+                "Compilation failed: {}",
+                String::from_utf8_lossy(&output.stderr)
+            )
+            .into());
         }
 
         // Read the generated LLVM IR
@@ -87,13 +92,22 @@ fn test_hello_world_compiles() {
     let ir = test_comp.compile().expect("Compilation failed");
 
     // Check for main function
-    assert!(ir.contains("define i32 @main()"), "LLVM IR should contain main function");
+    assert!(
+        ir.contains("define i32 @main()"),
+        "LLVM IR should contain main function"
+    );
 
     // Check for string constant
-    assert!(ir.contains("Hello, World"), "LLVM IR should contain hello world string");
+    assert!(
+        ir.contains("Hello, World"),
+        "LLVM IR should contain hello world string"
+    );
 
     // Check for extern declaration
-    assert!(ir.contains("declare i32 @println"), "LLVM IR should declare println");
+    assert!(
+        ir.contains("declare i32 @println"),
+        "LLVM IR should declare println"
+    );
 }
 
 #[test]
@@ -112,10 +126,16 @@ fn test_function_compilation() {
     let ir = test_comp.compile().expect("Compilation failed");
 
     // Check for add function
-    assert!(ir.contains("define i32 @add"), "LLVM IR should contain add function");
+    assert!(
+        ir.contains("define i32 @add"),
+        "LLVM IR should contain add function"
+    );
 
     // Check for main function
-    assert!(ir.contains("define i32 @main()"), "LLVM IR should contain main function");
+    assert!(
+        ir.contains("define i32 @main()"),
+        "LLVM IR should contain main function"
+    );
 }
 
 #[test]
@@ -166,7 +186,10 @@ fn test_if_expression() {
     let ir = test_comp.compile().expect("Compilation failed");
 
     // Check for branching
-    assert!(ir.contains("br") || ir.contains("label"), "LLVM IR should contain branches");
+    assert!(
+        ir.contains("br") || ir.contains("label"),
+        "LLVM IR should contain branches"
+    );
 }
 
 #[test]
@@ -187,7 +210,10 @@ fn test_match_expression() {
     let ir = test_comp.compile().expect("Compilation failed");
 
     // Check for switch or branches
-    assert!(ir.contains("switch") || ir.contains("br"), "LLVM IR should contain switch/branches");
+    assert!(
+        ir.contains("switch") || ir.contains("br"),
+        "LLVM IR should contain switch/branches"
+    );
 }
 
 #[test]
@@ -211,7 +237,10 @@ fn test_while_loop() {
     let ir = test_comp.compile().expect("Compilation failed");
 
     // Check for loop construct (branch back)
-    assert!(ir.contains("br") || ir.contains("label"), "LLVM IR should contain branches");
+    assert!(
+        ir.contains("br") || ir.contains("label"),
+        "LLVM IR should contain branches"
+    );
 }
 
 //
@@ -231,7 +260,10 @@ fn test_tuple_creation() {
     let ir = test_comp.compile().expect("Compilation failed");
 
     // Check for struct type
-    assert!(ir.contains("struct") || ir.contains("%tuple"), "LLVM IR should contain tuple struct");
+    assert!(
+        ir.contains("struct") || ir.contains("%tuple"),
+        "LLVM IR should contain tuple struct"
+    );
 }
 
 #[test]
@@ -250,7 +282,10 @@ fn test_tuple_field_access() {
     let ir = test_comp.compile().expect("Compilation failed");
 
     // Check for getelementptr instructions
-    assert!(ir.contains("getelementptr"), "LLVM IR should contain getelementptr for field access");
+    assert!(
+        ir.contains("getelementptr"),
+        "LLVM IR should contain getelementptr for field access"
+    );
 }
 
 //
@@ -273,7 +308,10 @@ fn test_defer_statement() {
     let ir = test_comp.compile().expect("Compilation failed");
 
     // Check that defer is present (cleanup should be in the IR)
-    assert!(ir.contains("cleanup") || ir.contains("println"), "LLVM IR should contain defer cleanup");
+    assert!(
+        ir.contains("cleanup") || ir.contains("println"),
+        "LLVM IR should contain defer cleanup"
+    );
 }
 
 #[test]
@@ -294,8 +332,10 @@ fn test_multiple_defers() {
     let ir = test_comp.compile().expect("Compilation failed");
 
     // Check for multiple cleanup calls
-    assert!(ir.contains("cleanup 1") && ir.contains("cleanup 2") && ir.contains("cleanup 3"),
-            "LLVM IR should contain all defer cleanup calls");
+    assert!(
+        ir.contains("cleanup 1") && ir.contains("cleanup 2") && ir.contains("cleanup 3"),
+        "LLVM IR should contain all defer cleanup calls"
+    );
 }
 
 //
@@ -318,7 +358,10 @@ fn test_template_string() {
     let ir = test_comp.compile().expect("Compilation failed");
 
     // Check for string constant
-    assert!(ir.contains("Hello, World"), "LLVM IR should contain template string");
+    assert!(
+        ir.contains("Hello, World"),
+        "LLVM IR should contain template string"
+    );
 }
 
 #[test]
@@ -341,8 +384,10 @@ fn test_multiple_template_strings() {
     let ir = test_comp.compile().expect("Compilation failed");
 
     // Check for all strings
-    assert!(ir.contains("First") && ir.contains("Second") && ir.contains("Third"),
-            "LLVM IR should contain all template strings");
+    assert!(
+        ir.contains("First") && ir.contains("Second") && ir.contains("Third"),
+        "LLVM IR should contain all template strings"
+    );
 }
 
 //
@@ -364,8 +409,10 @@ fn test_arithmetic_operations() {
     let ir = test_comp.compile().expect("Compilation failed");
 
     // Check for arithmetic instructions
-    assert!(ir.contains("add") || ir.contains("mul") || ir.contains("sub") || ir.contains("sdiv"),
-            "LLVM IR should contain arithmetic instructions");
+    assert!(
+        ir.contains("add") || ir.contains("mul") || ir.contains("sub") || ir.contains("sdiv"),
+        "LLVM IR should contain arithmetic instructions"
+    );
 }
 
 #[test]
@@ -386,7 +433,10 @@ fn test_comparison_operations() {
     let ir = test_comp.compile().expect("Compilation failed");
 
     // Check for comparison instructions
-    assert!(ir.contains("icmp") || ir.contains("cmp"), "LLVM IR should contain comparison instructions");
+    assert!(
+        ir.contains("icmp") || ir.contains("cmp"),
+        "LLVM IR should contain comparison instructions"
+    );
 }
 
 //
@@ -418,10 +468,16 @@ fn test_factorial_function() {
     let ir = test_comp.compile().expect("Compilation failed");
 
     // Check for recursive function
-    assert!(ir.contains("define i32 @factorial"), "LLVM IR should contain factorial function");
+    assert!(
+        ir.contains("define i32 @factorial"),
+        "LLVM IR should contain factorial function"
+    );
 
     // Check for recursion
-    assert!(ir.contains("factorial"), "LLVM IR should contain factorial call");
+    assert!(
+        ir.contains("factorial"),
+        "LLVM IR should contain factorial call"
+    );
 }
 
 #[test]
@@ -444,8 +500,10 @@ fn test_nested_function_calls() {
     let ir = test_comp.compile().expect("Compilation failed");
 
     // Check for both functions
-    assert!(ir.contains("define i32 @add") && ir.contains("define i32 @multiply"),
-            "LLVM IR should contain both functions");
+    assert!(
+        ir.contains("define i32 @add") && ir.contains("define i32 @multiply"),
+        "LLVM IR should contain both functions"
+    );
 }
 
 #[test]
@@ -479,7 +537,10 @@ fn test_complex_match() {
     let ir = test_comp.compile().expect("Compilation failed");
 
     // Check for match branches
-    assert!(ir.contains("br") || ir.contains("switch"), "LLVM IR should contain branches for match");
+    assert!(
+        ir.contains("br") || ir.contains("switch"),
+        "LLVM IR should contain branches for match"
+    );
 }
 
 //
@@ -504,13 +565,24 @@ fn test_extern_functions() {
     let ir = test_comp.compile().expect("Compilation failed");
 
     // Check for extern declarations
-    assert!(ir.contains("declare i32 @println"), "LLVM IR should declare println");
-    assert!(ir.contains("declare i32 @print_int"), "LLVM IR should declare print_int");
-    assert!(ir.contains("declare i32 @exit"), "LLVM IR should declare exit");
+    assert!(
+        ir.contains("declare i32 @println"),
+        "LLVM IR should declare println"
+    );
+    assert!(
+        ir.contains("declare i32 @print_int"),
+        "LLVM IR should declare print_int"
+    );
+    assert!(
+        ir.contains("declare i32 @exit"),
+        "LLVM IR should declare exit"
+    );
 
     // Check for calls
-    assert!(ir.contains("call i32 @println") || ir.contains("call void @println"),
-            "LLVM IR should call println");
+    assert!(
+        ir.contains("call i32 @println") || ir.contains("call void @println"),
+        "LLVM IR should call println"
+    );
 }
 
 #[test]
@@ -528,7 +600,10 @@ fn test_extern_function_with_multiple_args() {
     let ir = test_comp.compile().expect("Compilation failed");
 
     // Check for extern with multiple arguments
-    assert!(ir.contains("declare"), "LLVM IR should declare extern function");
+    assert!(
+        ir.contains("declare"),
+        "LLVM IR should declare extern function"
+    );
 }
 
 //
@@ -554,7 +629,10 @@ fn test_return_statement() {
     let ir = test_comp.compile().expect("Compilation failed");
 
     // Check for return instructions
-    assert!(ir.contains("ret"), "LLVM IR should contain return instructions");
+    assert!(
+        ir.contains("ret"),
+        "LLVM IR should contain return instructions"
+    );
 }
 
 #[test]
@@ -579,7 +657,10 @@ fn test_multiple_returns() {
     let ir = test_comp.compile().expect("Compilation failed");
 
     // Check for multiple return points
-    assert!(ir.contains("ret"), "LLVM IR should contain return instructions");
+    assert!(
+        ir.contains("ret"),
+        "LLVM IR should contain return instructions"
+    );
 }
 
 //
@@ -601,7 +682,10 @@ fn test_variable_declarations() {
     let ir = test_comp.compile().expect("Compilation failed");
 
     // Check for allocas
-    assert!(ir.contains("alloca"), "LLVM IR should contain alloca for variables");
+    assert!(
+        ir.contains("alloca"),
+        "LLVM IR should contain alloca for variables"
+    );
 }
 
 #[test]
@@ -639,7 +723,10 @@ fn test_undefined_variable_error() {
     let result = test_comp.compile();
 
     // Should fail to compile
-    assert!(result.is_err(), "Compilation should fail for undefined variable");
+    assert!(
+        result.is_err(),
+        "Compilation should fail for undefined variable"
+    );
 }
 
 #[test]
@@ -707,7 +794,10 @@ fn test_empty_function() {
     let ir = test_comp.compile().expect("Compilation failed");
 
     // Check for empty function
-    assert!(ir.contains("define"), "LLVM IR should contain function definition");
+    assert!(
+        ir.contains("define"),
+        "LLVM IR should contain function definition"
+    );
 }
 
 #[test]
@@ -755,7 +845,10 @@ fn test_large_function() {
     let ir = test_comp.compile().expect("Compilation failed");
 
     // Check for multiple allocas
-    assert!(ir.contains("alloca"), "LLVM IR should contain allocas for variables");
+    assert!(
+        ir.contains("alloca"),
+        "LLVM IR should contain allocas for variables"
+    );
 }
 
 //
@@ -799,5 +892,8 @@ fn test_multiple_externs_dont_duplicate() {
 
     // Check that extern is declared only once
     let declare_count = ir.matches("declare").count();
-    assert!(declare_count <= 2, "Extern should be declared minimal times");
+    assert!(
+        declare_count <= 2,
+        "Extern should be declared minimal times"
+    );
 }

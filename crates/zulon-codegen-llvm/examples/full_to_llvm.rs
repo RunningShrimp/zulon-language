@@ -2,11 +2,11 @@
 // Demonstrates the full journey from source to executable-ready LLVM IR
 
 use std::io::Cursor;
-use zulon_parser::Parser;
-use zulon_hir::lower_ast_simple;
-use zulon_mir::lower_hir;
-use zulon_lir::lower::LirLoweringContext;
 use zulon_codegen_llvm::CodeGenerator;
+use zulon_hir::lower_ast_simple;
+use zulon_lir::lower::LirLoweringContext;
+use zulon_mir::lower_hir;
+use zulon_parser::Parser;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("=== ZULON Complete Pipeline: Source → LLVM IR ===\n");
@@ -55,7 +55,8 @@ fn main() -> i32 {
     let mir = lower_hir(&hir)?;
     println!("  ✅ MIR: {} functions", mir.functions.len());
     for func in &mir.functions {
-        println!("     - fn {} with {} basic blocks",
+        println!(
+            "     - fn {} with {} basic blocks",
             func.name,
             func.blocks.len()
         );

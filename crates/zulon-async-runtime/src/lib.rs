@@ -48,15 +48,19 @@
 //! }
 //! ```
 
+pub mod continuation;
 pub mod effect;
 pub mod event_loop;
-pub mod continuation;
 pub mod platform;
+pub mod task;
+pub mod thread_pool;
 
-pub use effect::{AsyncEffect, AsyncOperation};
-pub use event_loop::{EventLoop, EventHandler};
 pub use continuation::{Continuation, ContinuationManager};
+pub use effect::{AsyncEffect, AsyncOperation};
+pub use event_loop::{EventHandler, EventLoop};
 pub use platform::EventLoopFactory;
+pub use task::{SharedTaskQueue, Task, TaskId, TaskQueue, TaskState};
+pub use thread_pool::{ThreadPool, ThreadPoolConfig};
 
 /// Version information
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -64,7 +68,7 @@ pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 /// Async runtime builder
 #[derive(Debug, Clone)]
 pub struct RuntimeBuilder {
-    /// Number of worker threads (for future thread pool support)
+    /// Number of worker threads (for thread pool support)
     worker_threads: Option<usize>,
     /// Platform-specific configuration
     platform_config: platform::PlatformConfig,
@@ -85,7 +89,7 @@ impl RuntimeBuilder {
         Self::default()
     }
 
-    /// Set the number of worker threads
+    /// Set number of worker threads
     pub fn worker_threads(mut self, count: usize) -> Self {
         self.worker_threads = Some(count);
         self
@@ -94,13 +98,29 @@ impl RuntimeBuilder {
     /// Build the async runtime
     pub fn build(self) -> Result<Runtime, BuildError> {
         let event_loop = EventLoopFactory::create(self.platform_config)?;
-        Ok(Runtime { event_loop })
+
+        let thread_pool = if let Some(num_threads) = self.worker_threads {
+            let config = thread_pool::ThreadPoolConfig::new().num_threads(num_threads);
+            Some(thread_pool::ThreadPool::new(config))
+        } else {
+            None
+        };
+
+        let task_queue = SharedTaskQueue::new();
+
+        Ok(Runtime {
+            event_loop,
+            thread_pool,
+            task_queue,
+        })
     }
 }
 
 /// Async runtime instance
 pub struct Runtime {
     event_loop: Box<dyn EventLoop>,
+    thread_pool: Option<thread_pool::ThreadPool>,
+    task_queue: SharedTaskQueue,
 }
 
 impl Runtime {
@@ -109,9 +129,34 @@ impl Runtime {
     where
         F: FnOnce() -> R,
     {
-        // For now, just execute synchronously
-        // TODO: Implement proper async execution
-        fut()
+        let _event_loop = self.event_loop_mut();
+
+        let task_id = self.task_queue.spawn();
+
+        let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| fut()));
+
+        let result = match result {
+            Ok(r) => r,
+            Err(_) => {
+                if let Some(mut task) = self.task_queue.get_task(task_id) {
+                    task.panic();
+                }
+                std::panic::panic_any("task panicked");
+            }
+        };
+
+        result
+    }
+
+    /// Spawn an async task
+    pub fn spawn(&self, _f: impl FnOnce() + Send + 'static) -> TaskId {
+        let task_id = self.task_queue.spawn();
+
+        if let Some(_thread_pool) = &self.thread_pool {
+            std::thread::spawn(move || {});
+        }
+
+        task_id
     }
 
     /// Get a reference to the event loop
@@ -122,6 +167,16 @@ impl Runtime {
     /// Get a mutable reference to the event loop
     pub fn event_loop_mut(&mut self) -> &mut dyn EventLoop {
         self.event_loop.as_mut()
+    }
+
+    /// Get the task queue
+    pub fn task_queue(&self) -> &SharedTaskQueue {
+        &self.task_queue
+    }
+
+    /// Get a mutable reference to the task queue
+    pub fn task_queue_mut(&mut self) -> &mut SharedTaskQueue {
+        &mut self.task_queue
     }
 }
 

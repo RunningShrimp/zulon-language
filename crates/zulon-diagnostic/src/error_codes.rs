@@ -225,6 +225,10 @@ mod tests {
         let unique_codes: std::collections::HashSet<&'static str> =
             codes.iter().map(|c| c.code).collect();
 
-        assert_eq!(unique_codes.len(), codes.len(), "Error codes must be unique");
+        assert_eq!(
+            unique_codes.len(),
+            codes.len(),
+            "Error codes must be unique"
+        );
     }
 }

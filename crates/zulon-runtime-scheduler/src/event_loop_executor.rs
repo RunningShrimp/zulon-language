@@ -7,8 +7,8 @@
 //! for proper async task execution with I/O support.
 
 use crate::Executor;
-use zulon_async_futures::{Future, Poll, Context, Waker, RawWaker, RawWakerVTable};
 use std::collections::VecDeque;
+use zulon_async_futures::{Context, Future, Poll, RawWaker, RawWakerVTable, Waker};
 
 /// An executor that runs tasks on the current thread
 ///

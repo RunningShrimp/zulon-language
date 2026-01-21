@@ -17,18 +17,18 @@
 //! Executable
 //! ```
 
-pub mod ty;
+pub mod abi;
 pub mod codegen;
+pub mod enum_layout;
 pub mod error;
 pub mod layout;
-pub mod enum_layout;
-pub mod abi;
 pub mod optimize;
+pub mod ty;
 
-pub use ty::LlvmType;
+pub use abi::{ArgLocation, CallInfo, CallingConvention};
 pub use codegen::CodeGenerator;
-pub use error::{CodegenError, Result};
-pub use layout::{StructLayout, LayoutCache, FieldInfo};
 pub use enum_layout::{EnumLayout, EnumLayoutCache, VariantInfo};
-pub use abi::{CallingConvention, CallInfo, ArgLocation};
-pub use optimize::{OptPassManager, OptConfig};
+pub use error::{CodegenError, Result};
+pub use layout::{FieldInfo, LayoutCache, StructLayout};
+pub use optimize::{OptConfig, OptPassManager};
+pub use ty::LlvmType;

@@ -3,8 +3,8 @@
 
 //! Test async/await AST → HIR lowering pipeline
 
-use zulon_parser::Parser;
 use zulon_hir::{lower_ast_simple, HirCrate};
+use zulon_parser::Parser;
 
 fn main() {
     println!("=== ZULON Async/Await HIR Lowering Test ===\n");
@@ -60,8 +60,10 @@ async fn example() {
     for (i, item) in ast.items.iter().enumerate() {
         match &item.kind {
             zulon_parser::ast::ItemKind::Function(func) => {
-                println!("  [{}] Function: {} (is_async={})",
-                    i, func.name.name, func.is_async);
+                println!(
+                    "  [{}] Function: {} (is_async={})",
+                    i, func.name.name, func.is_async
+                );
             }
             _ => {}
         }
@@ -91,8 +93,10 @@ async fn example() {
     for (i, item) in hir.items.iter().enumerate() {
         match item {
             zulon_hir::hir::HirItem::Function(func) => {
-                println!("  [{}] Function: {} (is_async={}, is_unsafe={})",
-                    i, func.name, func.is_async, func.is_unsafe);
+                println!(
+                    "  [{}] Function: {} (is_async={}, is_unsafe={})",
+                    i, func.name, func.is_async, func.is_unsafe
+                );
 
                 if func.is_async {
                     async_count += 1;
@@ -111,8 +115,14 @@ async fn example() {
     println!("✅ Parser → HIR pipeline working for async/await!");
 
     // Verify expected counts
-    assert_eq!(async_count, 4, "Expected 4 async functions (hello, fetch_data, add, example)");
-    assert_eq!(await_count, 2, "Expected 2 await expressions (test and example)");
+    assert_eq!(
+        async_count, 4,
+        "Expected 4 async functions (hello, fetch_data, add, example)"
+    );
+    assert_eq!(
+        await_count, 2,
+        "Expected 2 await expressions (test and example)"
+    );
 
     println!("\n=== All Tests Passed! ===");
 }

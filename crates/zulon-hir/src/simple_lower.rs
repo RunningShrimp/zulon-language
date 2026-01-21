@@ -9,13 +9,13 @@
 use zulon_parser::ast;
 use zulon_typeck::TypeChecker;
 
+use super::error::{LoweringError, Result};
 use super::hir::*;
 use super::ty::HirTy;
-use super::error::{LoweringError, Result};
 
 /// Simple HIR lowering - demonstrates core concepts
 pub struct SimpleLoweringContext {
-    typeck: TypeChecker,  // Type checker for closure type inference
+    typeck: TypeChecker, // Type checker for closure type inference
     next_id: NodeId,
 }
 
@@ -57,19 +57,15 @@ impl SimpleLoweringContext {
             }
         }
 
-        let span = items.first()
+        let span = items
+            .first()
             .map(|item| item.span().clone())
-            .unwrap_or_else(|| {
-                zulon_parser::Span {
-                    start: zulon_parser::Position { line: 0, column: 0 },
-                    end: zulon_parser::Position { line: 0, column: 0 },
-                }
+            .unwrap_or_else(|| zulon_parser::Span {
+                start: zulon_parser::Position { line: 0, column: 0 },
+                end: zulon_parser::Position { line: 0, column: 0 },
             });
 
-        Ok(HirCrate {
-            items,
-            span,
-        })
+        Ok(HirCrate { items, span })
     }
 
     /// Lower a function (simplified)
@@ -79,7 +75,7 @@ impl SimpleLoweringContext {
         for param in &func.params {
             params.push(HirParam {
                 name: param.name.name.clone(),
-                ty: HirTy::I32,  // TODO: Get actual type
+                ty: HirTy::I32, // TODO: Get actual type
                 span: param.span.clone(),
             });
         }
@@ -129,7 +125,7 @@ impl SimpleLoweringContext {
             name: func.name.name.clone(),
             generics: Vec::new(),
             params,
-            return_type: HirTy::I32,  // TODO: Get actual return type
+            return_type: HirTy::I32, // TODO: Get actual return type
             error_type,
             effects,
             attributes,
@@ -143,9 +139,11 @@ impl SimpleLoweringContext {
     /// Lower a struct definition
     fn lower_struct(&mut self, struct_def: &ast::Struct) -> Result<HirStruct> {
         // Lower struct fields
-        let fields: Vec<HirField> = struct_def.fields.iter()
+        let fields: Vec<HirField> = struct_def
+            .fields
+            .iter()
             .map(|field| {
-                let ty = HirTy::I32;  // TODO: Get actual type from field annotation
+                let ty = HirTy::I32; // TODO: Get actual type from field annotation
                 Ok(HirField {
                     name: field.name.name.clone(),
                     ty,
@@ -157,7 +155,7 @@ impl SimpleLoweringContext {
         Ok(HirStruct {
             id: self.alloc_id(),
             name: struct_def.name.name.clone(),
-            generics: Vec::new(),  // TODO: Handle generics
+            generics: Vec::new(), // TODO: Handle generics
             fields,
             span: struct_def.name.span.clone(),
         })
@@ -166,11 +164,13 @@ impl SimpleLoweringContext {
     /// Lower an enum definition
     fn lower_enum(&mut self, enum_def: &ast::Enum) -> Result<HirEnum> {
         // Lower enum variants
-        let variants: Vec<HirVariant> = enum_def.variants.iter()
+        let variants: Vec<HirVariant> = enum_def
+            .variants
+            .iter()
             .map(|variant| {
                 Ok(HirVariant {
                     name: variant.name.name.clone(),
-                    fields: Vec::new(),  // TODO: Handle variant data fields
+                    fields: Vec::new(), // TODO: Handle variant data fields
                     span: variant.name.span.clone(),
                 })
             })
@@ -179,7 +179,7 @@ impl SimpleLoweringContext {
         Ok(HirEnum {
             id: self.alloc_id(),
             name: enum_def.name.name.clone(),
-            generics: Vec::new(),  // TODO: Handle generics
+            generics: Vec::new(), // TODO: Handle generics
             variants,
             span: enum_def.name.span.clone(),
         })
@@ -193,7 +193,7 @@ impl SimpleLoweringContext {
         for stmt in &block.statements {
             match &stmt.kind {
                 ast::StatementKind::Local(local) => {
-                    let local_ty = HirTy::I32;  // TODO: Get actual type
+                    let local_ty = HirTy::I32; // TODO: Get actual type
 
                     let init = if let Some(init) = &local.init {
                         Some(self.lower_expression(init)?)
@@ -226,7 +226,7 @@ impl SimpleLoweringContext {
                             HirStatement::Semi(lowered_expr)
                         }
                         ast::StatementKind::Local(local) => {
-                            let local_ty = HirTy::I32;  // TODO: Get actual type
+                            let local_ty = HirTy::I32; // TODO: Get actual type
                             let init = if let Some(init) = &local.init {
                                 Some(self.lower_expression(init)?)
                             } else {
@@ -272,7 +272,7 @@ impl SimpleLoweringContext {
             id: self.alloc_id(),
             statements,
             trailing_expr,
-            ty: HirTy::Unit,  // TODO: Get actual block type
+            ty: HirTy::Unit, // TODO: Get actual block type
             span: block.span.clone(),
         })
     }
@@ -299,19 +299,23 @@ impl SimpleLoweringContext {
                     Ok(HirExpression::Variable(
                         path[0].name.clone(),
                         self.alloc_id(),
-                        HirTy::I32,  // Placeholder - will be fixed when proper type propagation is implemented
+                        HirTy::I32, // Placeholder - will be fixed when proper type propagation is implemented
                         expr.span.clone(),
                     ))
                 } else {
                     // Qualified path (e.g., Enum::Variant)
                     // For now, convert to a string with "::" separator and treat as variable
                     // This is a simplified approach - a full implementation would have proper enum support
-                    let full_name = path.iter().map(|id| id.name.as_str()).collect::<Vec<_>>().join("::");
+                    let full_name = path
+                        .iter()
+                        .map(|id| id.name.as_str())
+                        .collect::<Vec<_>>()
+                        .join("::");
 
                     Ok(HirExpression::Variable(
                         full_name,
                         self.alloc_id(),
-                        HirTy::I32,  // Placeholder - will be fixed when proper type propagation is implemented
+                        HirTy::I32, // Placeholder - will be fixed when proper type propagation is implemented
                         expr.span.clone(),
                     ))
                 }
@@ -321,7 +325,7 @@ impl SimpleLoweringContext {
                 let left_expr = self.lower_expression(left)?;
                 let right_expr = self.lower_expression(right)?;
                 let hir_op = self.lower_bin_op(op)?;
-                let ty = HirTy::I32;  // TODO: Infer actual type
+                let ty = HirTy::I32; // TODO: Infer actual type
 
                 Ok(HirExpression::BinaryOp {
                     op: hir_op,
@@ -335,7 +339,7 @@ impl SimpleLoweringContext {
             ast::ExpressionKind::Unary(op, operand) => {
                 let operand_expr = self.lower_expression(operand)?;
                 let hir_op = self.lower_unary_op(op)?;
-                let ty = HirTy::I32;  // TODO: Infer actual type
+                let ty = HirTy::I32; // TODO: Infer actual type
 
                 Ok(HirExpression::UnaryOp {
                     op: hir_op,
@@ -350,7 +354,7 @@ impl SimpleLoweringContext {
                 // Lower both sides, then represent as a BinaryOp with Assign operator
                 let target_expr = self.lower_expression(target)?;
                 let value_expr = self.lower_expression(value)?;
-                let ty = HirTy::I32;  // TODO: Infer actual type
+                let ty = HirTy::I32; // TODO: Infer actual type
 
                 Ok(HirExpression::BinaryOp {
                     op: HirBinOp::Assign,
@@ -361,7 +365,11 @@ impl SimpleLoweringContext {
                 })
             }
 
-            ast::ExpressionKind::MacroInvocation { macro_name, args, delimiter: _ } => {
+            ast::ExpressionKind::MacroInvocation {
+                macro_name,
+                args,
+                delimiter: _,
+            } => {
                 // Handle builtin macros
                 match macro_name.name.as_str() {
                     "assert_eq" => {
@@ -371,7 +379,10 @@ impl SimpleLoweringContext {
                         // }
                         if args.len() != 2 {
                             return Err(LoweringError::UnsupportedFeature {
-                                feature: format!("assert_eq! requires exactly 2 arguments, got {}", args.len()),
+                                feature: format!(
+                                    "assert_eq! requires exactly 2 arguments, got {}",
+                                    args.len()
+                                ),
                                 span: expr.span.clone(),
                             });
                         }
@@ -418,7 +429,10 @@ impl SimpleLoweringContext {
                         // }
                         if args.len() != 1 {
                             return Err(LoweringError::UnsupportedFeature {
-                                feature: format!("assert! requires exactly 1 argument, got {}", args.len()),
+                                feature: format!(
+                                    "assert! requires exactly 1 argument, got {}",
+                                    args.len()
+                                ),
                                 span: expr.span.clone(),
                             });
                         }
@@ -468,11 +482,10 @@ impl SimpleLoweringContext {
 
             ast::ExpressionKind::Call(func, args) => {
                 let func_expr = self.lower_expression(func)?;
-                let lowered_args: Result<Vec<_>> = args.iter()
-                    .map(|arg| self.lower_expression(arg))
-                    .collect();
+                let lowered_args: Result<Vec<_>> =
+                    args.iter().map(|arg| self.lower_expression(arg)).collect();
                 let args = lowered_args?;
-                let ty = HirTy::I32;  // TODO: Get actual return type
+                let ty = HirTy::I32; // TODO: Get actual return type
 
                 Ok(HirExpression::Call {
                     func: Box::new(func_expr),
@@ -498,12 +511,14 @@ impl SimpleLoweringContext {
                 // Check if this if expression is a statement (Unit) or produces a value
                 // If both branches lack trailing expressions, the if is Unit (statement)
                 let then_is_stmt = then_block.trailing_expr.is_none();
-                let else_is_stmt = else_block.as_ref().map_or(true, |b| b.trailing_expr.is_none());
+                let else_is_stmt = else_block
+                    .as_ref()
+                    .map_or(true, |b| b.trailing_expr.is_none());
 
                 let ty = if then_is_stmt && else_is_stmt {
-                    HirTy::Unit  // Both branches are statements
+                    HirTy::Unit // Both branches are statements
                 } else {
-                    HirTy::I32  // At least one branch produces a value
+                    HirTy::I32 // At least one branch produces a value
                 };
 
                 Ok(HirExpression::If {
@@ -543,8 +558,12 @@ impl SimpleLoweringContext {
             ast::ExpressionKind::QuestionMark(inner_expr) => {
                 // Question mark operator: `expr?`
                 let lowered_inner = Box::new(self.lower_expression(inner_expr)?);
-                let ty = HirTy::I32;  // TODO: Infer actual success type
-                Ok(HirExpression::QuestionMark(lowered_inner, ty, expr.span.clone()))
+                let ty = HirTy::I32; // TODO: Infer actual success type
+                Ok(HirExpression::QuestionMark(
+                    lowered_inner,
+                    ty,
+                    expr.span.clone(),
+                ))
             }
 
             ast::ExpressionKind::TemplateString(template) => {
@@ -564,7 +583,7 @@ impl SimpleLoweringContext {
                 }
                 Ok(HirExpression::TemplateString {
                     parts,
-                    ty: HirTy::String,  // Template strings always produce strings
+                    ty: HirTy::String, // Template strings always produce strings
                     span: expr.span.clone(),
                 })
             }
@@ -573,7 +592,7 @@ impl SimpleLoweringContext {
                 let lowered_body = Box::new(self.lower_block(body)?);
                 Ok(HirExpression::Loop {
                     body: lowered_body,
-                    ty: HirTy::Unit,  // Loops return unit unless broken
+                    ty: HirTy::Unit, // Loops return unit unless broken
                     span: expr.span.clone(),
                 })
             }
@@ -602,14 +621,22 @@ impl SimpleLoweringContext {
                 })
             }
 
-            ast::ExpressionKind::Closure { params, return_type, body } => {
+            ast::ExpressionKind::Closure {
+                params,
+                return_type,
+                body,
+            } => {
                 // Type check the closure to get inferred types
                 use zulon_typeck::Ty;
                 let closure_ty = self.typeck.check_closure(params, return_type, body)?;
 
                 // Extract parameter and return types from inferred closure type
                 let (inferred_param_tys, inferred_return_ty) = match &closure_ty {
-                    Ty::Function { params, return_type, variadic: _ } => (params, return_type.as_ref()),
+                    Ty::Function {
+                        params,
+                        return_type,
+                        variadic: _,
+                    } => (params, return_type.as_ref()),
                     _ => {
                         // Fallback - shouldn't happen in normal operation
                         return Err(LoweringError::UnsupportedFeature {
@@ -627,7 +654,8 @@ impl SimpleLoweringContext {
                         self.lower_type(Some(type_ann))?
                     } else {
                         // Use inferred type from type checker
-                        inferred_param_tys.get(i)
+                        inferred_param_tys
+                            .get(i)
                             .map(|ty| HirTy::from(ty.clone()))
                             .unwrap_or(HirTy::Unit)
                     };
@@ -732,12 +760,16 @@ impl SimpleLoweringContext {
 
                         hir_methods.push(HirEffectMethod {
                             name: method.name.name.clone(),
-                            params: method.params.iter().map(|p| HirParam {
-                                name: p.name.name.clone(),
-                                ty: HirTy::I32,  // TODO: Get actual type
-                                span: p.name.span.clone(),
-                            }).collect(),
-                            return_type: HirTy::I32,  // TODO: Get actual type
+                            params: method
+                                .params
+                                .iter()
+                                .map(|p| HirParam {
+                                    name: p.name.name.clone(),
+                                    ty: HirTy::I32, // TODO: Get actual type
+                                    span: p.name.span.clone(),
+                                })
+                                .collect(),
+                            return_type: HirTy::I32, // TODO: Get actual type
                             body: method_body,
                             span: method.name.span.clone(),
                         });
@@ -806,11 +838,13 @@ impl SimpleLoweringContext {
     }
 
     /// Lower a pattern (simplified - literal patterns only)
-    fn lower_pattern(&mut self, pattern: &ast::Pattern, parent_span: &zulon_parser::Span) -> Result<HirPattern> {
+    fn lower_pattern(
+        &mut self,
+        pattern: &ast::Pattern,
+        parent_span: &zulon_parser::Span,
+    ) -> Result<HirPattern> {
         match pattern {
-            ast::Pattern::Wildcard => {
-                Ok(HirPattern::Wildcard(parent_span.clone()))
-            }
+            ast::Pattern::Wildcard => Ok(HirPattern::Wildcard(parent_span.clone())),
             ast::Pattern::Literal(lit) => {
                 let hir_lit = self.lower_literal(lit)?;
                 Ok(HirPattern::Literal(hir_lit, parent_span.clone()))
@@ -818,7 +852,11 @@ impl SimpleLoweringContext {
             ast::Pattern::Identifier(ident) => {
                 // Identifier pattern is a binding
                 // For now, use i32 as default type
-                Ok(HirPattern::Binding(ident.name.clone(), HirTy::I32, ident.span.clone()))
+                Ok(HirPattern::Binding(
+                    ident.name.clone(),
+                    HirTy::I32,
+                    ident.span.clone(),
+                ))
             }
             _ => {
                 // For now, only support simple patterns
@@ -908,7 +946,7 @@ impl SimpleLoweringContext {
     /// Lower a type annotation (simplified version)
     fn lower_type(&self, ty: Option<&ast::Type>) -> Result<HirTy> {
         match ty {
-            None => Ok(HirTy::Unit),  // TODO: Use proper type variable
+            None => Ok(HirTy::Unit), // TODO: Use proper type variable
             Some(ast_type) => {
                 // For now, just map common types
                 // TODO: Implement proper type lowering
@@ -920,7 +958,7 @@ impl SimpleLoweringContext {
                         "bool" => Ok(HirTy::Bool),
                         "string" => Ok(HirTy::String),
                         "char" => Ok(HirTy::Char),
-                        _ => Ok(HirTy::Unit),  // TODO: Unknown types
+                        _ => Ok(HirTy::Unit), // TODO: Unknown types
                     },
                     ast::Type::Path(path) if !path.is_empty() => {
                         // For now, just use the last component
@@ -932,10 +970,10 @@ impl SimpleLoweringContext {
                             "bool" => Ok(HirTy::Bool),
                             "string" => Ok(HirTy::String),
                             "char" => Ok(HirTy::Char),
-                            _ => Ok(HirTy::Unit),  // TODO: Unknown types
+                            _ => Ok(HirTy::Unit), // TODO: Unknown types
                         }
                     }
-                    _ => Ok(HirTy::Unit),  // TODO: Handle other types
+                    _ => Ok(HirTy::Unit), // TODO: Handle other types
                 }
             }
         }

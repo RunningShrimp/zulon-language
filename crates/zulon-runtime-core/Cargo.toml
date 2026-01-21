@@ -1,12 +1,17 @@
 [package]
 name = "zulon-runtime-core"
-version.workspace = true
-edition.workspace = true
+version = "0.1.0"
+edition = "2021"
 authors.workspace = true
 license.workspace = true
 repository.workspace = true
 homepage.workspace = true
 links = "zulon_entry"
+
+[lints.rust]
+unexpected_cfgs = "allow"
+warnings = "allow"
+dead_code = "allow"
 
 [dependencies]
 

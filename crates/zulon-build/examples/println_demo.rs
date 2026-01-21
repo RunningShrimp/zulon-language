@@ -46,7 +46,7 @@ fn main() {
     let config = BuildConfig {
         output: "println_demo".into(),
         keep_intermediates: true,
-        ..Default::default()  // Uses opt_level: 2 (-O2)
+        ..Default::default() // Uses opt_level: 2 (-O2)
     };
 
     println!("📦 Building executable...");

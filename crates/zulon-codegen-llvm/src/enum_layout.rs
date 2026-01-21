@@ -130,7 +130,9 @@ impl EnumLayout {
 
     /// Find variant by discriminant
     pub fn variant_by_discriminant(&self, discriminant: u64) -> Option<&VariantInfo> {
-        self.variants.iter().find(|v| v.discriminant == discriminant)
+        self.variants
+            .iter()
+            .find(|v| v.discriminant == discriminant)
     }
 
     /// Find variant by name
@@ -167,12 +169,12 @@ impl EnumLayout {
 
     /// Generate discriminant access GEP indices
     pub fn discriminant_gep_indices(&self) -> Vec<u64> {
-        vec![0, 0]  // [struct_ptr, field_0]
+        vec![0, 0] // [struct_ptr, field_0]
     }
 
     /// Generate data field access GEP indices
     pub fn data_gep_indices(&self, field_index: usize) -> Vec<u64> {
-        vec![0, 1, field_index as u64]  // [struct_ptr, data_field, actual_field]
+        vec![0, 1, field_index as u64] // [struct_ptr, data_field, actual_field]
     }
 }
 
@@ -191,7 +193,11 @@ impl EnumLayoutCache {
     }
 
     /// Get or compute enum layout
-    pub fn get_layout(&mut self, name: &str, discriminant_type: zulon_lir::LirTy) -> Result<EnumLayout> {
+    pub fn get_layout(
+        &mut self,
+        name: &str,
+        discriminant_type: zulon_lir::LirTy,
+    ) -> Result<EnumLayout> {
         if let Some(layout) = self.layouts.get(name) {
             return Ok(layout.clone());
         }
@@ -228,7 +234,7 @@ mod tests {
 
         // C-like enum: only discriminant
         assert!(layout.is_c_like());
-        assert_eq!(layout.size, 1);  // i8
+        assert_eq!(layout.size, 1); // i8
         assert_eq!(layout.align, 1);
         assert_eq!(layout.variants.len(), 2);
 
@@ -242,16 +248,20 @@ mod tests {
         let mut layout = EnumLayout::new("Option".to_string(), zulon_lir::LirTy::I8);
 
         layout.add_variant("None".to_string(), 0, vec![]).unwrap();
-        layout.add_variant("Some".to_string(), 1, vec![
-            ("value".to_string(), zulon_lir::LirTy::I32)
-        ]).unwrap();
+        layout
+            .add_variant(
+                "Some".to_string(),
+                1,
+                vec![("value".to_string(), zulon_lir::LirTy::I32)],
+            )
+            .unwrap();
         layout.finalize();
 
         // Not C-like - has data variant
         assert!(!layout.is_c_like());
         // Size: 1 (disc) + 4 (data) = 5, rounded to align 4 (from i32)
         assert_eq!(layout.size, 8);
-        assert_eq!(layout.align, 4);  // i32 alignment
+        assert_eq!(layout.align, 4); // i32 alignment
         assert_eq!(layout.variants.len(), 2);
 
         // Some variant has data
@@ -264,15 +274,28 @@ mod tests {
         // enum Result { Ok(i32), Error(String), Pending }
         let mut layout = EnumLayout::new("Result".to_string(), zulon_lir::LirTy::U8);
 
-        layout.add_variant("Ok".to_string(), 0, vec![
-            ("value".to_string(), zulon_lir::LirTy::I32)
-        ]).unwrap();
+        layout
+            .add_variant(
+                "Ok".to_string(),
+                0,
+                vec![("value".to_string(), zulon_lir::LirTy::I32)],
+            )
+            .unwrap();
 
-        layout.add_variant("Error".to_string(), 1, vec![
-            ("msg".to_string(), zulon_lir::LirTy::Ptr(Box::new(zulon_lir::LirTy::U8)))
-        ]).unwrap();
+        layout
+            .add_variant(
+                "Error".to_string(),
+                1,
+                vec![(
+                    "msg".to_string(),
+                    zulon_lir::LirTy::Ptr(Box::new(zulon_lir::LirTy::U8)),
+                )],
+            )
+            .unwrap();
 
-        layout.add_variant("Pending".to_string(), 2, vec![]).unwrap();
+        layout
+            .add_variant("Pending".to_string(), 2, vec![])
+            .unwrap();
         layout.finalize();
 
         assert!(!layout.is_c_like());
@@ -295,7 +318,7 @@ mod tests {
         let mut layout = EnumLayout::new("Empty".to_string(), zulon_lir::LirTy::I32);
         layout.finalize();
 
-        assert_eq!(layout.size, 4);  // Only discriminant
+        assert_eq!(layout.size, 4); // Only discriminant
         assert_eq!(layout.align, 4);
         assert_eq!(layout.variants.len(), 0);
     }
@@ -309,9 +332,13 @@ mod tests {
         layout.add_variant("Unit".to_string(), 0, vec![]).unwrap();
 
         // Data variant with i64 (8-byte alignment)
-        layout.add_variant("Data".to_string(), 1, vec![
-            ("value".to_string(), zulon_lir::LirTy::I64)
-        ]).unwrap();
+        layout
+            .add_variant(
+                "Data".to_string(),
+                1,
+                vec![("value".to_string(), zulon_lir::LirTy::I64)],
+            )
+            .unwrap();
 
         layout.finalize();
 

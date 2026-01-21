@@ -31,19 +31,27 @@ fn test_panic() {
             for item in &ast.items {
                 if let zulon_parser::ast::ItemKind::Function(func) = &item.kind {
                     if !func.attributes.is_empty() {
-                        println!("  Function '{}' has {} attributes:",
-                            func.name.name, func.attributes.len());
+                        println!(
+                            "  Function '{}' has {} attributes:",
+                            func.name.name,
+                            func.attributes.len()
+                        );
                         for attr in &func.attributes {
                             print!("    #[{}", attr.name.name);
                             if !attr.args.is_empty() {
                                 print!("(");
                                 for (i, arg) in attr.args.iter().enumerate() {
-                                    if i > 0 { print!(", "); }
+                                    if i > 0 {
+                                        print!(", ");
+                                    }
                                     match arg {
                                         zulon_parser::ast::AttributeArg::Ident(ident) => {
                                             print!("{}", ident.name)
                                         }
-                                        zulon_parser::ast::AttributeArg::KeyValue { key, value } => {
+                                        zulon_parser::ast::AttributeArg::KeyValue {
+                                            key,
+                                            value,
+                                        } => {
                                             print!("{} = \"{}\"", key.name, value)
                                         }
                                         zulon_parser::ast::AttributeArg::String(s) => {

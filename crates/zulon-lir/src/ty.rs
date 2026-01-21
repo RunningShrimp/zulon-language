@@ -14,9 +14,20 @@ use std::fmt;
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum LirTy {
     // Primitives (fixed size)
-    I8, I16, I32, I64, I128, ISize,
-    U8, U16, U32, U64, U128, USize,
-    F32, F64,
+    I8,
+    I16,
+    I32,
+    I64,
+    I128,
+    ISize,
+    U8,
+    U16,
+    U32,
+    U64,
+    U128,
+    USize,
+    F32,
+    F64,
     Bool,
 
     // Special
@@ -136,20 +147,14 @@ impl From<zulon_mir::MirTy> for LirTy {
             zulon_mir::MirTy::Never => LirTy::Never,
 
             // Pointers
-            zulon_mir::MirTy::Ref { inner, .. } => {
-                LirTy::Ptr(Box::new((*inner).into()))
-            }
-            zulon_mir::MirTy::Ptr { inner, .. } => {
-                LirTy::Ptr(Box::new((*inner).into()))
-            }
+            zulon_mir::MirTy::Ref { inner, .. } => LirTy::Ptr(Box::new((*inner).into())),
+            zulon_mir::MirTy::Ptr { inner, .. } => LirTy::Ptr(Box::new((*inner).into())),
 
             // Array
-            zulon_mir::MirTy::Array { inner, len } => {
-                LirTy::Array {
-                    inner: Box::new((*inner).into()),
-                    len,
-                }
-            }
+            zulon_mir::MirTy::Array { inner, len } => LirTy::Array {
+                inner: Box::new((*inner).into()),
+                len,
+            },
 
             // Structs (simplified - placeholder size)
             zulon_mir::MirTy::Struct { name, .. } => {
@@ -161,27 +166,23 @@ impl From<zulon_mir::MirTy> for LirTy {
                     LirTy::Struct {
                         name: "Outcome".to_string(),
                         fields: vec![LirTy::I32, LirTy::I32], // discriminant + data
-                        size: 8, // 2 * i32 = 8 bytes
+                        size: 8,                              // 2 * i32 = 8 bytes
                     }
                 } else {
                     // Generic struct - placeholder
                     LirTy::Struct {
                         name,
                         fields: Vec::new(), // TODO: Extract field types
-                        size: 8, // Placeholder
+                        size: 8,            // Placeholder
                     }
                 }
             }
 
             // Simplified handling for other types
-            zulon_mir::MirTy::Slice(_) => {
-                LirTy::Ptr(Box::new(LirTy::U8))
-            }
+            zulon_mir::MirTy::Slice(_) => LirTy::Ptr(Box::new(LirTy::U8)),
             zulon_mir::MirTy::Tuple(tys) => {
                 // Convert element types to LIR types
-                let fields: Vec<LirTy> = tys.iter()
-                    .map(|t| LirTy::from(t.clone()))
-                    .collect();
+                let fields: Vec<LirTy> = tys.iter().map(|t| LirTy::from(t.clone())).collect();
 
                 // Calculate total size: sum of element sizes
                 let size = fields.iter().map(|f| f.size()).sum();
@@ -192,21 +193,19 @@ impl From<zulon_mir::MirTy> for LirTy {
                     size,
                 }
             }
-            zulon_mir::MirTy::Function { .. } => {
-                LirTy::Ptr(Box::new(LirTy::Unit))
-            }
+            zulon_mir::MirTy::Function { .. } => LirTy::Ptr(Box::new(LirTy::Unit)),
             zulon_mir::MirTy::Enum { name, .. } => {
                 LirTy::Struct {
                     name,
                     fields: Vec::new(), // TODO: Extract enum variants
-                    size: 8, // Placeholder
+                    size: 8,            // Placeholder
                 }
             }
             zulon_mir::MirTy::Optional(_) => {
                 LirTy::Struct {
                     name: "Option".to_string(),
                     fields: Vec::new(), // TODO: Extract optional type
-                    size: 16, // Size + discriminant
+                    size: 16,           // Size + discriminant
                 }
             }
         }

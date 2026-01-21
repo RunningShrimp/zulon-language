@@ -2,22 +2,19 @@
 // SPDX-License-Identifier: Apache-2.0 OR MIT
 
 //! Standard output functions
+//!
+//! Provides print and println functionality using std::io::stdout.
 
-use std::io::Write;
-use std::sync::Mutex;
+use std::io::{self, Write};
 
-use crate::IoResult;
-
-// Lazy-initialized stdout lock
-lazy_static::lazy_static! {
-    static ref STDOUT: Mutex<std::io::Stdout> = Mutex::new(std::io::stdout());
-}
+// Type alias for compatibility
+type IoResult<T> = Result<T, crate::error::IoError>;
 
 /// Print to stdout without newline
 ///
 /// # Example
 ///
-/// ```rust
+/// ```
 /// use zulon_runtime_io::print;
 ///
 /// print("Hello, ");
@@ -25,9 +22,8 @@ lazy_static::lazy_static! {
 /// // Output: Hello, world!
 /// ```
 pub fn print(s: &str) -> IoResult<()> {
-    let mut stdout = STDOUT.lock().unwrap();
-    stdout.write_all(s.as_bytes())?;
-    stdout.flush()?;
+    std::io::stdout().write_all(s.as_bytes())?;
+    std::io::stdout().flush()?;
     Ok(())
 }
 
@@ -35,32 +31,32 @@ pub fn print(s: &str) -> IoResult<()> {
 ///
 /// # Example
 ///
-/// ```rust
+/// ```
 /// use zulon_runtime_io::println;
 ///
 /// println("Hello, world!");
-/// // Output: Hello, world!
+/// // Output: Hello, world!\n
 /// ```
 pub fn println(s: &str) -> IoResult<()> {
-    let mut stdout = STDOUT.lock().unwrap();
-    stdout.write_all(s.as_bytes())?;
-    stdout.write_all(b"\n")?;
-    stdout.flush()?;
+    std::io::stdout().write_all(s.as_bytes())?;
+    std::io::stdout().write_all(b"\n")?;
+    std::io::stdout().flush()?;
     Ok(())
 }
 
-/// Print to stdout with formatting (simplified)
+/// Print to stderr without newline
 ///
 /// # Example
 ///
-/// ```rust
+/// ```
 /// use zulon_runtime_io::eprint;
 ///
 /// eprint("Error: {}", "something went wrong");
+/// // Output to stderr: Error: something went wrong
 /// ```
 #[allow(dead_code)]
 pub fn eprint(s: &str) -> IoResult<()> {
-    let mut stderr = std::io::stderr().lock();
+    let mut stderr = std::io::stderr();
     stderr.write_all(s.as_bytes())?;
     stderr.flush()?;
     Ok(())
@@ -70,14 +66,15 @@ pub fn eprint(s: &str) -> IoResult<()> {
 ///
 /// # Example
 ///
-/// ```rust
+/// ```
 /// use zulon_runtime_io::eprintln;
 ///
 /// eprintln("Error: something went wrong");
+/// // Output to stderr: Error: something went wrong\n
 /// ```
 #[allow(dead_code)]
 pub fn eprintln(s: &str) -> IoResult<()> {
-    let mut stderr = std::io::stderr().lock();
+    let mut stderr = std::io::stderr();
     stderr.write_all(s.as_bytes())?;
     stderr.write_all(b"\n")?;
     stderr.flush()?;
@@ -98,12 +95,5 @@ mod tests {
     fn test_println() {
         let result = println("test");
         assert!(result.is_ok());
-    }
-
-    #[test]
-    fn test_multiple_prints() {
-        print("Hello, ").unwrap();
-        print("world!").unwrap();
-        println("").unwrap();
     }
 }

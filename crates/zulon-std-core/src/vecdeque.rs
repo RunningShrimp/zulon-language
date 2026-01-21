@@ -4,8 +4,8 @@
 //! Double-ended queue (VecDeque<T>) implementation
 
 use crate::traits::{Clone, PartialEq};
-use crate::Vec;
 use crate::Optional;
+use crate::Vec;
 
 /// A double-ended queue implemented with a ring buffer
 /// Simplified implementation using Vec for storage
@@ -19,9 +19,7 @@ pub struct VecDeque<T> {
 
 impl<T> VecDeque<T> {
     pub fn new() -> Self {
-        VecDeque {
-            data: Vec::new(),
-        }
+        VecDeque { data: Vec::new() }
     }
 
     pub fn with_capacity(capacity: usize) -> Self {
@@ -235,7 +233,7 @@ mod tests {
 
         match deque.get(10) {
             Optional::Some(_) => panic!("Expected None"),
-            Optional::None => {},
+            Optional::None => {}
         }
     }
 

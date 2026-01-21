@@ -3,11 +3,11 @@
 
 //! Build functionality for yan build command
 
-use std::process::Command;
-use std::path::Path;
-use anyhow::{Result, Context};
+use anyhow::{Context, Result};
 use std::fs;
 use std::io::Cursor;
+use std::path::Path;
+use std::process::Command;
 
 /// Build a single ZULON source file to executable
 /// Returns the path to the generated executable
@@ -28,26 +28,24 @@ pub fn build_zulon_file(source_file: &str, release: bool) -> Result<String> {
     // Parse
     println!("\n   [1/5] Parsing...");
     let mut parser = zulon_parser::Parser::from_source(&source);
-    let ast = parser.parse()
-        .with_context(|| "Parsing failed")?;
+    let ast = parser.parse().with_context(|| "Parsing failed")?;
     println!("      ✅ Parsed {} items", ast.items.len());
 
     // HIR
     println!("   [2/5] Lowering to HIR...");
-    let hir = zulon_hir::lower_ast_simple(&ast)
-        .with_context(|| "HIR lowering failed")?;
+    let hir = zulon_hir::lower_ast_simple(&ast).with_context(|| "HIR lowering failed")?;
     println!("      ✅ HIR: {} items", hir.items.len());
 
     // MIR
     println!("   [3/5] Lowering to MIR...");
-    let mir = zulon_mir::lower_hir(&hir)
-        .with_context(|| "MIR lowering failed")?;
+    let mir = zulon_mir::lower_hir(&hir).with_context(|| "MIR lowering failed")?;
     println!("      ✅ MIR: {} functions", mir.functions.len());
 
     // LIR
     println!("   [4/5] Lowering to LIR...");
     let mut lir_ctx = zulon_lir::lower::LirLoweringContext::new();
-    let lir = lir_ctx.lower_body(&mir)
+    let lir = lir_ctx
+        .lower_body(&mir)
         .with_context(|| "LIR lowering failed")?;
     println!("      ✅ LIR: {} functions", lir.functions.len());
 
@@ -58,8 +56,8 @@ pub fn build_zulon_file(source_file: &str, release: bool) -> Result<String> {
 
     // Register all user-defined and standard library types
     use zulon_codegen_llvm::layout::{FieldInfo, StructLayout};
-    use zulon_lir::LirTy;
     use zulon_hir::HirItem;
+    use zulon_lir::LirTy;
 
     // Helper function to get type size in bytes
     fn get_type_size(ty: &zulon_hir::HirTy) -> u64 {
@@ -222,7 +220,7 @@ pub fn build_zulon_file(source_file: &str, release: bool) -> Result<String> {
         externals.push(zulon_lir::LirExternal {
             name: "async_file_read".to_string(),
             param_types: vec![LirTy::Ptr(Box::new(LirTy::U8))], // path: *u8
-            return_type: LirTy::Ptr(Box::new(LirTy::U8)),      // returns *u8 (file contents)
+            return_type: LirTy::Ptr(Box::new(LirTy::U8)),       // returns *u8 (file contents)
             variadic: false,
         });
     }
@@ -248,16 +246,20 @@ pub fn build_zulon_file(source_file: &str, release: bool) -> Result<String> {
             name: "async_tcp_connect".to_string(),
             param_types: vec![
                 LirTy::Ptr(Box::new(LirTy::U8)), // host: *u8
-                LirTy::I16,                     // port: i16
+                LirTy::I16,                      // port: i16
             ],
             return_type: LirTy::I32, // returns socket fd
             variadic: false,
         });
     }
 
-    println!("      ✅ Injected {} async runtime external declarations", 4);
+    println!(
+        "      ✅ Injected {} async runtime external declarations",
+        4
+    );
 
-    codegen.generate_module_with_externals(&lir.functions, &externals)
+    codegen
+        .generate_module_with_externals(&lir.functions, &externals)
         .with_context(|| "LLVM IR generation failed")?;
 
     let llvm_ir = String::from_utf8(buffer.into_inner())?;
@@ -281,11 +283,7 @@ pub fn build_zulon_file(source_file: &str, release: bool) -> Result<String> {
     println!("      Optimization level: {}", opt_level);
 
     let mut llc_cmd = Command::new("llc");
-    llc_cmd
-        .arg(&ll_file)
-        .arg("-o")
-        .arg(&s_file)
-        .arg(opt_level);  // Add optimization flag
+    llc_cmd.arg(&ll_file).arg("-o").arg(&s_file).arg(opt_level); // Add optimization flag
 
     // Strip debug symbols in release mode for smaller binaries
     if release {
@@ -293,9 +291,7 @@ pub fn build_zulon_file(source_file: &str, release: bool) -> Result<String> {
         // We'll strip after linking instead
     }
 
-    let status = llc_cmd
-        .status()
-        .with_context(|| "Failed to run llc")?;
+    let status = llc_cmd.status().with_context(|| "Failed to run llc")?;
 
     if !status.success() {
         return Err(anyhow::anyhow!("llc compilation failed"));
@@ -337,7 +333,7 @@ pub fn build_zulon_file(source_file: &str, release: bool) -> Result<String> {
     let mut clang_cmd = Command::new("clang");
     clang_cmd
         .arg(&s_file)
-        .arg(&runtime_o)  // Link runtime library
+        .arg(&runtime_o) // Link runtime library
         .arg("-o")
         .arg(&exe_file);
 
@@ -346,24 +342,18 @@ pub fn build_zulon_file(source_file: &str, release: bool) -> Result<String> {
         clang_cmd.arg("-O2");
     }
 
-    let status = clang_cmd
-        .status()
-        .with_context(|| "Failed to run clang")?;
+    let status = clang_cmd.status().with_context(|| "Failed to run clang")?;
 
     // Strip binary in release mode
     if release {
         println!("   Stripping binary...");
-        let strip_status = Command::new("llvm-strip")
-            .arg(&exe_file)
-            .status();
+        let strip_status = Command::new("llvm-strip").arg(&exe_file).status();
 
         if let Ok(true) = strip_status.map(|s| s.success()) {
             println!("      ✅ Stripped debug symbols");
         } else {
             // llvm-strip might not be available, try strip
-            let strip_status = Command::new("strip")
-                .arg(&exe_file)
-                .status();
+            let strip_status = Command::new("strip").arg(&exe_file).status();
             if strip_status.map(|s| s.success()).unwrap_or(false) {
                 println!("      ✅ Stripped debug symbols");
             }
@@ -434,7 +424,10 @@ pub fn build_project(release: bool, package: Option<&str>, jobs: usize) -> Resul
         println!("✅ Build successful!");
         Ok(())
     } else {
-        Err(anyhow::anyhow!("Build failed with exit code: {:?}", status.code()))
+        Err(anyhow::anyhow!(
+            "Build failed with exit code: {:?}",
+            status.code()
+        ))
     }
 }
 
@@ -445,14 +438,17 @@ pub fn build_example(example: &str, release: bool) -> Result<String> {
 
     let mut cmd = Command::new("cargo");
     cmd.arg("build");
-    cmd.arg("-p").arg("zulon-build");  // Build examples from zulon-build package
+    cmd.arg("-p").arg("zulon-build"); // Build examples from zulon-build package
     cmd.arg("--example").arg(example);
 
     if release {
         cmd.arg("--release");
     }
 
-    println!("   Running: cargo build -p zulon-build --example {}", example);
+    println!(
+        "   Running: cargo build -p zulon-build --example {}",
+        example
+    );
     println!();
 
     let status = cmd
@@ -460,7 +456,10 @@ pub fn build_example(example: &str, release: bool) -> Result<String> {
         .with_context(|| "Failed to execute cargo build".to_string())?;
 
     if !status.success() {
-        return Err(anyhow::anyhow!("Build failed with exit code: {:?}", status.code()));
+        return Err(anyhow::anyhow!(
+            "Build failed with exit code: {:?}",
+            status.code()
+        ));
     }
 
     // Determine the example executable path

@@ -31,17 +31,17 @@
 #[cfg(feature = "std")]
 extern crate std;
 
+mod context;
 mod future;
 mod poll;
-mod context;
-mod waker;
 mod task;
+mod waker;
 
-pub use future::{Future, Ready, Pending};
-pub use poll::Poll;
 pub use context::Context;
-pub use waker::Waker;
+pub use future::{Future, Pending, Ready};
+pub use poll::Poll;
 pub use task::{RawWaker, RawWakerVTable};
+pub use waker::Waker;
 
 /// Re-export Pin from core when std feature is enabled
 #[cfg(feature = "std")]

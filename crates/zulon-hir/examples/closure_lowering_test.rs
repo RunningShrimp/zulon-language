@@ -1,7 +1,7 @@
 // Test Closure AST → HIR Lowering
 
-use zulon_parser::Parser;
 use zulon_hir::{lower_ast_simple, HirCrate};
+use zulon_parser::Parser;
 
 fn main() {
     println!("=== ZULON Closure AST → HIR Lowering Test ===\n");
@@ -118,7 +118,9 @@ fn println_closure_expressions(block: &zulon_hir::HirBlock, indent: usize) {
 
 fn print_closure_expression(expr: &zulon_hir::HirExpression, indent: &str) {
     match expr {
-        zulon_hir::HirExpression::Closure { params, return_ty, .. } => {
+        zulon_hir::HirExpression::Closure {
+            params, return_ty, ..
+        } => {
             println!("|closure| params={:?} return_ty={:?}", params, return_ty);
         }
         zulon_hir::HirExpression::Call { func, args, .. } => {
@@ -126,7 +128,9 @@ fn print_closure_expression(expr: &zulon_hir::HirExpression, indent: &str) {
             print_closure_expression(func, indent);
             println!(")({:?})", args);
         }
-        zulon_hir::HirExpression::BinaryOp { op, left, right, .. } => {
+        zulon_hir::HirExpression::BinaryOp {
+            op, left, right, ..
+        } => {
             print!("(");
             print_closure_expression(left, indent);
             print!(" {:?} ", op);

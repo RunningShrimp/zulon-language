@@ -4,8 +4,8 @@
 //! Hash set implementation (HashSet<T>)
 
 use crate::traits::{Clone, PartialEq};
-use crate::Vec;
 use crate::Optional;
+use crate::Vec;
 
 /// A hash set based on a Vec for storage
 /// Simplified implementation for educational purposes

@@ -27,16 +27,17 @@ fn run_compiler(source: &str) -> Result<(), String> {
             .map_err(|e| format!("Failed to build compiler: {}", e))?;
 
         if !output.status.success() {
-            return Err(format!("Compiler build failed: {}",
-                String::from_utf8_lossy(&output.stderr)));
+            return Err(format!(
+                "Compiler build failed: {}",
+                String::from_utf8_lossy(&output.stderr)
+            ));
         }
     }
 
     // Write source to temporary file
     let test_file = workspace_root.join("test_compiler_validation.zl");
 
-    std::fs::write(&test_file, source)
-        .map_err(|e| format!("Failed to write test file: {}", e))?;
+    std::fs::write(&test_file, source).map_err(|e| format!("Failed to write test file: {}", e))?;
 
     // Run compiler
     let output = Command::new(&compiler_path)
@@ -64,7 +65,11 @@ fn main() {
 "#;
 
     let result = run_compiler(source);
-    assert!(result.is_ok(), "Basic printf should compile: {:?}", result.err());
+    assert!(
+        result.is_ok(),
+        "Basic printf should compile: {:?}",
+        result.err()
+    );
 }
 
 #[test]
@@ -80,7 +85,11 @@ fn main() {
 "#;
 
     let result = run_compiler(source);
-    assert!(result.is_ok(), "Function definition should compile: {:?}", result.err());
+    assert!(
+        result.is_ok(),
+        "Function definition should compile: {:?}",
+        result.err()
+    );
 }
 
 #[test]
@@ -95,7 +104,11 @@ fn main() {
 "#;
 
     let result = run_compiler(source);
-    assert!(result.is_ok(), "If expression should compile: {:?}", result.err());
+    assert!(
+        result.is_ok(),
+        "If expression should compile: {:?}",
+        result.err()
+    );
 }
 
 #[test]
@@ -111,7 +124,11 @@ fn main() {
 "#;
 
     let result = run_compiler(source);
-    assert!(result.is_ok(), "While loop should compile: {:?}", result.err());
+    assert!(
+        result.is_ok(),
+        "While loop should compile: {:?}",
+        result.err()
+    );
 }
 
 #[test]
@@ -146,7 +163,11 @@ fn main() {
 "#;
 
     let result = run_compiler(source);
-    assert!(result.is_ok(), "Arithmetic operations should compile: {:?}", result.err());
+    assert!(
+        result.is_ok(),
+        "Arithmetic operations should compile: {:?}",
+        result.err()
+    );
 }
 
 #[test]
@@ -186,7 +207,11 @@ fn main() {
 
     let result = run_compiler(source);
     // Should work with or without explicit extern (prelude handles it)
-    assert!(result.is_ok(), "Extern function should compile: {:?}", result.err());
+    assert!(
+        result.is_ok(),
+        "Extern function should compile: {:?}",
+        result.err()
+    );
 }
 
 #[test]
@@ -200,7 +225,11 @@ fn main() {
 "#;
 
     let result = run_compiler(source);
-    assert!(result.is_ok(), "Variable mutation should compile: {:?}", result.err());
+    assert!(
+        result.is_ok(),
+        "Variable mutation should compile: {:?}",
+        result.err()
+    );
 }
 
 #[test]
@@ -219,5 +248,9 @@ fn main() {
 "#;
 
     let result = run_compiler(source);
-    assert!(result.is_ok(), "Comparison operators should compile: {:?}", result.err());
+    assert!(
+        result.is_ok(),
+        "Comparison operators should compile: {:?}",
+        result.err()
+    );
 }

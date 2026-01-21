@@ -15,9 +15,20 @@ use std::fmt;
 pub enum MirTy {
     // Primitives
     Bool,
-    I8, I16, I32, I64, I128, ISize,
-    U8, U16, U32, U64, U128, USize,
-    F32, F64,
+    I8,
+    I16,
+    I32,
+    I64,
+    I128,
+    ISize,
+    U8,
+    U16,
+    U32,
+    U64,
+    U128,
+    USize,
+    F32,
+    F64,
     Char,
     String,
 
@@ -114,7 +125,7 @@ impl MirTy {
             MirTy::Array { inner, .. } => inner.needs_drop(),
             MirTy::Tuple(tys) => tys.iter().any(|t| t.needs_drop()),
             MirTy::Optional(inner) => inner.needs_drop(),
-            MirTy::Slice(_) => true,  // Fat pointer needs drop
+            MirTy::Slice(_) => true, // Fat pointer needs drop
             MirTy::Struct { .. } | MirTy::Enum { .. } => true, // Assume needs drop
             MirTy::Function { .. } => false, // Function pointers don't need drop
         }
@@ -129,19 +140,19 @@ impl MirTy {
             MirTy::I32 | MirTy::U32 | MirTy::F32 => 4,
             MirTy::I64 | MirTy::U64 | MirTy::F64 => 8,
             MirTy::I128 | MirTy::U128 => 16,
-            MirTy::ISize | MirTy::USize => 8,  // Assume 64-bit
+            MirTy::ISize | MirTy::USize => 8, // Assume 64-bit
             MirTy::Char => 4,
-            MirTy::String => 24,  // Boxed str + metadata
+            MirTy::String => 24, // Boxed str + metadata
             MirTy::Unit => 0,
             MirTy::Never => 0,
             MirTy::Ref { .. } | MirTy::Ptr { .. } => 8,
             MirTy::Array { inner, len } => inner.size() * (*len as usize),
-            MirTy::Slice(_) => 16,  // Fat pointer
+            MirTy::Slice(_) => 16, // Fat pointer
             MirTy::Tuple(tys) => tys.iter().map(|t| t.size()).sum(),
-            MirTy::Function { .. } => 8,  // Function pointer
-            MirTy::Struct { .. } => 8,  // Placeholder
-            MirTy::Enum { .. } => 8,  // Placeholder
-            MirTy::Optional(inner) => inner.size() + 1,  // Size + discriminant
+            MirTy::Function { .. } => 8, // Function pointer
+            MirTy::Struct { .. } => 8,   // Placeholder
+            MirTy::Enum { .. } => 8,     // Placeholder
+            MirTy::Optional(inner) => inner.size() + 1, // Size + discriminant
         }
     }
 
@@ -172,14 +183,19 @@ impl MirTy {
                 format!("[{}; {}]", inner.display_name(), len)
             }
             MirTy::Tuple(tys) => {
-                let inner = tys.iter()
+                let inner = tys
+                    .iter()
                     .map(|t| t.display_name())
                     .collect::<Vec<_>>()
                     .join(", ");
                 format!("({})", inner)
             }
-            MirTy::Function { params, return_type } => {
-                let params = params.iter()
+            MirTy::Function {
+                params,
+                return_type,
+            } => {
+                let params = params
+                    .iter()
                     .map(|p| p.display_name())
                     .collect::<Vec<_>>()
                     .join(", ");
@@ -189,7 +205,8 @@ impl MirTy {
                 if generics.is_empty() {
                     name.clone()
                 } else {
-                    let gen_args = generics.iter()
+                    let gen_args = generics
+                        .iter()
                         .map(|g| g.display_name())
                         .collect::<Vec<_>>()
                         .join(", ");
@@ -200,7 +217,8 @@ impl MirTy {
                 if generics.is_empty() {
                     name.clone()
                 } else {
-                    let gen_args = generics.iter()
+                    let gen_args = generics
+                        .iter()
                         .map(|g| g.display_name())
                         .collect::<Vec<_>>()
                         .join(", ");
@@ -243,63 +261,53 @@ impl From<zulon_hir::HirTy> for MirTy {
             zulon_hir::HirTy::Unit => MirTy::Unit,
             zulon_hir::HirTy::Never => MirTy::Never,
 
-            zulon_hir::HirTy::Ref { inner, mutable } => {
-                MirTy::Ref {
-                    inner: Box::new((*inner).into()),
-                    mutable,
-                }
-            }
+            zulon_hir::HirTy::Ref { inner, mutable } => MirTy::Ref {
+                inner: Box::new((*inner).into()),
+                mutable,
+            },
 
-            zulon_hir::HirTy::Ptr { inner, mutable } => {
-                MirTy::Ptr {
-                    inner: Box::new((*inner).into()),
-                    mutable,
-                }
-            }
+            zulon_hir::HirTy::Ptr { inner, mutable } => MirTy::Ptr {
+                inner: Box::new((*inner).into()),
+                mutable,
+            },
 
-            zulon_hir::HirTy::Array { inner, len } => {
-                MirTy::Array {
-                    inner: Box::new((*inner).into()),
-                    len: len.unwrap_or(0),
-                }
-            }
+            zulon_hir::HirTy::Array { inner, len } => MirTy::Array {
+                inner: Box::new((*inner).into()),
+                len: len.unwrap_or(0),
+            },
 
-            zulon_hir::HirTy::Slice(inner) => {
-                MirTy::Slice(Box::new((*inner).into()))
-            }
+            zulon_hir::HirTy::Slice(inner) => MirTy::Slice(Box::new((*inner).into())),
 
             zulon_hir::HirTy::Tuple(tys) => {
                 MirTy::Tuple(tys.into_iter().map(|ty| ty.into()).collect())
             }
 
-            zulon_hir::HirTy::Function { params, return_type } => {
-                MirTy::Function {
-                    params: params.into_iter().map(|ty| ty.into()).collect(),
-                    return_type: Box::new((*return_type).into()),
-                }
-            }
+            zulon_hir::HirTy::Function {
+                params,
+                return_type,
+            } => MirTy::Function {
+                params: params.into_iter().map(|ty| ty.into()).collect(),
+                return_type: Box::new((*return_type).into()),
+            },
 
-            zulon_hir::HirTy::Struct { name, generics } => {
-                MirTy::Struct {
-                    name: name.clone(),
-                    generics: generics.into_iter().map(|ty| ty.into()).collect(),
-                }
-            }
+            zulon_hir::HirTy::Struct { name, generics } => MirTy::Struct {
+                name: name.clone(),
+                generics: generics.into_iter().map(|ty| ty.into()).collect(),
+            },
 
-            zulon_hir::HirTy::Enum { name, generics } => {
-                MirTy::Enum {
-                    name: name.clone(),
-                    generics: generics.into_iter().map(|ty| ty.into()).collect(),
-                }
-            }
+            zulon_hir::HirTy::Enum { name, generics } => MirTy::Enum {
+                name: name.clone(),
+                generics: generics.into_iter().map(|ty| ty.into()).collect(),
+            },
 
-            zulon_hir::HirTy::Optional(inner) => {
-                MirTy::Optional(Box::new((*inner).into()))
-            }
+            zulon_hir::HirTy::Optional(inner) => MirTy::Optional(Box::new((*inner).into())),
 
             zulon_hir::HirTy::TraitObject(_) | zulon_hir::HirTy::ImplTrait(_) => {
                 // Simplified: treat as opaque
-                MirTy::Struct { name: "TraitObject".to_string(), generics: Vec::new() }
+                MirTy::Struct {
+                    name: "TraitObject".to_string(),
+                    generics: Vec::new(),
+                }
             }
         }
     }

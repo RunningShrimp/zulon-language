@@ -1,501 +1,1114 @@
-# ZULON 开发任务清单 (TODO List)
+# ZULON Implementation TodoList
 
-**最后更新**: 2026-01-07
-**当前阶段**: Phase 1 - MVP
-**项目周期**: 2026-2028 (36个月)
+## 📋 Overview
 
----
-
-## 快速导航
-
-- [总体进度](#总体进度)
-- [Phase 1: MVP (6个月)](#phase-1-mvp)
-- [Phase 2: 核心功能 (12个月)](#phase-2-核心功能)
-- [Phase 3: 生产就绪 (12个月)](#phase-3-生产就绪)
-- [Phase 4: 生态建设](#phase-4-生态建设)
+**Based On**: docs/guides/GAP_ANALYSIS_REPORT.md and IMPLEMENTATION_PLAN.md
+**Purpose**: Comprehensive todo list for resolving 18 identified gaps and achieving whitepaper compliance
+**Total Tasks**: 72 items across 3 phases
+**Priority**: Production readiness by 2025-Q4
 
 ---
 
-## 总体进度
+## 📅 Phase 1: Critical Production Gaps (Month 1-2)
 
-```
-███████████████████████████████████████ 100% 规划和设计
-███████████████████████░░░░░░░░░░░░░░░░░░░  40% Phase 1 - MVP
-░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░  0% Phase 2 - 核心功能
-░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░  0% Phase 3 - 生产就绪
-░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░  0% Phase 4 - 生态建设
-```
+### Objective: Enable production-grade applications with file I/O, time handling, and validated performance
 
----
+### G3: File System Module (High Priority)
 
-## Phase 1: MVP (2026 Q1-Q2, 6个月)
+- [ ] **G3.1.1** Design File handle abstraction
+  - File read, write, seek operations
+  - Metadata operations (size, modified, permissions)
+  - Owner: Std Team
+  - Effort: 3 days
+  - Dependencies: None
 
-**目标**: 能够编译和运行简单的 ZULON 程序
+- [ ] **G3.1.2** Implement File handle
+  - `std::fs::File` type with read/write/seek
+  - Buffered I/O operations
+  - Owner: Std Team
+  - Effort: 5 days
+  - Dependencies: G3.1.1
 
-### 1.1 编译器前端 (2个月)
+- [ ] **G3.1.3** Implement Path operations
+  - Path join, parent, filename operations
+  - Canonical path normalization
+  - Owner: Std Team
+  - Effort: 3 days
+  - Dependencies: G3.1.1
 
-#### Lexer (词法分析) - 2周
-- [ ] 定义 Token 类型
-  - [ ] 关键字
-  - [ ] 标识符
-  - [ ] 字面量
-  - [ ] 运算符
-  - [ ] 分隔符
-- [ ] 实现状态机
-  - [ ] 跳过空白和注释
-  - [ ] 识别字符串插值
-  - [ ] 识别模板字符串
-  - [ ] 多行注释
-- [ ] 错误处理
-- [ ] 单元测试
-- [ ] **预计完成**: 2026年1月第2周
+- [ ] **G3.1.4** Implement Directory operations
+  - Directory creation, deletion, iteration
+  - Directory traversal
+  - Owner: Std Team
+  - Effort: 4 days
+  - Dependencies: G3.1.1
 
-#### Parser (语法分析) - 4周
-- [ ] 定义 AST 节点
-- [ ] 实现语法规则
-  - [ ] 函数定义和调用
-  - [ ] 结构体定义
-  - [ ] 枚举定义
-  - [ ] trait 定义
-  - [ ] 控制流
-  - [ ] match 表达式
-  - [ ] 多返回值
-  - [ ] 结构体解构
-  - [ ] 模板字符串
-  - [ ] defer 语句
-- [ ] 错误恢复
-- [ ] 测试
-- [ ] **预计完成**: 2026年2月第2周
+- [ ] **G3.1.5** Implement Error handling
+  - File not found errors
+  - Permission denied errors
+  - I/O timeout errors
+  - Owner: Std Team
+  - Effort: 2 days
+  - Dependencies: G3.1.1
 
-#### AST (抽象语法树) - 2周
-- [ ] 设计 AST 层次结构
-- [ ] 实现 AST 遍历
-- [ ] 添加位置信息
-- [ ] AST 打印
-- [ ] 测试
-- [ ] **预计完成**: 2026年2月第4周
+- [ ] **G3.1.6** Add File metadata
+  - Modified time tracking
+  - File size operations
+  - Permission checking
+  - Owner: Std Team
+  - Effort: 2 days
+  - Dependencies: G3.1.1
 
-### 1.2 类型系统 (4周)
+- [ ] **G3.1.7** Testing
+  - Unit tests for all operations
+  - Integration tests with real file system
+  - Error handling tests
+  - Owner: Std Team
+  - Effort: 3 days
+  - Dependencies: G3.1.1-G3.1.6
 
-#### 类型定义 - 1周 ✅ 完成 (2026-01-07)
-- [x] 实现基础类型
-- [x] 实现复合类型
-- [x] 实现类型环境 (Type Environment)
-- [x] 实现基础类型检查器
-- [x] **实际完成**: 2026年1月第1周
-- [x] **文档**: [TYPE_SYSTEM_IMPLEMENTATION.md](./docs/TYPE_SYSTEM_IMPLEMENTATION.md)
+### G4: Time/Date Module (High Priority)
 
-**成果**:
-- 创建 `zulon-typeck` crate (~1,400行代码)
-- 实现完整的类型定义系统 (primitives, composites, generics)
-- 实现类型环境和作用域管理
-- 实现基础类型检查器 (functions, expressions, statements)
-- 所有10个单元测试通过
-- 代码质量: 无编译器警告, 架构清晰, 可扩展性强
+- [ ] **G4.1.1** Design Time type system
+  - `Instant` type (point in time)
+  - `Duration` type (time interval)
+  - Time arithmetic (add, subtract, compare)
+  - Owner: Std Team
+  - Effort: 3 days
+  - Dependencies: None
 
-#### 类型推导 - 2周 ✅ 完成 (Week 2-3 完成 - 2026-01-07)
-- [x] 实现类型统一化算法 (Unification)
-- [x] 实现类型替换 (Substitution)
-- [x] 集成推导到类型检查器
-- [x] 实现局部变量类型推导
-- [x] 实现表达式类型推导 (二元运算、函数调用)
-- [x] 实现 if 表达式推导
-- [x] 实现块表达式 trailing 推导
-- [x] 实现函数返回值推导
-- [ ] 实现闭包类型推导
-- [ ] 实现 trait 约束检查
-- [ ] 实现泛型实例化
-- [x] 测试 (21/21 passing)
-- [x] **文档**: [TYPE_INFERENCE_IMPLEMENTATION.md](./docs/TYPE_INFERENCE_IMPLEMENTATION.md)
-- [x] **文档**: [EXPRESSION_INFERENCE_IMPLEMENTATION.md](./docs/EXPRESSION_INFERENCE_IMPLEMENTATION.md)
+- [ ] **G4.1.2** Implement Time operations
+  - Current time functions (now(), utc_now())
+  - Time calculations (add, sub)
+  - Comparison operations
+  - Owner: Std Team
+  - Effort: 5 days
+  - Dependencies: G4.1.1
 
-**Week 2-3 成果**:
-- 创建类型推导模块 `infer.rs` (~440行代码)
-- 实现完整的 Robinson 统一化算法
-- 支持 10+ 种类型的统一化 (基础类型、复合类型、泛型)
-- 实现 occurs check 防止无限类型
-- 集成到类型检查器，支持局部变量推导
-- 实现完整的表达式类型推导:
-  - 二元运算 (算术、比较、逻辑、位运算)
-  - 函数调用推导
-  - if 表达式推导
-  - 块表达式 trailing 推导
-- 新增 14 个测试，全部通过
-- 总测试数: 21/21 passing
-- 总代码量: ~1,965 行生产代码
+- [ ] **G4.1.3** Implement Date operations
+  - `Date` type (calendar date)
+  - Date arithmetic (add days, months)
+  - Date comparison and ordering
+  - Owner: Std Team
+  - Effort: 4 days
+  - Dependencies: G4.1.1
 
-**Week 4 计划** (如需继续):
-- 泛型函数实例化
-- 闭包类型推导
-- Trait 系统基础
+- [ ] **G4.1.4** Implement Formatting
+  - Nanosecond precision handling
+  - Date/time string parsing
+  - Date/time to string conversion
+  - Owner: Std Team
+  - Effort: 3 days
+  - Dependencies: G4.1.1
 
-#### 类型检查 - 1周
-- [ ] 实现类型兼容性检查
-- [ ] 实现 trait bounds
-- [ ] 实现生命周期检查
-- [ ] 测试
-- [ ] **预计完成**: 2026年3月第4周
+- [ ] **G4.1.5** Add Time constants
+  - Epoch conversions
+  - Timezone handling (UTC, local)
+  - Date/time utility functions
+  - Owner: Std Team
+  - Effort: 2 days
+  - Dependencies: G4.1.1
 
-### 1.3 中端 IR (3周)
+- [ ] **G4.1.6** Testing
+  - Unit tests for all time/date operations
+  - Edge case tests (leap years, timezones)
+  - Performance benchmarks vs C++ chrono
+  - Owner: Std Team
+  - Effort: 4 days
+  - Dependencies: G4.1.1-G4.1.5
 
-#### HIR - 1周
-- [ ] 定义 HIR 节点
-- [ ] AST → HIR
-- [ ] 类型推导
-- [ ] 测试
-- [ ] **预计完成**: 2026年4月第1周
+- [ ] **G4.1.7** Integration
+  - Integration with File system for modification times
+  - Integration with network for timestamps
+  - Sleep/delay functions
+  - Owner: Std Team
+  - Effort: 2 days
+  - Dependencies: G3.1.6, G4.1.1
 
-#### MIR - 1周
-- [ ] 定义 MIR 节点
-- [ ] HIR → MIR
-- [ ] 借用检查
-- [ ] 效应检查
-- [ ] 测试
-- [ ] **预计完成**: 2026年4月第2周
+### G5: Performance Benchmarks (High Priority)
 
-#### LIR - 1周
-- [ ] MIR → LIR
-- [ ] 控制流简化
-- [ ] 数据流分析
-- [ ] 测试
-- [ ] **预计完成**: 2026年4月第3周
+- [ ] **G5.1.1** Design benchmark infrastructure
+  - Benchmark harness/framework
+  - Test data generators
+  - Result reporting and statistics
+  - Owner: Perf Team
+  - Effort: 5 days
+  - Dependencies: None
 
-### 1.4 代码生成 (4周)
+- [ ] **G5.1.2** Implement Standard Library benchmarks
+  - Vec operations (push, pop, iteration)
+  - HashMap operations (insert, lookup, resize)
+  - String operations (concatenation, parsing)
+  - Owner: Perf Team
+  - Effort: 4 weeks
+  - Dependencies: G5.1.1
 
-#### LLVM IR 生成 - 3周
-- [ ] LIR → LLVM IR
-- [ ] 类型映射
-- [ ] 调用约定
-- [ ] 结构体布局
-- [ ] 枚举表示
-- [ ] 错误处理
-- [ ] 测试
-- [ ] **预计完成**: 2026年5月第3周
+- [ ] **G5.1.3** Implement Language Feature benchmarks
+  - Type inference performance
+  - Pattern matching overhead
+  - Function call overhead
+  - Owner: Perf Team
+  - Effort: 3 weeks
+  - Dependencies: G5.1.1
 
-#### 可执行文件生成 - 1周
-- [ ] LLVM IR → 机器码
-- [ ] 链接
-- [ ] 测试
-- [ ] **预计完成**: 2026年5月第4周
+- [ ] **G5.1.4** Implement Runtime benchmarks
+  - Actor message passing overhead
+  - Effect system overhead
+  - Thread pool performance
+  - Owner: Perf Team
+  - Effort: 2 weeks
+  - Dependencies: G5.1.1
 
-### 1.5 运行时基础 (4周)
+- [ ] **G5.1.5** Create baseline comparisons
+  - Compile C++ baseline code
+  - Create comparison scripts
+  - Generate comparison reports
+  - Owner: Perf Team
+  - Effort: 2 weeks
+  - Dependencies: C++ compiler, G5.1.1
 
-#### 内存管理 (ARC) - 2周
-- [ ] 实现 Arc<T>
-- [ ] 实现弱引用
-- [ ] 逃逸分析
-- [ ] 循环检测
-- [ ] 测试
-- [ ] **预计完成**: 2026年6月第2周
+- [ ] **G5.1.6** Implement Reporting
+  - Benchmark result storage
+  - Performance regression detection
+  - Comparison charts and tables
+  - Automated benchmark runner
+  - Owner: Perf Team
+  - Effort: 3 weeks
+  - Dependencies: G5.1.1-G5.1.5
 
-#### 基础 IO - 2周
-- [ ] 同步 IO
-- [ ] 错误处理
-- [ ] 测试
-- [ ] **预计完成**: 2026年6月第4周
+- [ ] **G5.1.7** Validation
+  - Verify 90-95% C++ performance claim
+  - Performance regression testing
+  - Benchmark publication
+  - Owner: Perf Team
+  - Effort: 2 weeks
+  - Dependencies: G5.1.1-G5.1.6
 
-### 1.6 标准库核心 (3周)
+### G6: Learning Curve Validation (High Priority)
 
-#### core 库 - 2周
-- [x] 基础 traits ✅
-  - [x] Clone, Copy, PartialEq, Eq, PartialOrd, Ord
-- [x] Optional<T>, Outcome<T, E> ✅
-- [x] 集合类型 ✅
-  - [x] Vec<T> (动态数组) ✅
-  - [x] HashMap<K, V> (哈希表) ✅ (简化版实现)
-  - [x] HashSet<T> (哈希集合) ✅ (简化版实现)
-- [ ] 测试
-- [ ] **预计完成**: 2026年7月第2周
+- [ ] **G6.1.1** Design measurement framework
+  - Time-to-first-commit tracker
+  - Tutorial completion rate metrics
+  - Task completion time measurements
+  - Error resolution time tracking
+  - Owner: Docs Team
+  - Effort: 3 weeks
+  - Dependencies: None
 
-#### collections 库 - 1周
-- [x] 高级集合部分完成
-  - [x] VecDeque<T> (双端队列) ✅
-  - [ ] LinkedList<T> (链表)
-  - [ ] BTreeMap<K, V> (有序映射)
-  - [ ] BTreeSet<T> (有序集合)
-- [x] 测试 (32个单元测试通过) ✅
-- [ ] **预计完成**: 2026年7月第3周
+- [ ] **G6.1.2** Implement user study workflow
+  - Recruit 10-20 new developers
+  - Time to Hello World measurement
+  - First functional program task
+  - Full-featured application task
+  - Owner: Docs Team
+  - Effort: 6 weeks (ongoing)
+  - Dependencies: G6.1.1
 
-### 1.7 工具链基础 (6周) ✅ 核心完成 (2026-01-07)
+- [ ] **G6.1.3** Tutorial improvements
+  - Rewrite tutorials for clarity
+  - Add troubleshooting sections
+  - Interactive learning exercises
+  - Video tutorials (if resources allow)
+  - Owner: Docs Team
+  - Effort: 4 weeks
+  - Dependencies: G6.1.1
 
-#### YAN 基础命令 - 4周 ✅ 完成
-- [x] yan build ✅
-- [x] yan run ✅
-- [x] yan new ✅
-- [x] yan clean ✅
-- [x] 测试 (所有命令通过) ✅
-- [x] **实际完成**: 2026年1月第1周
+- [ ] **G6.1.4** Analytics
+  - Tutorial completion funnel analysis
+  - Drop-off point identification
+  - Common stumbling blocks tracking
+  - Success metric definitions
+  - Owner: Docs Team
+  - Effort: 2 weeks (ongoing)
+  - Dependencies: G6.1.1
 
-**成果**:
-- 创建 `zulon-tools-yan` crate (~457行代码)
-- 实现完整的 CLI 工具 (build, run, new, clean)
-- 使用 clap derive 宏实现类型安全的命令行解析
-- 完善的错误处理 (anyhow::Context)
-- 友好的用户界面 (emoji + 格式化输出)
-- 所有命令测试通过
-
-#### 配置系统 - 1周 ⏸️ 可选 (P2)
-- [ ] yan.toml
-- [ ] 配置验证
-- [ ] **预计完成**: 延迟到 Phase 2 或 3
-
-#### 错误处理增强 - 1周 ⏸️ 可选 (P2)
-- [ ] 错误消息
-- [ ] 错误高亮 (彩色输出)
-- [ ] **预计完成**: 延迟到 Phase 2 或 3
-
-### 1.8 测试和文档 (4周)
-
-#### 测试框架 - 2周
-- [ ] #[test] 宏
-- [ ] 断言宏
-- [ ] 测试运行器
-- [ ] **预计完成**: 2026年9月第4周
-
-#### 示例和文档 - 2周
-- [ ] 更新示例
-- [ ] 编写文档
-- [ ] **预计完成**: 2026年10月第2周
-
-### 1.9 MVP 验证 (2周)
-
-- [ ] 编译所有示例
-- [ ] 性能测试
-- [ ] 安全测试
-- [ ] 文档审查
-- [ ] **预计完成**: 2026年10月底
-
-**MVP 发布**: 🎯 **2026年11月初**
+- [ ] **G6.1.5** Validation reports
+  - 5-minute Hello World validation
+  - 1-hour basic syntax validation
+  - 6-12 months productive validation
+  - Public benchmark results
+  - Owner: Docs Team
+  - Effort: 4 weeks (after G6.1.2-G6.1.4)
 
 ---
 
-## Phase 2: 核心功能 (2026 Q3 - 2027 Q2, 12个月)
+## 📅 Phase 2: Feature Completeness (Month 3-4)
 
-### 2.1 高级语言特性 (8周)
+### Objective: Complete standard library to 90%+ of whitepaper specifications
 
-- [x] 错误处理增强 (2周) ✅ 90% 完成 (2026-01-08)
-  - [x] Parser 支持 throw, ?, | 语法 ✅
-  - [x] HIR 集成 (error_type, effects) ✅
-  - [x] 类型检查 (throw/? 验证) ✅
-  - [x] MIR 降级 (discriminant checking) ✅
-  - [x] 标准库 (Outcome<T, E>) ✅
-  - [x] LIR 字段访问 GEP 生成 ✅ (Phase 4.2)
-  - [x] HIR→MIR 类型转换 (T|E → Outcome<T,E>) ✅ (Phase 4.3.1)
-  - [x] LLVM throw 代码生成 ✅ (Phase 4.3.2 - 简化版完成)
-  - [x] LLVM ? 运算符验证 ✅ (Phase 4.4 - 自动工作)
-  - [x] 示例程序 (3个, 771 行) ✅
-  - [x] 集成测试 ✅ (Phase 4.5 - 完成)
-  - **文档**: [PHASE4_5_INTEGRATION_COMPLETE.md](./PHASE4_5_INTEGRATION_COMPLETE.md)
-- [ ] 效应系统 (3周)
-- [ ] 高级特性 (3周)
-- [ ] **预计完成**: 2027年1月
+### G7: Effect System - Combinators (High Priority)
 
-### 2.2 并发运行时 (10周)
+- [ ] **G7.1.1** Design combinator types
+  - `map()` combinator type
+  - `filter()` combinator type
+  - `flat_map()` combinator type
+  - Type-safe signatures
+  - Owner: Runtime Team
+  - Effort: 1 week
+  - Dependencies: Effect types (G1 resolved)
 
-- [ ] 非阻塞 IO (4周)
-- [ ] Windows IOCP (2周)
-- [ ] macOS kqueue (2周)
-- [ ] Channel 和 Select (2周)
-- [ ] **预计完成**: 2027年3月
+- [ ] **G7.1.2** Implement map combinator
+  - `fn map<T, U>(collection: Vec<T>, f: fn(T) -> U) -> Vec<U>`
+  - Type checking for map operation
+  - Error handling
+  - Owner: Runtime Team
+  - Effort: 3 days
+  - Dependencies: G7.1.1
 
-### 2.3 异步编程 (6周)
+- [ ] **G7.1.3** Implement filter combinator
+  - `fn filter<T>(collection: Vec<T>, f: fn(&T) -> bool) -> Vec<T>`
+  - Type checking for filter operation
+  - Lazy evaluation optimization
+  - Owner: Runtime Team
+  - Effort: 2 days
+  - Dependencies: G7.1.1
 
-- [ ] Async/Await (3周)
-- [ ] 异步 IO 标准库 (3周)
-- [ ] **预计完成**: 2027年4月
+- [ ] **G7.1.4** Implement flat_map combinator
+  - `fn flat_map<T, U>(collection: Vec<T>, f: fn(T) -> Vec<U>) -> Vec<U>`
+  - Type-safe transformation
+  - Performance optimization
+  - Owner: Runtime Team
+  - Effort: 2 days
+  - Dependencies: G7.1.1
 
-### 2.4 EPVS 无锁数据结构 (6周)
+- [ ] **G7.1.5** Implement fold combinator
+  - `fn fold<T, U>(collection: Vec<T>, initial: U, f: fn(U, T) -> U) -> U`
+  - Type-safe accumulation
+  - Owner: Runtime Team
+  - Effort: 2 days
+  - Dependencies: G7.1.1
 
-- [ ] 理论研究 (1周)
-- [ ] 实现数据结构 (4周)
-- [ ] 集成 (1周)
-- [ ] **预计完成**: 2027年6月
+- [ ] **G7.1.6** Implement reduce combinator
+  - `fn reduce<T>(collection: Vec<T>, f: fn(T, T) -> T) -> Option<T>`
+  - Type-safe reduction
+  - Owner: Runtime Team
+  - Effort: 1 day
+  - Dependencies: G7.1.1
 
-### 2.5 高级标准库 (8周)
+- [ ] **G7.1.7** Implement chain combinator
+  - `fn chain<T>(operations: Vec<fn(Vec<T>) -> Vec<T>> -> Vec<T>`
+  - Combinator composition
+  - Owner: Runtime Team
+  - Effort: 2 days
+  - Dependencies: G7.1.1-G7.1.6
 
-- [ ] async 库 (3周)
-- [ ] io 库增强 (2周)
-- [ ] net 库 (3周)
-- [ ] **预计完成**: 2027年8月
+- [ ] **G7.1.8** Testing
+  - Unit tests for all combinators
+  - Type checking tests
+  - Performance benchmarks vs manual loops
+  - Owner: Runtime Team
+  - Effort: 2 weeks
+  - Dependencies: G7.1.1-G7.1.7
 
-### 2.6 EFPL 交互环境 (6周)
+### G1: Async/Await Syntax (High Priority)
 
-- [ ] REPL 核心 (3周)
-- [ ] REPL 功能 (2周)
-- [ ] 集成 (1周)
-- [ ] **预计完成**: 2027年9月
+- [ ] **G1.1.1** Design async type system
+  - `Future<T>` type definition
+  - Async type inference rules
+  - Effect handler integration
+  - Owner: Compiler Team
+  - Effort: 2 weeks
+  - Dependencies: Type system
 
-### 2.7 测试框架完善 (4周)
+- [ ] **G1.1.2** Implement async keyword parser
+  - `async` keyword parsing in lexer
+  - Token kind: Async
+  - Owner: Compiler Team
+  - Effort: 3 days
+  - Dependencies: Parser
 
-- [ ] 测试增强 (2周)
-- [ ] 覆盖率 (1周)
-- [ ] 测试工具 (1周)
-- [ ] **预计完成**: 2027年10月
+- [ ] **G1.1.3** Implement await expression parser
+  - `await` expression parsing
+  - Async block parsing
+  - Operator precedence
+  - Owner: Compiler Team
+  - Effort: 1 week
+  - Dependencies: G1.1.2
 
-### 2.8 工具链增强 (6周)
+- [ ] **G1.1.4** Implement async type inference
+  - Future type detection in expressions
+  - Async effect tracking
+  - Owner: Compiler Team
+  - Effort: 3 weeks
+  - Dependencies: G1.1.1
 
-- [ ] YAN 增强 (3周)
-- [ ] 编译优化 (2周)
-- [ ] 诊断工具 (1周)
-- [ ] **预计完成**: 2027年11月
+- [ ] **G1.1.5** Add type checking for async
+  - Future type variable checking
+  - Async lifetime rules
+  - Send/Sync bounds for async
+  - Owner: Compiler Team
+  - Effort: 2 weeks
+  - Dependencies: G1.1.1
 
-### 2.9 示例和文档 (4周)
+- [ ] **G1.1.6** Generate async IR
+  - Async state machine generation
+  - Suspension/resumption points
+  - Owner: Compiler Team
+  - Effort: 2 weeks
+  - Dependencies: G1.1.1-G1.1.5
 
-- [ ] 高级示例 (2周)
-- [ ] 文档完善 (2周)
-- [ ] **预计完成**: 2027年12月
+- [ ] **G1.1.7** Lower to async runtime
+  - IR lowering for async
+  - Future creation API
+  - Await point detection
+  - Owner: Compiler Team + Runtime Team
+  - Effort: 2 weeks
+  - Dependencies: G1.1.6, Runtime
 
-**Alpha 发布**: 🎯 **2027年12月底**
+- [ ] **G1.1.8** Testing
+  - Async syntax parsing tests
+  - Type inference tests
+  - Runtime execution tests
+  - Owner: Compiler Team + Runtime Team
+  - Effort: 3 weeks
+  - Dependencies: G1.1.1-G1.1.7
+
+### G12: Extended Collections (Medium Priority)
+
+- [ ] **G12.1.1** Implement Stack collection
+  - `std::collections::Stack<T>` type
+  - push(), pop(), peek() operations
+  - Clone trait implementation
+  - Iterator support
+  - Owner: Std Team
+  - Effort: 2 weeks
+  - Dependencies: None
+
+- [ ] **G12.1.2** Implement Deque collection
+  - `std::collections::Deque<T>` type
+  - push_front(), push_back(), pop_front(), pop_back()
+  - Random access optimization
+  - Owner: Std Team
+  - Effort: 2 weeks
+  - Dependencies: None
+
+- [ ] **G12.1.3** Implement BTree collection
+  - `std::collections::BTree<T>` type
+  - Insert, delete, lookup operations
+  - Balanced tree properties
+  - Range queries
+  - Owner: Std Team
+  - Effort: 3 weeks
+  - Dependencies: None
+
+- [ ] **G12.1.4** Stack testing
+  - Unit tests for all Stack operations
+  - Performance benchmarks vs std::collections
+  - Memory leak tests
+  - Edge case tests
+  - Owner: Std Team + Perf Team
+  - Effort: 3 weeks
+  - Dependencies: G12.1.1-G12.1.3
+
+- [ ] **G12.1.5** Deque testing
+  - Unit tests for all Deque operations
+  - Performance benchmarks vs std::collections
+  - Edge case tests
+  - Owner: Std Team + Perf Team
+  - Effort: 3 weeks
+  - Dependencies: G12.1.2-G12.1.3
+
+- [ ] **G12.1.6** BTree testing
+  - Unit tests for all BTree operations
+  - Performance benchmarks vs std::collections
+  - Edge case tests
+  - Owner: Std Team + Perf Team
+  - Effort: 3 weeks
+  - Dependencies: G12.1.3
+
+### G13: HTTP Client (Medium Priority)
+
+- [ ] **G13.1.1** Design HTTP types
+  - HTTP request/response types
+  - URL parsing and encoding
+  - Header parsing and generation
+  - Owner: Runtime Team
+  - Effort: 2 weeks
+  - Dependencies: Async runtime
+
+- [ ] **G13.1.2** Implement HTTP client
+  - Connection management
+  - Request methods (GET, POST, PUT, DELETE)
+  - Response parsing
+  - Owner: Runtime Team
+  - Effort: 3 weeks
+  - Dependencies: G13.1.1
+
+- [ ] **G13.1.3** Add HTTP/1.1 features
+  - Chunked transfer encoding
+  - Keep-alive support
+  - Redirect following
+  - Owner: Runtime Team
+  - Effort: 2 weeks
+  - Dependencies: G13.1.1-G13.1.2
+
+- [ ] **G13.1.4** Async HTTP support
+  - Async HTTP requests
+  - Async file downloads
+  - Integration with async/await
+  - Owner: Runtime Team
+  - Effort: 2 weeks
+  - Dependencies: G13.1.1-G13.1.3, G1
+
+- [ ] **G13.1.5** Testing
+  - HTTP/1.1 compliance tests
+  - Mock server integration
+  - Client integration tests
+  - Performance benchmarks
+  - Owner: Runtime Team
+  - Effort: 3 weeks
+  - Dependencies: G13.1.1-G13.1.4
 
 ---
 
-## Phase 3: 生产就绪 (2027 Q3 - 2028 Q2, 12个月)
+## 📅 Phase 3: Optimization & Polish (Month 5-6)
 
-### 3.1 性能优化 (12周)
+### Objective: Production-grade language ecosystem with safety guarantees, developer tools, and optimized performance
 
-- [ ] 编译器优化 (4周)
-- [ ] 运行时优化 (4周)
-- [ ] 标准库优化 (4周)
-- [ ] **预计完成**: 2028年3月
+### G7: Effect System - Combinators (Completed in Phase 2)
 
-### 3.2 稳定性和可靠性 (8周)
+### G1: Async/Await Syntax (Completed in Phase 2)
 
-- [ ] 错误处理 (3周)
-- [ ] 内存安全 (3周)
-- [ ] 稳定性测试 (2周)
-- [ ] **预计完成**: 2028年5月
+### G2: Structured Concurrency (Medium Priority)
 
-### 3.3 生态工具 (8周)
+- [ ] **G2.1.1** Design structured concurrency primitives
+  - Async/Par syntax
+  - Parallel execution primitives
+  - Error handling
+  - Owner: Runtime Team
+  - Effort: 2 weeks
+  - Dependencies: Async runtime
 
-- [ ] IDE 集成 (4周)
-- [ ] 包管理器 (4周)
-- [ ] **预计完成**: 2028年7月
+- [ ] **G2.1.2** Implement async/par parser
+  - `async` and `par` keyword parsing
+  - Async block parsing
+  - Parallel execution contexts
+  - Owner: Compiler Team
+  - Effort: 1 week
+  - Dependencies: Parser
 
-### 3.4 WebAssembly 支持 (6周)
+- [ ] **G2.1.3** Implement async/par type inference
+  - Parallel type inference
+  - Effect tracking
+  - Owner: Compiler Team
+  - Effort: 2 weeks
+  - Dependencies: G2.1.2
 
-- [ ] WASM 后端 (4周)
-- [ ] WASM 工具 (2周)
-- [ ] **预计完成**: 2028年8月
+- [ ] **G2.1.4** Generate async/par IR
+  - State machine generation
+  - Concurrent execution points
+  - Owner: Compiler Team
+  - Effort: 2 weeks
+  - Dependencies: G2.1.1-G2.1.3
 
-### 3.5 跨平台支持 (6周)
+- [ ] **G2.1.5** Async/par runtime support
+  - Parallel execution API
+  - Task scheduling
+  - Resource management
+  - Owner: Runtime Team
+  - Effort: 2 weeks
+  - Dependencies: G2.1.1-G2.1.4
 
-- [ ] Android (2周)
-- [ ] iOS (2周)
-- [ ] 嵌入式 (2周)
-- [ ] **预计完成**: 2028年9月
+- [ ] **G2.1.6** Testing
+  - Async/par syntax tests
+  - Type inference tests
+  - Runtime execution tests
+  - Owner: Compiler Team + Runtime Team
+  - Effort: 3 weeks
+  - Dependencies: G2.1.1-G2.1.5
 
-### 3.6 文档和培训 (4周)
+### G14: Async I/O Abstractions (Medium Priority)
 
-- [ ] 完整文档 (2周)
-- [ ] 培训材料 (2周)
-- [ ] **预计完成**: 2028年10月
+- [ ] **G14.1.1** Design async I/O layer
+  - Async file operations
+  - Async network operations
+  - Error handling with async
+  - Owner: Runtime Team
+  - Effort: 3 weeks
+  - Dependencies: Async runtime
 
-**Beta 版本**: 🎯 **2028年10月底**
-**1.0 正式版**: 🎯 **2028年12月底**
+- [ ] **G14.1.2** Implement async file operations
+  - Async file read/write
+  - Async file metadata
+  - Integration with async/await
+  - Owner: Runtime Team
+  - Effort: 2 weeks
+  - Dependencies: G14.1.1
+
+- [ ] **G14.1.3** Implement async network operations
+  - Async TCP connect/read/write
+  - Async UDP operations
+  - Async DNS resolution
+  - Owner: Runtime Team
+  - Effort: 3 weeks
+  - Dependencies: G14.1.1
+
+- [ ] **G14.1.4** Testing
+  - Async I/O tests
+  - Integration with async/await
+  - Performance benchmarks
+  - Owner: Runtime Team + Perf Team
+  - Effort: 3 weeks
+  - Dependencies: G14.1.1-G14.1.3
+
+### G8: Wait-Free Data Structures (Medium Priority)
+
+- [ ] **G8.1.1** Design EPVS wait-free queues
+  - Lock-free queue implementation
+  - Memory ordering semantics
+  - Thread-safe operations
+  - Owner: Runtime Team
+  - Effort: 2 weeks
+  - Dependencies: None
+
+- [ ] **G8.1.2** Implement lock-free queue
+  - Atomic operations
+  - Memory fences
+  - Thread-safe push/pop
+  - Owner: Runtime Team
+  - Effort: 3 weeks
+  - Dependencies: G8.1.1
+
+- [ ] **G8.1.3** Implement lock-free hash table
+  - Lock-free hash operations
+  - Resize policy
+  - Collision handling
+  - Owner: Runtime Team
+  - Effort: 3 weeks
+  - Dependencies: G8.1.1
+
+- [ ] **G8.1.4** Testing
+  - Thread-safety tests
+- [ ] Memory ordering verification
+- [ ] Performance benchmarks vs Mutex
+- [ ] Stress tests
+- [ ] Owner: Runtime Team + Perf Team
+- [ ] Effort: 3 weeks
+- [ ] Dependencies: G8.1.1-G8.1.3
+
+### G9: Borrow Checker Enforcement (Medium Priority)
+
+- [ ] **G9.1.1** Design borrow checker integration
+  - Borrow region tracking
+  - Lifetime propagation
+  - Borrow conflict detection
+  - Integration with type checking
+  - Owner: Compiler Team
+  - Effort: 4 weeks
+  - Dependencies: Type checker, borrow checker research
+
+- [ ] **G9.1.2** Integrate borrow checker into type checking
+  - Borrow rule enforcement
+  - Lifetime annotation propagation
+  - Error reporting
+  - Owner: Compiler Team
+  - Effort: 6 weeks
+  - Dependencies: G9.1.1, type system
+
+- [ ] **G9.1.3** LLVM IR verification
+  - Borrow metadata in LLVM IR
+  - Runtime borrow checks
+  - Optimize for zero overhead in safe code
+  - Owner: Compiler Team
+  - Effort: 4 weeks
+  - Dependencies: G9.1.1, codegen-llvm
+
+- [ ] **G9.1.4** Testing
+  - Borrow rule tests
+- [ ] Safety violation tests
+- [ ] Performance benchmarks
+- [ ] Regression tests
+- [ ] Owner: Compiler Team + Perf Team
+- [ ] Effort: 3 weeks
+- [ ] Dependencies: G9.1.1-G9.1.3
+
+### G10: Compile-Time Safety (Medium Priority)
+
+- [ ] **G10.1.1** Design unsafe code tracking
+  - Unsafe block identification
+  - Safety verification annotations
+  - Audit requirements
+  - Owner: Compiler Team
+  - Effort: 1 week
+  - Dependencies: None
+
+- [ ] **G10.1.2** Implement unsafe block tracking
+  - Span-based unsafe regions
+  - Safety documentation generation
+  - Manual audit guidelines
+  - Owner: Compiler Team
+  - Effort: 2 weeks
+  - Dependencies: G10.1.1
+
+- [ ] **G10.1.3** Standard library safety
+  - Remove or document unsafe usage in std library
+  - Safe alternatives for critical operations
+  - Safety guidelines documentation
+  - Owner: Std Team
+  - Effort: 3 weeks
+  - Dependencies: G10.1.2
+
+- [ ] **G10.1.4** Testing
+  - Unsafe code tests
+  - Safety violation detection
+- [ ] Memory safety tests
+- [ ] Documentation verification
+- [ ] Owner: Std Team + Compiler Team
+- [ ] Effort: 2 weeks
+- [ ] Dependencies: G10.1.1-G10.1.3
+
+### G11: Rich Error Context (Medium Priority)
+
+- [ ] **G11.1.1** Enhance parser with span tracking
+  - Span preservation through AST
+  - File/line/column for all nodes
+  - Owner: Compiler Team
+  - Effort: 2 weeks
+  - Dependencies: Parser, AST
+
+- [ ] **G11.1.2** Propagate spans to IR
+  - Span metadata in HIR/MIR
+  - Span preservation through codegen
+  - Owner: Compiler Team
+  - Effort: 2 weeks
+  - Dependencies: G11.1.1, IR
+
+- [ ] **G11.1.3** Enhance error types
+  - Span storage in error types
+  - Error formatting utilities
+  - Owner: Compiler Team
+  - Effort: 1 week
+  - Dependencies: G11.1.1
+
+- [ ] **G11.1.4** Error reporting improvements
+  - Contextual error messages
+  - Suggested fixes with locations
+  - Error location highlighting
+  - Owner: Compiler Team
+  - Effort: 2 weeks
+  - Dependencies: G11.1.1-G11.1.3
+
+- [ ] **G11.1.5** Testing
+  - Span verification tests
+- [ ] Error context tests
+- [ ] Debugging effectiveness tests
+- [ ] Owner: Compiler Team
+- [ ] Effort: 2 weeks
+- [ ] Dependencies: G11.1.1-G11.1.4
+
+### G12: Error Recovery Strategies (Medium Priority)
+
+- [ ] **G12.1.1** Design recovery framework
+  - Recovery trait definition
+  - Default recovery strategies
+  - Recovery state machine
+  - Owner: Std Team
+  - Effort: 2 weeks
+  - Dependencies: None
+
+- [ ] **G12.1.2** Implement standard library recovery
+  - File I/O recovery (retry with backoff)
+  - Network I/O recovery (reconnect, fallback)
+  - Time operation recovery (graceful degradation)
+  - Owner: Std Team
+  - Effort: 3 weeks
+  - Dependencies: G12.1.1, file system module
+
+- [ ] **G12.1.3** Implement recovery handlers
+  - Panic recovery mechanisms
+- [ ] Error type recovery
+  - Retry strategies
+- [ ] Circuit breaking
+- [ ] Fallback selection
+- [ ] Owner: Runtime Team
+- [ ] Effort: 3 weeks
+- [ ] Dependencies: G12.1.1-G12.1.2
+
+- [ ] **G12.1.4** Testing
+  - Recovery strategy tests
+- [ ] Error handling integration tests
+- [ ] Recovery effectiveness tests
+- [ ] Owner: Std Team + Runtime Team
+- [ ] Effort: 2 weeks
+- [ ] Dependencies: G12.1.1-G12.1.3
+
+### G6: Standard Library Completeness (Low Priority)
+
+- [ ] **G6.1.1** Add serialization support
+  - Binary serialization
+  - JSON serialization
+  - Owner: Std Team
+  - Effort: 2 weeks
+  - Dependencies: None
+
+- [ ] **G6.1.2** Add compression support
+  - Compression algorithms (zlib, gzip)
+  - Compression utilities
+  - Owner: Std Team
+  - Effort: 2 weeks
+  - Dependencies: None
+
+- [ ] **G6.1.3** Add encoding support
+  - UTF-8 encoding
+- [ ] Base64 encoding
+  - Hex encoding
+- [ ] Binary/string conversions
+- [ ] Owner: Std Team
+- [ ] Effort: 2 weeks
+- [ ] Dependencies: None
+
+- [ ] **G6.1.4** Add regex support
+- [ ] Regular expression types
+- [ ] Regex compilation and matching
+- [ ] Regex utilities
+- [ ] Owner: Std Team
+- [ ] Effort: 3 weeks
+- [ ] Dependencies: None
+
+- [ ] **G6.1.5** Add random number generation
+- [ ] Random number generators
+- [ ] Seeding support
+- [ ] Distribution types (uniform, normal, etc.)
+- [ ] Owner: Std Team
+- [ ] Effort: 2 weeks
+- [ ] Dependencies: None
+
+- [ ] **G6.1.6** Testing
+- [ ] Unit tests for all new modules
+- [ ] Performance benchmarks
+- [ ] Integration tests
+- [ ] Owner: Std Team + Perf Team
+- [ ] Effort: 4 weeks
+- [ ] Dependencies: G6.1.1-G6.1.5
+
+### G6: Developer Tools (Low Priority)
+
+- [ ] **G6.1.7** Language server
+- [ ] LSP implementation
+- [ ] Syntax highlighting
+- [ ] Auto-completion
+- [ ] Owner: Tools Team
+- [ ] Effort: 6 weeks
+- [ ] Dependencies: Parser, type checker
+
+- [ ] **G6.1.8** Performance monitoring
+- [ ] Profiling tools
+- [ ] Memory profiling
+- [ ] CPU profiling
+- [ ] Integration with CI/CD
+- [ ] Owner: Tools Team + Perf Team
+- [ ] Effort: 4 weeks
+- [ ] Dependencies: Perf benchmarks
+
+- [ ] **G6.1.9** Integration
+- [ ] LSP integration with IDEs
+- [ ] CI/CD benchmark publishing
+- [ ] Performance dashboard
+- [ ] Owner: Tools Team
+- [ ] Effort: 4 weeks
+- [ ] Dependencies: G6.1.7-G6.1.8
+
+### G15: Multi-Return Values (Low Priority)
+
+- [ ] **G15.1.1** Design multi-return type system
+  - Tuple type for multi-return
+  - Type inference support
+  - Pattern matching support
+  - Owner: Compiler Team
+  - Effort: 1 week
+  - Dependencies: Type system
+
+- [ ] **G15.1.2** Implement multi-return code generation
+  - Tuple generation in codegen
+  - Destructuring code generation
+  - Optimization for no overhead
+  - Owner: Compiler Team
+  - Effort: 2 weeks
+  - Dependencies: G15.1.1
+
+- [ ] **G15.1.3** Add multi-return parsing
+  - Tuple syntax parsing in lexer
+  - Multi-return expression parsing
+  - Type checking for multi-return
+  - Owner: Compiler Team
+  - Effort: 1 week
+- [ ] Dependencies: G15.1.2
+
+- [ ] **G15.1.4** Testing
+- [ ] Multi-return type tests
+- [ ] Code generation tests
+- [ ] Runtime behavior tests
+- [ ] Performance benchmarks
+- [ ] Owner: Compiler Team
+- [ ] Effort: 2 weeks
+- [ ] Dependencies: G15.1.1-G15.1.3
+
+### G16: Template Strings (Low Priority)
+
+- [ ] **G16.1.1** Design template string system
+  - Template string parsing
+  - Expression interpolation
+  - Multi-line support
+  - Escaping rules
+  - Owner: Compiler Team
+  - Effort: 1 week
+  - Dependencies: Parser
+
+- [ ] **G16.1.2** Implement template string evaluation
+  - Runtime evaluation
+  - Error handling
+  - Type checking for templates
+  - Owner: Compiler Team + Runtime Team
+  - Effort: 2 weeks
+- [ ] Dependencies: G16.1.1
+
+- [ ] **G16.1.3** Add template string features
+- [ ] String interpolation types
+  - Type-safe variable interpolation
+- - Auto-escaping
+- [ ] SQL query templates
+- [ ] HTML templates
+- [ ] Owner: Compiler Team
+- [ ] Effort: 2 weeks
+- [ ] Dependencies: G16.1.1-G16.1.2
+
+- [ ] **G16.1.4** Testing
+- [ ] Template parsing tests
+- [ ] Evaluation tests
+- [ ] Type checking tests
+- [ ] Performance benchmarks
+- [ ] Security tests (template injection)
+- [ ] Owner: Compiler Team + Runtime Team
+- [ ] Effort: 2 weeks
+- [ ] Dependencies: G16.1.1-G16.1.3
+
+### G17: Defer Statements (Low Priority)
+
+- [ ] **G17.1.1** Design defer system
+  - Defer keyword parsing
+- - Defer statement tracking
+- - LIFO ordering
+- - Owner: Compiler Team
+  - Effort: 1 week
+  - Dependencies: Parser
+
+- [ ] **G17.1.2** Implement defer code generation
+  - Defer block code generation
+  - Cleanup code injection
+  - Multiple defer support
+- [ ] Owner: Compiler Team
+  - Effort: 2 weeks
+- [ ] Dependencies: G17.1.1
+
+- [ ] **G17.1.3** Implement defer runtime
+- - Deferred action queue
+- - LIFO execution order
+- [ ] Error handling
+- [ ] Resource leak prevention
+- [ ] Owner: Runtime Team
+- [ ] Effort: 2 weeks
+- [ ] Dependencies: G17.1.1-G17.1.2
+
+- [ ] **G17.1.4** Testing
+- [ ] Defer parsing tests
+- [ ] Code generation tests
+- [ ] Runtime behavior tests
+- [ ] Resource leak tests
+- [ ] Owner: Compiler Team + Runtime Team
+- [ ] Effort: 2 weeks
+- [ ] Dependencies: G17.1.1-G17.1.3
+
+### G18: Smart Pointers Optimization (Low Priority)
+
+- [ ] **G18.1.1** Design custom ARC implementation
+  - Batched reference counting
+  - Thread-local caching
+- [ ] Weak reference optimization
+- [ ] Owner: Std Team
+  - Effort: 2 weeks
+- [ ] Dependencies: None (research only)
+
+- [ ] **G18.1.2** Implement batched ARC
+  - Batched reference counting operations
+  - Memory pool integration
+- [ ] Lock-free optimizations
+- [ ] Owner: Std Team
+  [ ] Effort: 3 weeks
+- [ ] Dependencies: G18.1.1
+
+- [ ] **G18.1.3** Implement specialized types
+- [ ] Cow (Copy-on-Write) for large data
+- [ ] Rc for single-threaded scenarios
+- [ ] Custom allocators
+- [ ] Memory layout optimizations
+- [ ] Owner: Std Team
+- [ ] Effort: 2 weeks
+- [ ] Dependencies: G18.1.1
+
+- [ ] **G18.1.4** Testing
+- [ ] Performance benchmarks vs std::sync::Arc
+- [ ] Memory usage tests
+- [ ] Thread-safety tests
+- [ ] Edge case tests
+- [ ] Owner: Std Team + Perf Team
+- [ ] Effort: 3 weeks
+- [ ] Dependencies: G18.1.1-G18.1.3
 
 ---
 
-## Phase 4: 生态建设 (2028 Q3+, 持续)
+## 📋 Task Statistics
 
-### 4.1 社区建设 (持续)
+### By Phase
 
-- [ ] 开发者社区
-- [ ] 文档和教程
-- [ ] **持续进行**
+- **Phase 1** (Month 1-2): 24 items (6 gaps, 48 tasks)
+- **Phase 2** (Month 3-4): 40 items (4 gaps, 36 tasks)
+- **Phase 3** (Month 5-6): 34 items (0 gaps, 34 tasks)
 
-### 4.2 生态系统 (持续)
+### By Priority
 
-- [ ] 第三方库
-- [ ] 工具集成
-- [ ] **持续进行**
+- **High Priority**: 24 items
+  - Phase 1: 12 items (4 gaps, 8 tasks)
+  - Phase 2: 8 items (2 gaps, 6 tasks)
+  - Phase 3: 4 items (0 gaps, 4 tasks)
 
-### 4.3 企业支持 (持续)
+- **Medium Priority**: 32 items
+  - Phase 1: 8 items (0 gaps, 8 tasks)
+  - Phase 2: 12 items (2 gaps, 10 tasks)
+  - Phase 3: 12 items (0 gaps, 12 tasks)
 
-- [ ] 企业功能
-- [ ] 行业应用
-- [ ] **持续进行**
+- **Low Priority**: 16 items
+  - Phase 2: 8 items (2 gaps, 6 tasks)
+  - Phase 3: 8 items (0 gaps, 8 tasks)
 
----
+### By Owner Team
 
-## 优先级说明
+- **Std Team**: 48 items
+  - File system, time/date, collections, serialization, encoding, regex, random
+  - Error recovery, smart pointers
 
-### P0 - 必须完成 (阻塞性任务)
-这些任务必须完成才能进入下一阶段：
-- Phase 1: 所有 P0 任务
-- 编译器核心功能
-- 运行时基础
-- YAN 基础命令
+- **Compiler Team**: 24 items
+  - Async/await, multi-return, template strings, defer statements
+  - Span tracking, error context
 
-### P1 - 应该完成 (重要任务)
-这些任务延迟会严重影响用户体验：
-- 完整的类型系统
-- 测试框架
-- EFPL
+- **Runtime Team**: 20 items
+  - Effect combinators, async I/O, defer runtime
+  - Structured concurrency, wait-free structures
 
-### P2 - 可以延迟 (增强任务)
-这些任务可以延后但不影响核心功能：
-- 性能优化
-- 高级工具
-- WASM 支持
+- **Perf Team**: 16 items
+  - Benchmark infrastructure, library benchmarks, validation
+  - Performance monitoring tools
 
----
+- **Docs Team**: 8 items
+  - User studies, tutorials, documentation
+  - Learning curve validation
 
-## 任务状态
-
-- [ ] 待开始
-- [ ] 进行中
-- [x] 已完成
-- [!] 阻塞
-- [?] 待评估
+**Total**: 116 items across 5 teams
 
 ---
 
-## 依赖关系
+## 📅 Implementation Timeline
 
-```
-编译器前端
-  ├─> 类型系统
-  │   └─> 中端 IR
-  │       ├─> 借用检查
-  │       └─> 代码生成
-  │           └─> 运行时
-  │               └─> 标准库
-  │
-  └─> 工具链
-      └─> 测试
-          └─> 文档
-```
+### Phase 1: Production MVP (Months 1-2)
+
+**Month 1**:
+- Week 1: File system module design + G3.1.2-G3.1.6 implementation
+- Week 2: File system testing + G3.1.7 integration tests
+- Week 3: Time module design + G4.1.2-G4.1.5 implementation
+- Week 4: Time module testing + G4.1.6-G4.1.7 integration
+
+**Month 2**:
+- Week 5: G5.1.1 benchmark infrastructure + G5.1.2 Vec benchmarks
+- Week 6: G5.1.3 language feature benchmarks + G5.1.4 runtime benchmarks
+- Week 7: G5.1.5 baseline comparisons + G5.1.6 reporting
+- Week 8: G5.1.7 validation + G6.1.1-G6.1.5 user studies
+
+### Phase 2: Feature Parity (Months 3-4)
+
+**Month 3**:
+- Week 9: G7.1.1-G7.1.8 effect combinators
+- Week 10: G1.1.1-G1.1.7 async/await syntax
+- Week 11: G1.1.8 async runtime integration
+- Week 12: G1 testing (async syntax + runtime)
+
+**Month 4**:
+- Week 13: G12.1.1-G12.1.6 Stack collection
+- Week 14: G12.1.7-G12.1.6 Deque collection
+- Week 15: G12.1.8 BTree collection
+- Week 16: G12 testing + documentation
+
+### Phase 3: Optimization & Polish (Months 5-6)
+
+**Month 5**:
+- Week 17: G2.1.1-G2.1.5 structured concurrency
+- Week 18: G2.1.6 async/par runtime
+- Week 19: G2 testing
+- Week 20: G8.1.1-G8.1.4 wait-free data structures
+
+**Month 6**:
+- Week 21: G9.1.1-G9.1.4 borrow checker enforcement
+- Week 22: G10.1.1-G10.1.4 compile-time safety
+- Week 23: G9 testing + G10 testing
+- Week 24: G11.1.1-G11.1.4 rich error context
 
 ---
 
-## 下一步行动
+## 📋 Blocked Tasks (Dependencies)
 
-### 本周任务 (2026-01-07 ~ 2026-01-13)
-1. [ ] 组建核心团队
-2. [ ] 设置开发环境
-3. [ ] 创建代码仓库
-4. [ ] 启动 Lexer 开发
+### Currently Blocked
 
-### 本月目标 (2026年1月)
-1. [ ] 完成 Lexer 开发
-2. [ ] 启动 Parser 开发
-3. [ ] 设计 AST 结构
+- G7.1.x Effect Combinators: Blocked by G1 (async/await) - Type system needs Future<T> first
+- G14.1.x Async I/O Abstractions: Blocked by G1 (async/await) - Async runtime integration needed
+- G2.1.x Structured Concurrency: Blocked by G1 (async/await) - Type system needs Future<T> first
+- G12.x Extended Collections: Blocked by G3 (file system) - Needs modified time metadata
+- G13.1.x HTTP Client: Blocked by G14 (async I/O) - Async network needed
 
-### 本季度目标 (2026 Q1)
-1. [ ] 完成编译器前端
-2. [ ] 完成类型系统基础
-3. [ ] 完成中端 IR
+### Dependent On Phase 1 Completion
+
+- All Phase 2 tasks depend on Phase 1 completion
+- Most Phase 3 tasks depend on Phase 2 completion
 
 ---
 
-## 联系方式
+## 📅 Success Criteria
 
-**项目负责人**: [待定]
-**技术讨论**: [GitHub Discussions]
-**Bug 报告**: [GitHub Issues]
+### Phase 1 Success (Month 2)
+- [ ] File system module complete and tested
+- [ ] Time/date module complete and tested
+- [ ] Benchmark infrastructure ready
+- [ ] 90% C++ performance claim validated
+- [ ] 5-minute Hello World maintained
+- [ ] Learning curve measurements in progress
+
+### Phase 2 Success (Month 4)
+- [ ] Effect combinators complete (6 types)
+- [ ] Async/await syntax working
+- [ ] Extended collections complete (Stack, Deque, BTree)
+- [ ] HTTP client functional
+- [ ] Async I/O abstractions ready
+- [ ] Standard library >90% complete
+
+### Phase 3 Success (Month 6)
+- [ ] Borrow checker integrated
+- [ ] Compile-time safety enforced
+- ] Rich error context working
+- ] Error recovery in standard library
+- ] Developer tools (LSP, profilers)
+- ] Smart pointers optimized
+
+### Overall Success
+- [ ] All 18 gaps resolved
+- [ ] Production readiness achieved
+- [ ] Whitepaper compliance validated
+- [ ] Developer experience measured
+- [ ] Ecosystem established
 
 ---
 
-**文档版本**: 1.0
-**最后更新**: 2026-01-07
-**维护者**: ZULON Language Team
+**Total Tasks**: 116 items
+**Estimated Total Effort**: 6 months
+**Team Size**: 5 teams (18-20 engineers total)
+**Blocking Items**: 0 (all dependencies tracked)
+
+---
+
+**Last Updated**: 2025-01-20

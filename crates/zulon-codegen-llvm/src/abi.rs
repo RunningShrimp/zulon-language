@@ -73,7 +73,9 @@ impl CallInfo {
                 let int_regs = vec!["rdi", "rsi", "rdx", "rcx", "r8", "r9"];
 
                 // Float argument registers (in order)
-                let float_regs = vec!["xmm0", "xmm1", "xmm2", "xmm3", "xmm4", "xmm5", "xmm6", "xmm7"];
+                let float_regs = vec![
+                    "xmm0", "xmm1", "xmm2", "xmm3", "xmm4", "xmm5", "xmm6", "xmm7",
+                ];
 
                 let mut regs = HashMap::new();
                 for reg in int_regs.iter().chain(float_regs.iter()) {
@@ -114,17 +116,11 @@ impl CallInfo {
         }
 
         let location = match self.cc {
-            CallingConvention::SystemVAMD64 => {
-                self.allocate_systemv_arg(ty)?
-            }
+            CallingConvention::SystemVAMD64 => self.allocate_systemv_arg(ty)?,
 
-            CallingConvention::MicrosoftX64 => {
-                self.allocate_msx64_arg(ty)?
-            }
+            CallingConvention::MicrosoftX64 => self.allocate_msx64_arg(ty)?,
 
-            CallingConvention::AArch64 => {
-                self.allocate_aarch64_arg(ty)?
-            }
+            CallingConvention::AArch64 => self.allocate_aarch64_arg(ty)?,
         };
 
         // Track the location
@@ -201,7 +197,7 @@ impl CallInfo {
 
         // Large types returned in memory (caller allocates, pointer passed as hidden arg)
         if size > 16 {
-            ArgLocation::ReturnRegister("rax".to_string())  // Pointer to return value
+            ArgLocation::ReturnRegister("rax".to_string()) // Pointer to return value
         } else {
             // Small types returned in rax/rax+xmm0
             if ty.is_float() {
@@ -231,8 +227,8 @@ impl CallInfo {
         self.stack_local_size = local_size;
 
         // Total stack = args + locals + return address + saved registers
-        let stack_align = 16;  // Stack must be 16-byte aligned
-        let mut total = self.stack_arg_size + self.stack_local_size + 8;  // +8 for return address
+        let stack_align = 16; // Stack must be 16-byte aligned
+        let mut total = self.stack_arg_size + self.stack_local_size + 8; // +8 for return address
 
         // Round up to 16-byte alignment
         total = ((total + stack_align - 1) / stack_align) * stack_align;
@@ -278,11 +274,20 @@ impl CallInfo {
     /// Check if type is passed in integer register
     pub fn is_integer_aggregate(ty: &zulon_lir::LirTy) -> bool {
         match ty {
-            zulon_lir::LirTy::I8 | zulon_lir::LirTy::I16 | zulon_lir::LirTy::I32 |
-            zulon_lir::LirTy::I64 | zulon_lir::LirTy::I128 | zulon_lir::LirTy::ISize |
-            zulon_lir::LirTy::U8 | zulon_lir::LirTy::U16 | zulon_lir::LirTy::U32 |
-            zulon_lir::LirTy::U64 | zulon_lir::LirTy::U128 | zulon_lir::LirTy::USize |
-            zulon_lir::LirTy::Bool | zulon_lir::LirTy::Ptr(_) => true,
+            zulon_lir::LirTy::I8
+            | zulon_lir::LirTy::I16
+            | zulon_lir::LirTy::I32
+            | zulon_lir::LirTy::I64
+            | zulon_lir::LirTy::I128
+            | zulon_lir::LirTy::ISize
+            | zulon_lir::LirTy::U8
+            | zulon_lir::LirTy::U16
+            | zulon_lir::LirTy::U32
+            | zulon_lir::LirTy::U64
+            | zulon_lir::LirTy::U128
+            | zulon_lir::LirTy::USize
+            | zulon_lir::LirTy::Bool
+            | zulon_lir::LirTy::Ptr(_) => true,
 
             zulon_lir::LirTy::Struct { .. } => {
                 // Check if all fields are integers
@@ -309,9 +314,15 @@ mod tests {
         let mut call_info = CallInfo::new(CallingConvention::SystemVAMD64);
 
         // Allocate i32 args
-        let loc1 = call_info.allocate_arg(&zulon_lir::LirTy::I32, false).unwrap();
-        let loc2 = call_info.allocate_arg(&zulon_lir::LirTy::I32, false).unwrap();
-        let loc3 = call_info.allocate_arg(&zulon_lir::LirTy::I32, false).unwrap();
+        let loc1 = call_info
+            .allocate_arg(&zulon_lir::LirTy::I32, false)
+            .unwrap();
+        let loc2 = call_info
+            .allocate_arg(&zulon_lir::LirTy::I32, false)
+            .unwrap();
+        let loc3 = call_info
+            .allocate_arg(&zulon_lir::LirTy::I32, false)
+            .unwrap();
 
         // First 6 args should be in registers
         assert_eq!(loc1, ArgLocation::Register("rdi".to_string()));
@@ -325,12 +336,20 @@ mod tests {
 
         // Allocate 7 integer args (more than available registers)
         for _ in 0..7 {
-            call_info.allocate_arg(&zulon_lir::LirTy::I32, false).unwrap();
+            call_info
+                .allocate_arg(&zulon_lir::LirTy::I32, false)
+                .unwrap();
         }
 
         // First 6 in registers, 7th on stack
-        assert_eq!(call_info.arg_locations[0], ArgLocation::Register("rdi".to_string()));
-        assert_eq!(call_info.arg_locations[5], ArgLocation::Register("r9".to_string()));
+        assert_eq!(
+            call_info.arg_locations[0],
+            ArgLocation::Register("rdi".to_string())
+        );
+        assert_eq!(
+            call_info.arg_locations[5],
+            ArgLocation::Register("r9".to_string())
+        );
         assert!(matches!(call_info.arg_locations[6], ArgLocation::Stack(_)));
     }
 
@@ -339,11 +358,15 @@ mod tests {
         let mut call_info = CallInfo::new(CallingConvention::SystemVAMD64);
 
         // Small return type
-        let loc1 = call_info.allocate_arg(&zulon_lir::LirTy::I32, true).unwrap();
+        let loc1 = call_info
+            .allocate_arg(&zulon_lir::LirTy::I32, true)
+            .unwrap();
         assert!(matches!(loc1, ArgLocation::ReturnRegister(_)));
 
         // Float return type
-        let loc2 = call_info.allocate_arg(&zulon_lir::LirTy::F64, true).unwrap();
+        let loc2 = call_info
+            .allocate_arg(&zulon_lir::LirTy::F64, true)
+            .unwrap();
         assert_eq!(loc2, ArgLocation::ReturnRegister("xmm0".to_string()));
     }
 
@@ -353,7 +376,9 @@ mod tests {
 
         // Allocate args that exceed registers
         for _ in 0..10 {
-            call_info.allocate_arg(&zulon_lir::LirTy::I64, false).unwrap();
+            call_info
+                .allocate_arg(&zulon_lir::LirTy::I64, false)
+                .unwrap();
         }
 
         call_info.finalize_stack(32);
@@ -368,8 +393,12 @@ mod tests {
         let mut call_info = CallInfo::new(CallingConvention::MicrosoftX64);
 
         // Microsoft x64 uses different registers
-        let loc1 = call_info.allocate_arg(&zulon_lir::LirTy::I32, false).unwrap();
-        let loc2 = call_info.allocate_arg(&zulon_lir::LirTy::I32, false).unwrap();
+        let loc1 = call_info
+            .allocate_arg(&zulon_lir::LirTy::I32, false)
+            .unwrap();
+        let loc2 = call_info
+            .allocate_arg(&zulon_lir::LirTy::I32, false)
+            .unwrap();
 
         assert_eq!(loc1, ArgLocation::Register("rcx".to_string()));
         assert_eq!(loc2, ArgLocation::Register("rdx".to_string()));

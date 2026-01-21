@@ -6,8 +6,8 @@
 //! These tests verify that executors properly poll futures
 //! and handle the async execution model.
 
-use zulon_runtime_scheduler::{Executor, BasicExecutor, LocalExecutor, EventLoopExecutor};
-use zulon_async_futures::{Future, Poll, Context, Ready};
+use zulon_async_futures::{Context, Future, Poll, Ready};
+use zulon_runtime_scheduler::{BasicExecutor, EventLoopExecutor, Executor, LocalExecutor};
 
 /// A future that returns Pending once, then Ready
 struct YieldOnce {

@@ -117,9 +117,7 @@ impl Waker {
 impl Clone for Waker {
     #[inline]
     fn clone(&self) -> Self {
-        unsafe {
-            Self::from_raw(self.raw.clone())
-        }
+        unsafe { Self::from_raw(self.raw.clone()) }
     }
 }
 

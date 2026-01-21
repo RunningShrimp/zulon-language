@@ -1,9 +1,9 @@
 use std::io::Cursor;
-use zulon_parser::Parser;
-use zulon_hir::lower_ast_simple;
-use zulon_mir::lower_hir;
-use zulon_lir::lower::LirLoweringContext;
 use zulon_codegen_llvm::CodeGenerator;
+use zulon_hir::lower_ast_simple;
+use zulon_lir::lower::LirLoweringContext;
+use zulon_mir::lower_hir;
+use zulon_parser::Parser;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Test multiple mutable variables in the same loop
@@ -70,8 +70,7 @@ fn main() -> i32 {
         return Err("clang failed".into());
     }
 
-    let output = std::process::Command::new("./multi_vars_loop")
-        .output()?;
+    let output = std::process::Command::new("./multi_vars_loop").output()?;
 
     let exit_code = output.status.code().unwrap_or(-1);
     println!("Program exited with code: {}", exit_code);

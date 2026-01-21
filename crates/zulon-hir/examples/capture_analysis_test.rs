@@ -5,7 +5,7 @@
 use zulon_hir::{
     analyze_captures, HirBlock, HirExpression, HirStatement, HirTy, SimpleEnvironment,
 };
-use zulon_parser::{Span, Position};
+use zulon_parser::{Position, Span};
 
 fn main() {
     println!("=== ZULON Closure Capture Analysis Test ===\n");
@@ -36,7 +36,10 @@ fn main() {
 fn make_span(line: usize, col: usize) -> Span {
     Span {
         start: Position { line, column: col },
-        end: Position { line, column: col + 1 },
+        end: Position {
+            line,
+            column: col + 1,
+        },
     }
 }
 
@@ -49,8 +52,18 @@ fn test_simple_capture() {
     // Create closure that references x: |y| x + y
     let closure_body = HirExpression::BinaryOp {
         op: zulon_hir::HirBinOp::Add,
-        left: Box::new(HirExpression::Variable("x".to_string(), 0, HirTy::I32, make_span(1, 5))),
-        right: Box::new(HirExpression::Variable("y".to_string(), 1, HirTy::I32, make_span(1, 9))),
+        left: Box::new(HirExpression::Variable(
+            "x".to_string(),
+            0,
+            HirTy::I32,
+            make_span(1, 5),
+        )),
+        right: Box::new(HirExpression::Variable(
+            "y".to_string(),
+            1,
+            HirTy::I32,
+            make_span(1, 9),
+        )),
         ty: HirTy::I32,
         span: make_span(1, 7),
     };
@@ -60,12 +73,18 @@ fn test_simple_capture() {
 
     println!("  Captures: {} variable(s)", analysis.captures.len());
     for capture in &analysis.captures {
-        println!("    - {} (mode: {:?}, type: {:?})", capture.name, capture.mode, capture.ty);
+        println!(
+            "    - {} (mode: {:?}, type: {:?})",
+            capture.name, capture.mode, capture.ty
+        );
     }
 
     assert_eq!(analysis.captures.len(), 1);
     assert_eq!(analysis.captures[0].name, "x");
-    assert_eq!(analysis.captures[0].mode, zulon_hir::HirCaptureMode::ImmutableRef);
+    assert_eq!(
+        analysis.captures[0].mode,
+        zulon_hir::HirCaptureMode::ImmutableRef
+    );
 
     println!("  ✅ Test passed: Correctly captured 'x' by immutable reference");
 }
@@ -78,7 +97,12 @@ fn test_no_captures() {
     // Closure that only uses its parameter: |x| x * 2
     let closure_body = HirExpression::BinaryOp {
         op: zulon_hir::HirBinOp::Mul,
-        left: Box::new(HirExpression::Variable("x".to_string(), 0, HirTy::I32, make_span(1, 5))),
+        left: Box::new(HirExpression::Variable(
+            "x".to_string(),
+            0,
+            HirTy::I32,
+            make_span(1, 5),
+        )),
         right: Box::new(HirExpression::Literal(
             zulon_hir::HirLiteral::Integer(2),
             1,
@@ -112,12 +136,27 @@ fn test_multiple_captures() {
         op: zulon_hir::HirBinOp::Add,
         left: Box::new(HirExpression::BinaryOp {
             op: zulon_hir::HirBinOp::Add,
-            left: Box::new(HirExpression::Variable("a".to_string(), 0, HirTy::I32, make_span(1, 5))),
-            right: Box::new(HirExpression::Variable("b".to_string(), 1, HirTy::I32, make_span(1, 9))),
+            left: Box::new(HirExpression::Variable(
+                "a".to_string(),
+                0,
+                HirTy::I32,
+                make_span(1, 5),
+            )),
+            right: Box::new(HirExpression::Variable(
+                "b".to_string(),
+                1,
+                HirTy::I32,
+                make_span(1, 9),
+            )),
             ty: HirTy::I32,
             span: make_span(1, 7),
         }),
-        right: Box::new(HirExpression::Variable("x".to_string(), 2, HirTy::I32, make_span(1, 13))),
+        right: Box::new(HirExpression::Variable(
+            "x".to_string(),
+            2,
+            HirTy::I32,
+            make_span(1, 13),
+        )),
         ty: HirTy::I32,
         span: make_span(1, 11),
     };
@@ -154,7 +193,12 @@ fn test_nested_captures() {
             HirTy::I32,
             make_span(2, 5),
         )),
-        right: Box::new(HirExpression::Variable("y".to_string(), 1, HirTy::I32, make_span(2, 13))),
+        right: Box::new(HirExpression::Variable(
+            "y".to_string(),
+            1,
+            HirTy::I32,
+            make_span(2, 13),
+        )),
         ty: HirTy::I32,
         span: make_span(2, 9),
     };
@@ -162,7 +206,10 @@ fn test_nested_captures() {
     // Inner closure captures 'outer' from outer scope
     let inner_analysis = analyze_captures(&env, &inner_closure_body, vec!["y".to_string()]);
 
-    println!("  Inner closure captures: {} variable(s)", inner_analysis.captures.len());
+    println!(
+        "  Inner closure captures: {} variable(s)",
+        inner_analysis.captures.len()
+    );
     for capture in &inner_analysis.captures {
         println!("    - {}", capture.name);
     }
@@ -188,7 +235,12 @@ fn test_local_variable_not_captured() {
             ty: HirTy::I32,
             init: Some(HirExpression::BinaryOp {
                 op: zulon_hir::HirBinOp::Mul,
-                left: Box::new(HirExpression::Variable("x".to_string(), 0, HirTy::I32, make_span(1, 12))),
+                left: Box::new(HirExpression::Variable(
+                    "x".to_string(),
+                    0,
+                    HirTy::I32,
+                    make_span(1, 12),
+                )),
                 right: Box::new(HirExpression::Literal(
                     zulon_hir::HirLiteral::Integer(2),
                     2,
@@ -202,7 +254,12 @@ fn test_local_variable_not_captured() {
         })],
         trailing_expr: Some(HirExpression::BinaryOp {
             op: zulon_hir::HirBinOp::Add,
-            left: Box::new(HirExpression::Variable("y".to_string(), 3, HirTy::I32, make_span(1, 21))),
+            left: Box::new(HirExpression::Variable(
+                "y".to_string(),
+                3,
+                HirTy::I32,
+                make_span(1, 21),
+            )),
             right: Box::new(HirExpression::Literal(
                 zulon_hir::HirLiteral::Integer(10),
                 4,

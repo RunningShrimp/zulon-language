@@ -29,11 +29,11 @@
 //! - Multi-line comments
 //! - Error recovery
 
-pub mod lexer;
 pub mod ast;
-pub mod parser;
 pub mod diagnostic;
+pub mod lexer;
+pub mod parser;
 
-pub use lexer::{Lexer, Token, TokenKind, Span, Position, LexError, LexErrorKind};
 pub use ast::*;
-pub use parser::{Parser, ParseError, ParseResult};
+pub use lexer::{LexError, LexErrorKind, Lexer, Position, Span, Token, TokenKind};
+pub use parser::{ParseError, ParseResult, Parser};

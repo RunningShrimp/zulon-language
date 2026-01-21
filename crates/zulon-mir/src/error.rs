@@ -20,10 +20,7 @@ pub enum MirError {
     InvalidConstruction(String),
 
     #[error("invalid field access: field '{field}' - {reason}")]
-    InvalidFieldAccess {
-        field: String,
-        reason: String,
-    },
+    InvalidFieldAccess { field: String, reason: String },
 
     #[error("async transformation error: {0}")]
     TransformError(String),

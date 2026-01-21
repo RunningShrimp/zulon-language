@@ -1,13 +1,17 @@
 // Comprehensive end-to-end test: generate LLVM IR and verify it compiles
 use std::io::Cursor;
 use std::process::Command;
-use zulon_parser::Parser;
-use zulon_hir::lower_ast_simple;
-use zulon_mir::lower_hir;
-use zulon_lir::lower::LirLoweringContext;
 use zulon_codegen_llvm::CodeGenerator;
+use zulon_hir::lower_ast_simple;
+use zulon_lir::lower::LirLoweringContext;
+use zulon_mir::lower_hir;
+use zulon_parser::Parser;
 
-fn test_program(source: &str, name: &str, expected_result: i32) -> Result<(), Box<dyn std::error::Error>> {
+fn test_program(
+    source: &str,
+    name: &str,
+    expected_result: i32,
+) -> Result<(), Box<dyn std::error::Error>> {
     println!("Testing: {}", name);
 
     // Parse and lower through IR pipeline
@@ -57,8 +61,7 @@ fn test_program(source: &str, name: &str, expected_result: i32) -> Result<(), Bo
                 Ok(output) if output.status.success() => {
                     // Run and check exit code
                     let exe_path = std::path::Path::new(&exe_file);
-                    let run_output = Command::new(exe_path)
-                        .output();
+                    let run_output = Command::new(exe_path).output();
 
                     match run_output {
                         Ok(output) => {
@@ -67,7 +70,10 @@ fn test_program(source: &str, name: &str, expected_result: i32) -> Result<(), Bo
                                 println!("  ✅ PASS - Exit code: {}", exit_code);
                                 Ok(())
                             } else {
-                                println!("  ❌ FAIL - Expected {}, got {}", expected_result, exit_code);
+                                println!(
+                                    "  ❌ FAIL - Expected {}, got {}",
+                                    expected_result, exit_code
+                                );
                                 Err(format!("Wrong exit code").into())
                             }
                         }

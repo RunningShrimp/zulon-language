@@ -1,12 +1,12 @@
 // Generate LLVM IR and save to file for compilation
 
-use std::io::Cursor;
 use std::fs::write;
-use zulon_parser::Parser;
-use zulon_hir::lower_ast_simple;
-use zulon_mir::lower_hir;
-use zulon_lir::lower::LirLoweringContext;
+use std::io::Cursor;
 use zulon_codegen_llvm::CodeGenerator;
+use zulon_hir::lower_ast_simple;
+use zulon_lir::lower::LirLoweringContext;
+use zulon_mir::lower_hir;
+use zulon_parser::Parser;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("=== ZULON Compiler: Source → LLVM IR File ===\n");

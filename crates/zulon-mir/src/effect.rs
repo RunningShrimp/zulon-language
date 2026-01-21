@@ -137,7 +137,12 @@ impl EffectChecker {
     /// Check an instruction for effects
     fn check_instruction(&mut self, inst: &MirInstruction) -> Result<()> {
         match inst {
-            MirInstruction::Call { func, args: _, dest: _, return_type: _ } => {
+            MirInstruction::Call {
+                func,
+                args: _,
+                dest: _,
+                return_type: _,
+            } => {
                 // Check the callee's effects
                 let func_name = match func {
                     MirPlace::Local(name) => name.clone(),
@@ -163,7 +168,12 @@ impl EffectChecker {
                 }
             }
 
-            MirInstruction::Borrow { dest: _, src: _, mutable: _, ty: _ } => {
+            MirInstruction::Borrow {
+                dest: _,
+                src: _,
+                mutable: _,
+                ty: _,
+            } => {
                 // Borrowing doesn't have effects (in this simplified model)
             }
 
@@ -204,11 +214,19 @@ impl EffectChecker {
                 // Goto is pure
             }
 
-            MirTerminator::If { condition: _, then_block: _, else_block: _ } => {
+            MirTerminator::If {
+                condition: _,
+                then_block: _,
+                else_block: _,
+            } => {
                 // If is pure (effects are in the blocks)
             }
 
-            MirTerminator::Switch { scrutinee: _, targets: _, default: _ } => {
+            MirTerminator::Switch {
+                scrutinee: _,
+                targets: _,
+                default: _,
+            } => {
                 // Switch is pure (effects are in the blocks)
             }
 

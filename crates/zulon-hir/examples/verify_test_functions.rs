@@ -1,6 +1,6 @@
 // Verify HIR test function detection
-use zulon_parser::Parser;
 use zulon_hir::lower_ast_simple;
+use zulon_parser::Parser;
 
 fn main() {
     let source = r#"
@@ -39,20 +39,25 @@ fn normal_function() -> i32 {
                     println!("🧪 Found {} test functions:\n", tests.len());
 
                     for test in &tests {
-                        println!("  - {} (ignored: {})",
-                            test.name,
-                            test.is_ignored_test()
-                        );
+                        println!("  - {} (ignored: {})", test.name, test.is_ignored_test());
                     }
 
                     // Verify results
                     println!("\n✅ Verification complete!");
-                    println!("   - test_addition detected: {}",
-                        tests.iter().any(|t| t.name == "test_addition"));
-                    println!("   - test_slow detected and ignored: {}",
-                        tests.iter().any(|t| t.name == "test_slow" && t.is_ignored_test()));
-                    println!("   - normal_function NOT in tests: {}",
-                        !tests.iter().any(|t| t.name == "normal_function"));
+                    println!(
+                        "   - test_addition detected: {}",
+                        tests.iter().any(|t| t.name == "test_addition")
+                    );
+                    println!(
+                        "   - test_slow detected and ignored: {}",
+                        tests
+                            .iter()
+                            .any(|t| t.name == "test_slow" && t.is_ignored_test())
+                    );
+                    println!(
+                        "   - normal_function NOT in tests: {}",
+                        !tests.iter().any(|t| t.name == "normal_function")
+                    );
                 }
                 Err(e) => {
                     eprintln!("❌ HIR lowering error: {}", e);

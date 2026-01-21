@@ -498,7 +498,11 @@ impl Hash for usize {
 
 impl Hash for bool {
     fn hash(&self) -> u64 {
-        if *self { 1 } else { 0 }
+        if *self {
+            1
+        } else {
+            0
+        }
     }
 }
 
@@ -548,4 +552,3 @@ impl<T: Hash> Hash for &T {
         (*self).hash()
     }
 }
-

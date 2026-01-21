@@ -3,7 +3,7 @@
 
 //! Optional type: Represents an optional value
 
-use crate::traits::{PartialEq, Clone, Copy};
+use crate::traits::{Clone, Copy, PartialEq};
 
 /// Represents a value that may or may not exist
 #[derive(Debug)]

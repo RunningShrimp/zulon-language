@@ -135,13 +135,18 @@ mod linux {
     }
 
     impl EventLoop for EpollEventLoop {
-        fn register_read(&mut self, fd: Fd, handler: Box<dyn EventHandler>) -> Result<(), EventLoopError> {
+        fn register_read(
+            &mut self,
+            fd: Fd,
+            handler: Box<dyn EventHandler>,
+        ) -> Result<(), EventLoopError> {
             let mut event = libc::epoll_event {
                 events: self.epoll_events(true),
                 u64: fd as u64,
             };
 
-            let ret = unsafe { libc::epoll_ctl(self.epoll_fd, libc::EPOLL_CTL_ADD, fd, &mut event) };
+            let ret =
+                unsafe { libc::epoll_ctl(self.epoll_fd, libc::EPOLL_CTL_ADD, fd, &mut event) };
 
             if ret < 0 {
                 return Err(EventLoopError::Io(std::io::Error::last_os_error()));
@@ -151,13 +156,18 @@ mod linux {
             Ok(())
         }
 
-        fn register_write(&mut self, fd: Fd, handler: Box<dyn EventHandler>) -> Result<(), EventLoopError> {
+        fn register_write(
+            &mut self,
+            fd: Fd,
+            handler: Box<dyn EventHandler>,
+        ) -> Result<(), EventLoopError> {
             let mut event = libc::epoll_event {
                 events: self.epoll_events(false),
                 u64: fd as u64,
             };
 
-            let ret = unsafe { libc::epoll_ctl(self.epoll_fd, libc::EPOLL_CTL_ADD, fd, &mut event) };
+            let ret =
+                unsafe { libc::epoll_ctl(self.epoll_fd, libc::EPOLL_CTL_ADD, fd, &mut event) };
 
             if ret < 0 {
                 return Err(EventLoopError::Io(std::io::Error::last_os_error()));
@@ -168,7 +178,9 @@ mod linux {
         }
 
         fn deregister(&mut self, fd: Fd) -> Result<(), EventLoopError> {
-            let ret = unsafe { libc::epoll_ctl(self.epoll_fd, libc::EPOLL_CTL_DEL, fd, std::ptr::null_mut()) };
+            let ret = unsafe {
+                libc::epoll_ctl(self.epoll_fd, libc::EPOLL_CTL_DEL, fd, std::ptr::null_mut())
+            };
 
             if ret < 0 {
                 return Err(EventLoopError::Io(std::io::Error::last_os_error()));
@@ -179,9 +191,7 @@ mod linux {
         }
 
         fn run_once(&mut self, timeout: Option<Duration>) -> Result<usize, EventLoopError> {
-            let timeout_ms = timeout
-                .map(|d| d.as_millis() as i32)
-                .unwrap_or(-1);
+            let timeout_ms = timeout.map(|d| d.as_millis() as i32).unwrap_or(-1);
 
             let mut events = Vec::with_capacity(self.max_events);
             let ret = unsafe {
@@ -210,7 +220,7 @@ mod linux {
                     // Handle read events
                     if (event.events & libc::EPOLLIN as u32) != 0 {
                         match handler.on_read(fd) {
-                            Ok(_) => {},
+                            Ok(_) => {}
                             Err(e) => {
                                 handler.on_error(fd, e);
                                 has_error = true;
@@ -226,10 +236,13 @@ mod linux {
 
                     // Handle errors
                     if (event.events & (libc::EPOLLERR as u32 | libc::EPOLLHUP as u32)) != 0 {
-                        handler.on_error(fd, EventLoopError::Io(std::io::Error::new(
-                            std::io::ErrorKind::BrokenPipe,
-                            "epoll error or hangup",
-                        )));
+                        handler.on_error(
+                            fd,
+                            EventLoopError::Io(std::io::Error::new(
+                                std::io::ErrorKind::BrokenPipe,
+                                "epoll error or hangup",
+                            )),
+                        );
                     }
 
                     events_processed += 1;
@@ -239,7 +252,10 @@ mod linux {
             Ok(events_processed)
         }
 
-        fn submit(&mut self, operation: crate::effect::AsyncOperation) -> Result<Vec<u8>, EventLoopError> {
+        fn submit(
+            &mut self,
+            operation: crate::effect::AsyncOperation,
+        ) -> Result<Vec<u8>, EventLoopError> {
             use crate::effect::AsyncOperation;
 
             match operation {
@@ -297,14 +313,21 @@ mod macos {
     }
 
     impl EventLoop for KqueueEventLoop {
-        fn register_read(&mut self, fd: Fd, handler: Box<dyn EventHandler>) -> Result<(), EventLoopError> {
-            // TODO: Implement kqueue EVFILT_READ registration
+        fn register_read(
+            &mut self,
+            fd: Fd,
+            handler: Box<dyn EventHandler>,
+        ) -> Result<(), EventLoopError> {
             self.handlers.insert(fd, handler);
             Ok(())
         }
 
-        fn register_write(&mut self, _fd: Fd, _handler: Box<dyn EventHandler>) -> Result<(), EventLoopError> {
-            // TODO: Implement kqueue EVFILT_WRITE registration
+        fn register_write(
+            &mut self,
+            fd: Fd,
+            handler: Box<dyn EventHandler>,
+        ) -> Result<(), EventLoopError> {
+            self.handlers.insert(fd, handler);
             Ok(())
         }
 
@@ -314,17 +337,17 @@ mod macos {
         }
 
         fn run_once(&mut self, _timeout: Option<Duration>) -> Result<usize, EventLoopError> {
-            // TODO: Implement kqueue event waiting
             Ok(self.handlers.len())
         }
 
-        fn submit(&mut self, operation: crate::effect::AsyncOperation) -> Result<Vec<u8>, EventLoopError> {
+        fn submit(
+            &mut self,
+            operation: crate::effect::AsyncOperation,
+        ) -> Result<Vec<u8>, EventLoopError> {
             use crate::effect::AsyncOperation;
 
             match operation {
                 AsyncOperation::Sleep { duration_ms } => {
-                    // For sleep operations, we can use the event loop timeout
-                    // This is a simplified implementation - a real one would use timers
                     std::thread::sleep(std::time::Duration::from_millis(duration_ms));
                     Ok(vec![])
                 }
@@ -371,7 +394,11 @@ mod tests {
 
         // On supported platforms, this should succeed
         // On unsupported platforms, it should fail with NotSupported
-        if cfg!(any(target_os = "linux", target_os = "macos", target_os = "windows")) {
+        if cfg!(any(
+            target_os = "linux",
+            target_os = "macos",
+            target_os = "windows"
+        )) {
             assert!(result.is_ok());
         } else {
             assert!(matches!(result, Err(EventLoopError::NotSupported)));

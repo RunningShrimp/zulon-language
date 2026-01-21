@@ -7,8 +7,8 @@
 //! (functions marked with #[test]) in HIR crates.
 
 use crate::hir::*;
+use serde::{Deserialize, Serialize};
 use zulon_parser::ast::Attribute;
-use serde::{Serialize, Deserialize};
 
 /// A discovered test function
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -62,7 +62,9 @@ fn has_ignore_attribute(attributes: &[Attribute]) -> bool {
 
 /// Check if a function has the #[should_panic] attribute
 fn has_should_panic_attribute(attributes: &[Attribute]) -> bool {
-    attributes.iter().any(|attr| attr.name.name == "should_panic")
+    attributes
+        .iter()
+        .any(|attr| attr.name.name == "should_panic")
 }
 
 /// Get the expected panic message from #[should_panic(expected = "...")]
@@ -88,9 +90,9 @@ fn get_expected_panic_message(attributes: &[Attribute]) -> Option<String> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use zulon_parser::ast::{Attribute, AttributeArg, Identifier};
-    use crate::{HirCrate, HirItem, HirFunction, HirBlock, HirTy};
+    use crate::{HirBlock, HirCrate, HirFunction, HirItem, HirTy};
     use zulon_parser::ast::Span;
+    use zulon_parser::ast::{Attribute, AttributeArg, Identifier};
     use zulon_parser::lexer::Position;
 
     #[test]
@@ -105,12 +107,10 @@ mod tests {
             effects: Vec::new(),
             is_async: false,
             is_unsafe: false,
-            attributes: vec![
-                Attribute {
-                    name: Identifier::new(Span::new(Position::new(0, 0), Position::new(0, 0)), "test"),
-                    args: Vec::new(),
-                }
-            ],
+            attributes: vec![Attribute {
+                name: Identifier::new(Span::new(Position::new(0, 0), Position::new(0, 0)), "test"),
+                args: Vec::new(),
+            }],
             body: HirBlock {
                 id: 0,
                 statements: Vec::new(),
@@ -147,11 +147,17 @@ mod tests {
             is_unsafe: false,
             attributes: vec![
                 Attribute {
-                    name: Identifier::new(Span::new(Position::new(0, 0), Position::new(0, 0)), "test"),
+                    name: Identifier::new(
+                        Span::new(Position::new(0, 0), Position::new(0, 0)),
+                        "test",
+                    ),
                     args: Vec::new(),
                 },
                 Attribute {
-                    name: Identifier::new(Span::new(Position::new(0, 0), Position::new(0, 0)), "ignore"),
+                    name: Identifier::new(
+                        Span::new(Position::new(0, 0), Position::new(0, 0)),
+                        "ignore",
+                    ),
                     args: Vec::new(),
                 },
             ],
@@ -189,17 +195,24 @@ mod tests {
             is_unsafe: false,
             attributes: vec![
                 Attribute {
-                    name: Identifier::new(Span::new(Position::new(0, 0), Position::new(0, 0)), "test"),
+                    name: Identifier::new(
+                        Span::new(Position::new(0, 0), Position::new(0, 0)),
+                        "test",
+                    ),
                     args: Vec::new(),
                 },
                 Attribute {
-                    name: Identifier::new(Span::new(Position::new(0, 0), Position::new(0, 0)), "should_panic"),
-                    args: vec![
-                        AttributeArg::KeyValue {
-                            key: Identifier::new(Span::new(Position::new(0, 0), Position::new(0, 0)), "expected"),
-                            value: "index out of bounds".to_string(),
-                        }
-                    ],
+                    name: Identifier::new(
+                        Span::new(Position::new(0, 0), Position::new(0, 0)),
+                        "should_panic",
+                    ),
+                    args: vec![AttributeArg::KeyValue {
+                        key: Identifier::new(
+                            Span::new(Position::new(0, 0), Position::new(0, 0)),
+                            "expected",
+                        ),
+                        value: "index out of bounds".to_string(),
+                    }],
                 },
             ],
             body: HirBlock {
@@ -220,6 +233,9 @@ mod tests {
         let tests = discover_tests(&hir_crate);
         assert_eq!(tests.len(), 1);
         assert!(tests[0].should_panic);
-        assert_eq!(tests[0].expected_panic_message, Some("index out of bounds".to_string()));
+        assert_eq!(
+            tests[0].expected_panic_message,
+            Some("index out of bounds".to_string())
+        );
     }
 }

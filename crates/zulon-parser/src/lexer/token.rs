@@ -73,7 +73,6 @@ pub enum TokenKind {
     // e.g., Ident("i32"), Ident("f64")
 
     // === Identifiers and Literals ===
-
     /// Identifier or keyword (e.g., variable names, function names)
     Ident(Box<str>),
     /// Integer literal (e.g., 42, 0xFF, 1_000_000)
@@ -110,13 +109,13 @@ pub enum TokenKind {
     RightShiftEq,
 
     // Comparison
-    Equals,      // =
-    EqEq,        // ==
-    BangEq,      // !=
-    Less,        // <
-    LessEq,      // <=
-    Greater,     // >
-    GreaterEq,   // >=
+    Equals,    // =
+    EqEq,      // ==
+    BangEq,    // !=
+    Less,      // <
+    LessEq,    // <=
+    Greater,   // >
+    GreaterEq, // >=
 
     // Logical
     And,
@@ -124,26 +123,25 @@ pub enum TokenKind {
     Bang,
 
     // Bitwise
-    Ampersand,   // &
-    Pipe,        // |
+    Ampersand, // &
+    Pipe,      // |
 
     // Shift operators
-    LeftShift,   // <<
-    RightShift,  // >>
+    LeftShift,  // <<
+    RightShift, // >>
 
     // Other operators
-    Arrow,       // ->
-    FatArrow,    // =>
-    Dot,         // .
-    DotDot,      // ..
-    DotDotDot,   // ...
-    DotDotEq,    // ..=
-    PathSep,     // ::
-    Question,    // ?
-    Underscore,  // _
+    Arrow,      // ->
+    FatArrow,   // =>
+    Dot,        // .
+    DotDot,     // ..
+    DotDotDot,  // ...
+    DotDotEq,   // ..=
+    PathSep,    // ::
+    Question,   // ?
+    Underscore, // _
 
     // === Delimiters ===
-
     LeftParen,    // (
     RightParen,   // )
     LeftBrace,    // {
@@ -158,7 +156,6 @@ pub enum TokenKind {
     Dollar,       // $
 
     // === Other ===
-
     /// Whitespace (only tracked for position, not returned to parser)
     Whitespace,
     /// Comment (line or block)

@@ -23,7 +23,7 @@
 
 use std::collections::{HashMap, HashSet};
 
-use super::{HirCapture, HirCaptureMode, HirExpression, HirTy, HirStatement};
+use super::{HirCapture, HirCaptureMode, HirExpression, HirStatement, HirTy};
 use zulon_parser::Span;
 
 /// Environment trait for variable scope information
@@ -126,7 +126,9 @@ impl<'a, E: Environment> CaptureAnalyzer<'a, E> {
             }
 
             // Binary operation - check for assignment, then walk both sides
-            HirExpression::BinaryOp { op, left, right, .. } => {
+            HirExpression::BinaryOp {
+                op, left, right, ..
+            } => {
                 // Check if this is an assignment to a variable
                 if *op == super::HirBinOp::Assign {
                     if let HirExpression::Variable(name, _id, _ty, span) = &**left {
@@ -190,7 +192,9 @@ impl<'a, E: Environment> CaptureAnalyzer<'a, E> {
                 self.walk_expression(&HirExpression::Block(body.clone()));
             }
 
-            HirExpression::While { condition, body, .. } => {
+            HirExpression::While {
+                condition, body, ..
+            } => {
                 self.walk_expression(condition);
                 self.walk_expression(&HirExpression::Block(body.clone()));
             }
@@ -330,9 +334,7 @@ impl<'a, E: Environment> CaptureAnalyzer<'a, E> {
             (HirCaptureMode::ImmutableRef, new) => new,
 
             // MutableRef + MutableRef → MutableRef
-            (HirCaptureMode::MutableRef, HirCaptureMode::MutableRef) => {
-                HirCaptureMode::MutableRef
-            }
+            (HirCaptureMode::MutableRef, HirCaptureMode::MutableRef) => HirCaptureMode::MutableRef,
 
             // MutableRef + ByValue → ByValue (ownership transfer)
             (HirCaptureMode::MutableRef, HirCaptureMode::ByValue) => HirCaptureMode::ByValue,

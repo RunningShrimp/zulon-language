@@ -6,8 +6,8 @@
 //! `String` is a growable, UTF-8 encoded string. Internally, it wraps a `Vec<u8>`
 //! and ensures that all contents are valid UTF-8.
 
+use crate::traits::{Clone, Eq, Hash, Ord, PartialEq, PartialOrd};
 use crate::vec::Vec;
-use crate::traits::{Clone, PartialEq, Eq, PartialOrd, Ord, Hash};
 
 /// A growable, UTF-8 encoded string.
 ///
@@ -212,8 +212,17 @@ impl String {
     /// assert_eq!(world.as_str(), "World!");
     /// ```
     pub fn split_off(&mut self, at: usize) -> String {
-        assert!(at <= self.len(), "split_off at {} exceeds length {}", at, self.len());
-        assert!(self.is_char_boundary(at), "split_off at {} is not a character boundary", at);
+        assert!(
+            at <= self.len(),
+            "split_off at {} exceeds length {}",
+            at,
+            self.len()
+        );
+        assert!(
+            self.is_char_boundary(at),
+            "split_off at {} is not a character boundary",
+            at
+        );
 
         // Create the other string from bytes at 'at' onwards
         let mut other_vec = Vec::new();
@@ -243,8 +252,14 @@ impl String {
     pub fn remove_range(&mut self, range: std::ops::Range<usize>) {
         assert!(range.start <= range.end, "invalid range");
         assert!(range.end <= self.len(), "range end out of bounds");
-        assert!(self.is_char_boundary(range.start), "range start not on character boundary");
-        assert!(self.is_char_boundary(range.end), "range end not on character boundary");
+        assert!(
+            self.is_char_boundary(range.start),
+            "range start not on character boundary"
+        );
+        assert!(
+            self.is_char_boundary(range.end),
+            "range end not on character boundary"
+        );
 
         let len = range.end - range.start;
         let remaining = self.len() - range.end;
@@ -291,8 +306,17 @@ impl String {
     /// assert_eq!(s.as_str(), "Hello");
     /// ```
     pub fn truncate(&mut self, new_len: usize) {
-        assert!(new_len <= self.len(), "truncate length {} exceeds length {}", new_len, self.len());
-        assert!(self.is_char_boundary(new_len), "truncate length {} is not on character boundary", new_len);
+        assert!(
+            new_len <= self.len(),
+            "truncate length {} exceeds length {}",
+            new_len,
+            self.len()
+        );
+        assert!(
+            self.is_char_boundary(new_len),
+            "truncate length {} is not on character boundary",
+            new_len
+        );
 
         unsafe {
             self.vec.set_len(new_len);
@@ -490,7 +514,10 @@ impl String {
     pub fn substring(&self, start: usize, end: usize) -> String {
         assert!(start <= end, "start > end");
         assert!(end <= self.len(), "end out of bounds");
-        assert!(self.is_char_boundary(start), "start not on character boundary");
+        assert!(
+            self.is_char_boundary(start),
+            "start not on character boundary"
+        );
         assert!(self.is_char_boundary(end), "end not on character boundary");
 
         String::from(&self.as_str()[start..end])

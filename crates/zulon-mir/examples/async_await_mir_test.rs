@@ -3,9 +3,9 @@
 
 //! Test async/await MIR lowering
 
-use zulon_parser::Parser;
 use zulon_hir::lower_ast_simple;
 use zulon_mir::lower_hir;
+use zulon_parser::Parser;
 
 fn main() {
     println!("=== ZULON Async/Await MIR Lowering Test ===\n");
@@ -99,16 +99,24 @@ async fn example() {
     println!("\n=== Step 5: Verify MIR Async Functions ===");
     let mut mir_async_count = 0;
     for (i, func) in mir.functions.iter().enumerate() {
-        println!("  [{}] {} (is_async={}, has_state_machine={})",
-            i, func.name, func.is_async, func.state_machine.is_some());
+        println!(
+            "  [{}] {} (is_async={}, has_state_machine={})",
+            i,
+            func.name,
+            func.is_async,
+            func.state_machine.is_some()
+        );
 
         if func.is_async {
             mir_async_count += 1;
 
             // Verify state machine exists
             if let Some(sm) = &func.state_machine {
-                println!("      └─ State machine: {} states, output type: {:?}",
-                    sm.states.len(), sm.output_type);
+                println!(
+                    "      └─ State machine: {} states, output type: {:?}",
+                    sm.states.len(),
+                    sm.output_type
+                );
             }
         }
     }

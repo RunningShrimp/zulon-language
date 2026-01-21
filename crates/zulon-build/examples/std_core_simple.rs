@@ -12,20 +12,40 @@ fn main() {
     let some = Optional::Some(42);
     let none = Optional::None::<i32>;
     println!("   Create: Some(42) = {:?}, None = {:?}\n", some, none);
-    println!("   Check: is_some() = {}, is_none() = {}\n", some.is_some(), none.is_none());
-    println!("   Unwrap: Some(42).unwrap() = {}", Optional::Some(42).unwrap());
+    println!(
+        "   Check: is_some() = {}, is_none() = {}\n",
+        some.is_some(),
+        none.is_none()
+    );
+    println!(
+        "   Unwrap: Some(42).unwrap() = {}",
+        Optional::Some(42).unwrap()
+    );
     println!("   Unwrap: None.unwrap_or(100) = {}\n", none.unwrap_or(100));
-    println!("   Map: Some(42).map(|x| x * 2) = {:?}\n", some.map(|x| x * 2));
+    println!(
+        "   Map: Some(42).map(|x| x * 2) = {:?}\n",
+        some.map(|x| x * 2)
+    );
 
-    // Part 2: Outcome  
+    // Part 2: Outcome
     println!("2. OUTCOME<T, E> - Error Handling\n");
 
     let ok: Outcome<i32, &str> = Outcome::Ok(42);
     let err = Outcome::Err::<i32, &str>("error");
     println!("   Create: Ok(42) = {:?}, Err(\"error\") = {:?}\n", ok, err);
-    println!("   Check: is_ok() = {}, is_err() = {}\n", ok.is_ok(), err.is_err());
-    println!("   Unwrap: Ok(42).unwrap() = {}", Outcome::<i32, &str>::Ok(42).unwrap());
-    println!("   Unwrap: Err(\"error\").unwrap_or(100) = {}\n", err.unwrap_or(100));
+    println!(
+        "   Check: is_ok() = {}, is_err() = {}\n",
+        ok.is_ok(),
+        err.is_err()
+    );
+    println!(
+        "   Unwrap: Ok(42).unwrap() = {}",
+        Outcome::<i32, &str>::Ok(42).unwrap()
+    );
+    println!(
+        "   Unwrap: Err(\"error\").unwrap_or(100) = {}\n",
+        err.unwrap_or(100)
+    );
     println!("   Map: Ok(42).map(|x| x * 2) = {:?}\n", ok.map(|x| x * 2));
 
     // Part 3: Real-World Example

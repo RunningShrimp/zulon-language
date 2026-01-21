@@ -43,15 +43,15 @@
 //! }
 //! ```
 
-mod token;
 mod interest;
+mod token;
 
-pub use token::Token;
 pub use interest::Interest;
+pub use token::Token;
 
 use crate::error::{IoError, IoResult};
-use std::time::Duration;
 use std::os::unix::io::RawFd;
+use std::time::Duration;
 
 /// Core event loop trait
 ///

@@ -5,8 +5,8 @@
 //!
 //! This example shows how HIR is lowered to MIR.
 
-use zulon_mir::{lower_hir, MirBody};
 use zulon_hir::lower_ast_simple;
+use zulon_mir::{lower_hir, MirBody};
 use zulon_parser::{Lexer, Parser};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -120,36 +120,88 @@ fn format_instruction(inst: &zulon_mir::MirInstruction, _func: &zulon_mir::MirFu
         zulon_mir::MirInstruction::Move { dest, src } => {
             format!("_{} = move {}", dest, format_place(src))
         }
-        zulon_mir::MirInstruction::BinaryOp { dest, op, left, right, ty } => {
-            format!("_{} = {} _{} _{} ({})",
-                dest, format_bin_op(*op), left, right, ty.display_name())
+        zulon_mir::MirInstruction::BinaryOp {
+            dest,
+            op,
+            left,
+            right,
+            ty,
+        } => {
+            format!(
+                "_{} = {} _{} _{} ({})",
+                dest,
+                format_bin_op(*op),
+                left,
+                right,
+                ty.display_name()
+            )
         }
-        zulon_mir::MirInstruction::UnaryOp { dest, op, operand, ty } => {
-            format!("_{} = {} _{} ({})",
-                dest, format_unary_op(*op), operand, ty.display_name())
+        zulon_mir::MirInstruction::UnaryOp {
+            dest,
+            op,
+            operand,
+            ty,
+        } => {
+            format!(
+                "_{} = {} _{} ({})",
+                dest,
+                format_unary_op(*op),
+                operand,
+                ty.display_name()
+            )
         }
-        zulon_mir::MirInstruction::Call { dest, func, args, return_type } => {
+        zulon_mir::MirInstruction::Call {
+            dest,
+            func,
+            args,
+            return_type,
+        } => {
             let dest_str = if let Some(d) = dest {
                 format!("_{} = ", d)
             } else {
                 String::new()
             };
-            format!("{}call {}({}) -> {}",
+            format!(
+                "{}call {}({}) -> {}",
                 dest_str,
                 format_place(func),
-                args.iter().map(|a| format_place(a)).collect::<Vec<_>>().join(", "),
-                return_type.display_name())
+                args.iter()
+                    .map(|a| format_place(a))
+                    .collect::<Vec<_>>()
+                    .join(", "),
+                return_type.display_name()
+            )
         }
         zulon_mir::MirInstruction::Load { dest, src, ty } => {
-            format!("_{} = load {} {}", dest, ty.display_name(), format_place(src))
+            format!(
+                "_{} = load {} {}",
+                dest,
+                ty.display_name(),
+                format_place(src)
+            )
         }
         zulon_mir::MirInstruction::Store { dest, src, ty } => {
-            format!("store {} _{} -> {}", ty.display_name(), src, format_place(dest))
+            format!(
+                "store {} _{} -> {}",
+                ty.display_name(),
+                src,
+                format_place(dest)
+            )
         }
-        zulon_mir::MirInstruction::Borrow { dest, src, mutable, ty } => {
+        zulon_mir::MirInstruction::Borrow {
+            dest,
+            src,
+            mutable,
+            ty,
+        } => {
             let mut_str = if *mutable { "mut " } else { "" };
-            format!("_{} = borrow&{}{} {}",
-                dest, mut_str, ty.display_name(), format_place(src))
+            format!(
+                "_{} = borrow&{}{} {}",
+                dest,
+                mut_str,
+                ty.display_name(),
+                format_place(src)
+            )
         }
         zulon_mir::MirInstruction::Drop { place, ty } => {
             format!("drop {} ({})", ty.display_name(), format_place(place))
@@ -178,21 +230,32 @@ fn format_terminator(terminator: &zulon_mir::MirTerminator) -> String {
         zulon_mir::MirTerminator::Goto { target } => {
             format!("goto -> block{}", target)
         }
-        zulon_mir::MirTerminator::If { condition, then_block, else_block } => {
-            format!("if _{} -> block{} else block{}",
-                condition, then_block, else_block)
+        zulon_mir::MirTerminator::If {
+            condition,
+            then_block,
+            else_block,
+        } => {
+            format!(
+                "if _{} -> block{} else block{}",
+                condition, then_block, else_block
+            )
         }
-        zulon_mir::MirTerminator::Switch { scrutinee, targets, default } => {
-            let targets_str = targets.iter()
+        zulon_mir::MirTerminator::Switch {
+            scrutinee,
+            targets,
+            default,
+        } => {
+            let targets_str = targets
+                .iter()
                 .map(|(val, blk)| format!("{:?} -> block{}", val, blk))
                 .collect::<Vec<_>>()
                 .join(", ");
-            format!("switch _{} {{ {} }} -> block{}",
-                scrutinee, targets_str, default)
+            format!(
+                "switch _{} {{ {} }} -> block{}",
+                scrutinee, targets_str, default
+            )
         }
-        zulon_mir::MirTerminator::Unreachable => {
-            "unreachable".to_string()
-        }
+        zulon_mir::MirTerminator::Unreachable => "unreachable".to_string(),
         zulon_mir::MirTerminator::EffectCall { .. } => {
             format!("<effect call>")
         }

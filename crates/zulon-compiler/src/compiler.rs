@@ -3,15 +3,15 @@
 
 //! Compiler implementation
 
-use std::path::{Path, PathBuf};
-use zulon_parser::{Lexer, Parser};
-use zulon_parser::ast::{ItemKind, Type as AstType};
-use zulon_typeck::TypeChecker;
-use zulon_hir::SimpleLoweringContext;
-use zulon_mir::MirLoweringContext;
-use zulon_lir::{LirLoweringContext, LirExternal, LirTy};
-use zulon_codegen_llvm::{CodeGenerator, StructLayout};
 use crate::macro_expander::MacroExpander;
+use std::path::{Path, PathBuf};
+use zulon_codegen_llvm::{CodeGenerator, StructLayout};
+use zulon_hir::SimpleLoweringContext;
+use zulon_lir::{LirExternal, LirLoweringContext, LirTy};
+use zulon_mir::MirLoweringContext;
+use zulon_parser::ast::{ItemKind, Type as AstType};
+use zulon_parser::{Lexer, Parser};
+use zulon_typeck::TypeChecker;
 
 use crate::error::{CompilerError, Result as CompilerResult};
 
@@ -54,8 +54,7 @@ impl Compiler {
     /// Compile a ZULON source file to an executable
     pub fn compile_file(&self, input: &Path) -> CompilerResult<PathBuf> {
         // Read source file
-        let source = std::fs::read_to_string(input)
-            .map_err(|e| CompilerError::Io(e))?;
+        let source = std::fs::read_to_string(input).map_err(|e| CompilerError::Io(e))?;
 
         // Compile source to LLVM IR
         self.compile_source(&source, input)?;
@@ -76,7 +75,11 @@ impl Compiler {
     }
 
     /// Compile LLVM IR to executable using llc and clang
-    fn compile_ll_to_executable(&self, ll_path: &Path, original_input: &Path) -> CompilerResult<PathBuf> {
+    fn compile_ll_to_executable(
+        &self,
+        ll_path: &Path,
+        original_input: &Path,
+    ) -> CompilerResult<PathBuf> {
         // Generate assembly using llc
         let asm_path = original_input.with_extension("s");
 
@@ -109,13 +112,14 @@ impl Compiler {
         } else {
             // On Unix-like systems, add no extension to avoid overwriting .zl files
             // The executable will have the same base name as the input
-            let base_name = original_input.file_stem()
+            let base_name = original_input
+                .file_stem()
                 .unwrap_or_else(|| std::ffi::OsStr::new("aout"));
-            
+
             // Build the path in the same directory as the source
             let exe_name = base_name.to_os_string().to_owned();
             let parent_dir = original_input.parent();
-            
+
             match parent_dir {
                 Some(dir) => dir.join(exe_name),
                 None => PathBuf::from(exe_name),
@@ -145,10 +149,16 @@ impl Compiler {
                 }
                 Ok(output) => {
                     let stderr = String::from_utf8_lossy(&output.stderr);
-                    return Err(CompilerError::Link(format!("Runtime compilation failed: {}", stderr)));
+                    return Err(CompilerError::Link(format!(
+                        "Runtime compilation failed: {}",
+                        stderr
+                    )));
                 }
                 Err(e) => {
-                    return Err(CompilerError::Link(format!("clang not found for runtime: {}", e)));
+                    return Err(CompilerError::Link(format!(
+                        "clang not found for runtime: {}",
+                        e
+                    )));
                 }
             }
         } else {
@@ -157,8 +167,7 @@ impl Compiler {
 
         println!("  🔧 Linking executable...");
         let mut clang_cmd = std::process::Command::new("clang");
-        clang_cmd
-            .arg(&asm_path);
+        clang_cmd.arg(&asm_path);
 
         // Link runtime library if it was compiled
         if runtime_o.exists() {
@@ -191,7 +200,10 @@ impl Compiler {
 
         // If we found the runtime library directory, link all the libraries
         if let Some(lib_dir) = runtime_lib_dir {
-            println!("    🔗 Linking runtime libraries from: {}", lib_dir.display());
+            println!(
+                "    🔗 Linking runtime libraries from: {}",
+                lib_dir.display()
+            );
 
             // Add library search path
             clang_cmd.arg("-L").arg(&lib_dir);
@@ -218,9 +230,7 @@ impl Compiler {
             println!("    ⚠️  Runtime libraries not found, async I/O may not work");
         }
 
-        clang_cmd
-            .arg("-o")
-            .arg(&exe_path);
+        clang_cmd.arg("-o").arg(&exe_path);
 
         let clang_status = clang_cmd.output();
 
@@ -238,9 +248,7 @@ impl Compiler {
                 let stderr = String::from_utf8_lossy(&output.stderr);
                 Err(CompilerError::Link(format!("clang failed: {}", stderr)))
             }
-            Err(e) => {
-                Err(CompilerError::Link(format!("clang not found: {}", e)))
-            }
+            Err(e) => Err(CompilerError::Link(format!("clang not found: {}", e))),
         }
     }
 
@@ -317,29 +325,33 @@ impl Compiler {
         // Step 4: HIR lowering
         println!("  [4/8] HIR lowering...");
         let mut hir_lowerer = SimpleLoweringContext::new();
-        let hir_crate = hir_lowerer.lower_ast(&ast)
+        let hir_crate = hir_lowerer
+            .lower_ast(&ast)
             .map_err(|e| CompilerError::HirLowering(format!("{:?}", e)))?;
         println!("    ✅ HIR generated ({} items)", hir_crate.items.len());
 
         // Discover tests and save metadata
         use zulon_hir::test_discovery;
         use zulon_hir::test_main_gen;
-        
+
         let tests = test_discovery::discover_tests(&hir_crate);
         if !tests.is_empty() {
             // Save test metadata
             let test_metadata_path = input_path.with_extension("test.json");
-            let test_json = serde_json::to_string_pretty(&tests)
-                .map_err(|e| CompilerError::Io(std::io::Error::new(std::io::ErrorKind::Other, e)))?;
-            std::fs::write(&test_metadata_path, test_json)
-                .map_err(|e| CompilerError::Io(e))?;
-            println!("    ✅ Discovered {} tests → {}", tests.len(), test_metadata_path.display());
-            
+            let test_json = serde_json::to_string_pretty(&tests).map_err(|e| {
+                CompilerError::Io(std::io::Error::new(std::io::ErrorKind::Other, e))
+            })?;
+            std::fs::write(&test_metadata_path, test_json).map_err(|e| CompilerError::Io(e))?;
+            println!(
+                "    ✅ Discovered {} tests → {}",
+                tests.len(),
+                test_metadata_path.display()
+            );
+
             // Generate test main file
             let test_main_path = input_path.with_extension("test_main.zl");
             let test_main_source = test_main_gen::generate_test_main_source(&tests);
-            std::fs::write(&test_main_path, test_main_source)
-                .map_err(|e| CompilerError::Io(e))?;
+            std::fs::write(&test_main_path, test_main_source).map_err(|e| CompilerError::Io(e))?;
             println!("    ✅ Generated test main → {}", test_main_path.display());
             println!("    💡 Compile test main with your test file");
         }
@@ -347,32 +359,41 @@ impl Compiler {
         // Step 5: MIR lowering
         println!("  [5/9] MIR lowering...");
         let mut mir_lowerer = MirLoweringContext::new();
-        let mut mir_body = mir_lowerer.lower_crate(&hir_crate)
+        let mut mir_body = mir_lowerer
+            .lower_crate(&hir_crate)
             .map_err(|e| CompilerError::MirLowering(format!("{:?}", e)))?;
-        println!("    ✅ MIR generated ({} functions)", mir_body.functions.len());
+        println!(
+            "    ✅ MIR generated ({} functions)",
+            mir_body.functions.len()
+        );
 
         // Step 5.5: Async transformation (convert async functions to state machines)
         println!("  [5.5/9] Async transformation...");
         use zulon_mir::async_transform;
 
         // Count async functions before transformation
-        let async_count = mir_body.functions.iter()
-            .filter(|f| f.is_async)
-            .count();
+        let async_count = mir_body.functions.iter().filter(|f| f.is_async).count();
 
         if async_count > 0 {
-            println!("    🔄 Found {} async function(s), applying state machine transformation...", async_count);
+            println!(
+                "    🔄 Found {} async function(s), applying state machine transformation...",
+                async_count
+            );
             match async_transform::transform_async_functions(mir_body) {
                 Ok(transformed_body) => {
                     mir_body = transformed_body;
-                    println!("    ✅ Transformed {} async function(s) to state machines", async_count);
+                    println!(
+                        "    ✅ Transformed {} async function(s) to state machines",
+                        async_count
+                    );
                 }
                 Err(e) => {
                     println!("    ⚠️  Async transformation failed: {:?}", e);
                     println!("    💡 Continuing without async transformation...");
                     // Recreate mir_body if transformation failed
                     let mut mir_lowerer = MirLoweringContext::new();
-                    mir_body = mir_lowerer.lower_crate(&hir_crate)
+                    mir_body = mir_lowerer
+                        .lower_crate(&hir_crate)
                         .map_err(|e| CompilerError::MirLowering(format!("{:?}", e)))?;
                 }
             }
@@ -383,9 +404,13 @@ impl Compiler {
         // Step 6: LIR lowering
         println!("  [6/9] LIR lowering...");
         let mut lir_lowerer = LirLoweringContext::new();
-        let mut lir_body = lir_lowerer.lower_body(&mir_body)
+        let mut lir_body = lir_lowerer
+            .lower_body(&mir_body)
             .map_err(|e| CompilerError::LirLowering(format!("{:?}", e)))?;
-        println!("    ✅ LIR generated ({} functions)", lir_body.functions.len());
+        println!(
+            "    ✅ LIR generated ({} functions)",
+            lir_body.functions.len()
+        );
 
         // Add extern functions from source code
         for extern_func in extern_functions {
@@ -396,8 +421,7 @@ impl Compiler {
         // Step 7: Generate LLVM IR
         println!("  [7/9] Generating LLVM IR...");
         let output_path = input_path.with_extension("ll");
-        let output_file = std::fs::File::create(&output_path)
-            .map_err(|e| CompilerError::Io(e))?;
+        let output_file = std::fs::File::create(&output_path).map_err(|e| CompilerError::Io(e))?;
 
         // Generate real LLVM IR from LIR
         let mut codegen = CodeGenerator::new(output_file);
@@ -456,7 +480,11 @@ impl Compiler {
                             register_struct_recursive(ty, &mut registered_structs, &mut codegen);
                         }
                         zulon_lir::LirInstruction::Call { return_type, .. } => {
-                            register_struct_recursive(return_type, &mut registered_structs, &mut codegen);
+                            register_struct_recursive(
+                                return_type,
+                                &mut registered_structs,
+                                &mut codegen,
+                            );
                         }
                         _ => {}
                     }
@@ -465,7 +493,7 @@ impl Compiler {
                 // Also check terminators
                 if let Some(terminator) = &block.terminator {
                     match terminator {
-                        zulon_lir::LirTerminator::Return(_) => {},
+                        zulon_lir::LirTerminator::Return(_) => {}
                         _ => {}
                     }
                 }
@@ -478,18 +506,25 @@ impl Compiler {
             register_struct_recursive(&func.return_type, &mut registered_structs, &mut codegen);
         }
 
-        codegen.generate_module_with_externals(
-            &lir_body.functions,
-            &lir_body.externals,
-        ).map_err(|e| CompilerError::CodeGen(format!("{:?}", e)))?;
+        codegen
+            .generate_module_with_externals(&lir_body.functions, &lir_body.externals)
+            .map_err(|e| CompilerError::CodeGen(format!("{:?}", e)))?;
 
         println!("    ✅ Generated LLVM IR: {}", output_path.display());
         println!();
         println!("✅ Compilation successful!");
         println!("   LLVM IR saved to: {}", output_path.display());
         println!("   To compile to executable:");
-        println!("     llc {}.ll -o {}.s", input_path.display(), input_path.display());
-        println!("     clang {}.s -o {}", input_path.display(), input_path.display());
+        println!(
+            "     llc {}.ll -o {}.s",
+            input_path.display(),
+            input_path.display()
+        );
+        println!(
+            "     clang {}.s -o {}",
+            input_path.display(),
+            input_path.display()
+        );
 
         Ok(())
     }
@@ -502,13 +537,17 @@ impl Compiler {
         for item in &ast.items {
             if let ItemKind::ExternFunction(func) = &item.kind {
                 // Convert parameter types
-                let param_types: Vec<LirTy> = func.params.iter()
+                let param_types: Vec<LirTy> = func
+                    .params
+                    .iter()
                     .filter_map(|p| p.type_annotation.as_ref())
                     .map(|ty| self.ast_type_to_lir_type(ty))
                     .collect();
 
                 // Get return type
-                let return_type = func.return_type.as_ref()
+                let return_type = func
+                    .return_type
+                    .as_ref()
                     .map(|ty| self.ast_type_to_lir_type(ty))
                     .unwrap_or(LirTy::Unit);
 
@@ -570,7 +609,10 @@ impl Compiler {
 
         // Phase 2.2: Inject async scheduler extern functions
         // These are used by ZULON's async runtime for non-blocking operations
-        println!("  [DEBUG] Checking async_scheduler externs, current count: {}", externs.len());
+        println!(
+            "  [DEBUG] Checking async_scheduler externs, current count: {}",
+            externs.len()
+        );
 
         // Inject async_scheduler_create: extern fn async_scheduler_create() -> *AsyncScheduler
         let has_async_scheduler_create = externs.iter().any(|e| e.name == "async_scheduler_create");
@@ -607,7 +649,8 @@ impl Compiler {
         }
 
         // Inject async_scheduler_destroy: extern fn async_scheduler_destroy(scheduler: *AsyncScheduler)
-        let has_async_scheduler_destroy = externs.iter().any(|e| e.name == "async_scheduler_destroy");
+        let has_async_scheduler_destroy =
+            externs.iter().any(|e| e.name == "async_scheduler_destroy");
         if !has_async_scheduler_destroy {
             externs.push(LirExternal {
                 name: "async_scheduler_destroy".to_string(),
@@ -624,7 +667,7 @@ impl Compiler {
                 name: "async_sleep".to_string(),
                 param_types: vec![
                     LirTy::Ptr(Box::new(LirTy::I8)), // scheduler: *AsyncScheduler
-                    LirTy::I64,                       // duration_ms: i64
+                    LirTy::I64,                      // duration_ms: i64
                 ],
                 return_type: LirTy::I32,
                 variadic: false,
@@ -632,12 +675,14 @@ impl Compiler {
         }
 
         // Inject async_scheduler_get_event_loop: extern fn async_scheduler_get_event_loop(scheduler: *AsyncScheduler) -> *EventLoop
-        let has_async_scheduler_get_event_loop = externs.iter().any(|e| e.name == "async_scheduler_get_event_loop");
+        let has_async_scheduler_get_event_loop = externs
+            .iter()
+            .any(|e| e.name == "async_scheduler_get_event_loop");
         if !has_async_scheduler_get_event_loop {
             externs.push(LirExternal {
                 name: "async_scheduler_get_event_loop".to_string(),
                 param_types: vec![LirTy::Ptr(Box::new(LirTy::I8))], // scheduler: *AsyncScheduler
-                return_type: LirTy::Ptr(Box::new(LirTy::I8)), // *EventLoop (opaque pointer)
+                return_type: LirTy::Ptr(Box::new(LirTy::I8)),       // *EventLoop (opaque pointer)
                 variadic: false,
             });
         }
@@ -649,7 +694,7 @@ impl Compiler {
                 name: "event_loop_add_timer".to_string(),
                 param_types: vec![
                     LirTy::Ptr(Box::new(LirTy::I8)), // loop: *EventLoop
-                    LirTy::I64,                       // delay_ms: i64
+                    LirTy::I64,                      // delay_ms: i64
                     LirTy::Ptr(Box::new(LirTy::U8)), // callback: *u8 (function pointer)
                     LirTy::Ptr(Box::new(LirTy::U8)), // data: *u8
                 ],
@@ -658,7 +703,10 @@ impl Compiler {
             });
         }
 
-        eprintln!("DEBUG: extract_extern_functions returning {} externs", externs.len());
+        eprintln!(
+            "DEBUG: extract_extern_functions returning {} externs",
+            externs.len()
+        );
         for (i, ext) in externs.iter().enumerate() {
             eprintln!("DEBUG:   [{}] {} -> {:?}", i, ext.name, ext.return_type);
         }
@@ -682,42 +730,63 @@ impl Compiler {
                     _ => LirTy::I32, // Default to i32 for unknown types
                 }
             }
-            AstType::Ref(base, _mut) => {
-                LirTy::Ptr(Box::new(self.ast_type_to_lir_type(base)))
-            }
+            AstType::Ref(base, _mut) => LirTy::Ptr(Box::new(self.ast_type_to_lir_type(base))),
             _ => LirTy::I32, // Default to i32 for complex types
         }
     }
 
     /// Format parse errors with helpful context
     fn format_parse_error(&self, error: &zulon_parser::ParseError, file_path: &Path) -> String {
-        use zulon_parser::ParseError;
         use std::fmt::Write;
+        use zulon_parser::ParseError;
 
         let mut msg = String::new();
 
         match error {
-            ParseError::UnexpectedToken { expected, found, span } => {
-                writeln!(msg, "Parse error: {}", self.format_location(span, file_path)).unwrap_or(());
+            ParseError::UnexpectedToken {
+                expected,
+                found,
+                span,
+            } => {
+                writeln!(
+                    msg,
+                    "Parse error: {}",
+                    self.format_location(span, file_path)
+                )
+                .unwrap_or(());
                 writeln!(msg, "  Expected: {}", expected).unwrap_or(());
                 writeln!(msg, "  Found: {:?}", found).unwrap_or(());
 
                 // Add helpful suggestions
                 if expected.contains("Semicolon") {
                     writeln!(msg).unwrap_or(());
-                    writeln!(msg, "  💡 Hint: Add a semicolon (;) after the previous statement").unwrap_or(());
+                    writeln!(
+                        msg,
+                        "  💡 Hint: Add a semicolon (;) after the previous statement"
+                    )
+                    .unwrap_or(());
                     writeln!(msg, "  Example:").unwrap_or(());
                     writeln!(msg, "    let x = 10;  ← Add semicolon here").unwrap_or(());
                 }
             }
             ParseError::UnexpectedEof { span } => {
-                writeln!(msg, "Parse error: {}", self.format_location(span, file_path)).unwrap_or(());
+                writeln!(
+                    msg,
+                    "Parse error: {}",
+                    self.format_location(span, file_path)
+                )
+                .unwrap_or(());
                 writeln!(msg, "  Unexpected end of file").unwrap_or(());
                 writeln!(msg).unwrap_or(());
                 writeln!(msg, "  💡 Hint: Check that all braces, parentheses, and brackets are properly closed").unwrap_or(());
             }
             ParseError::InvalidSyntax { message, span } => {
-                writeln!(msg, "Parse error: {}", self.format_location(span, file_path)).unwrap_or(());
+                writeln!(
+                    msg,
+                    "Parse error: {}",
+                    self.format_location(span, file_path)
+                )
+                .unwrap_or(());
                 writeln!(msg, "  {}", message).unwrap_or(());
             }
             ParseError::ModuleError { source } => {
@@ -731,8 +800,7 @@ impl Compiler {
     /// Format type check errors with helpful context using the diagnostic system
     fn format_typeck_error(&self, error: &zulon_typeck::TypeError, file_path: &Path) -> String {
         // Read source file for diagnostics
-        let source = std::fs::read_to_string(file_path)
-            .unwrap_or_else(|_| "".to_string());
+        let source = std::fs::read_to_string(file_path).unwrap_or_else(|_| "".to_string());
 
         // Convert TypeError to Diagnostic and display with context
         let diagnostic = error.to_diagnostic(&source);
@@ -745,7 +813,8 @@ impl Compiler {
 
     /// Format error location with file context
     fn format_location(&self, span: &zulon_parser::Span, file_path: &Path) -> String {
-        format!("{}:{}:{} to {}:{}",
+        format!(
+            "{}:{}:{} to {}:{}",
             file_path.display(),
             span.start.line,
             span.start.column,

@@ -254,9 +254,7 @@ fn test_parse_defer_in_while_loop() {
 
     // This test documents the current limitation
     // In practice, use defer outside of while loops or in separate functions
-    let result = std::panic::catch_unwind(|| {
-        parse(source)
-    });
+    let result = std::panic::catch_unwind(|| parse(source));
 
     // Expected to fail due to parser limitation
     assert!(result.is_err());

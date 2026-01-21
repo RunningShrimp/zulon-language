@@ -185,7 +185,10 @@ mod tests {
         let waker = RawWaker::new(data, &TEST_VTABLE);
 
         assert_eq!(waker.data(), data);
-        assert_eq!(waker.vtable() as *const RawWakerVTable, &TEST_VTABLE as *const RawWakerVTable);
+        assert_eq!(
+            waker.vtable() as *const RawWakerVTable,
+            &TEST_VTABLE as *const RawWakerVTable
+        );
     }
 
     #[test]
@@ -196,7 +199,10 @@ mod tests {
         unsafe {
             let cloned = waker.clone();
             assert_eq!(cloned.data(), data);
-            assert_eq!(cloned.vtable() as *const RawWakerVTable, &TEST_VTABLE as *const RawWakerVTable);
+            assert_eq!(
+                cloned.vtable() as *const RawWakerVTable,
+                &TEST_VTABLE as *const RawWakerVTable
+            );
         }
     }
 

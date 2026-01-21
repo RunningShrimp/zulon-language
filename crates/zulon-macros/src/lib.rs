@@ -96,7 +96,9 @@ impl MacroExpanderEngine {
 
     /// Expand a macro invocation
     pub fn expand(&self, name: &str, input: &str) -> Result<String, String> {
-        let macro_def = self.macros.get(name)
+        let macro_def = self
+            .macros
+            .get(name)
             .ok_or_else(|| format!("Macro '{}' not found", name))?;
 
         // Try each rule until one matches
@@ -152,7 +154,11 @@ impl MacroExpanderEngine {
     }
 
     /// Expand a template with variable bindings
-    fn expand_template(&self, expander: &MacroExpander, binding: &HashMap<String, String>) -> String {
+    fn expand_template(
+        &self,
+        expander: &MacroExpander,
+        binding: &HashMap<String, String>,
+    ) -> String {
         let mut result = String::new();
 
         for frag in &expander.template {
@@ -193,59 +199,57 @@ impl MacroExpanderEngine {
     /// Register all built-in macros
     fn register_assert_macros(&mut self) {
         // panic!($message)
-        self.macros.insert("panic".to_string(), Macro {
-            name: Identifier::new("panic"),
-            rules: vec![
-                // Simple form: panic!("message") - match just the message content
-                MacroRule {
-                    matcher: MacroMatcher {
-                        patterns: vec![
-                            PatternFragment::Var("message".to_string()),
-                        ],
+        self.macros.insert(
+            "panic".to_string(),
+            Macro {
+                name: Identifier::new("panic"),
+                rules: vec![
+                    // Simple form: panic!("message") - match just the message content
+                    MacroRule {
+                        matcher: MacroMatcher {
+                            patterns: vec![PatternFragment::Var("message".to_string())],
+                        },
+                        expander: MacroExpander {
+                            template: vec![
+                                TemplateFragment::Literal("::__zulon_builtin_panic(".to_string()),
+                                TemplateFragment::Var("message".to_string()),
+                                TemplateFragment::Literal(")".to_string()),
+                            ],
+                        },
                     },
-                    expander: MacroExpander {
-                        template: vec![
-                            TemplateFragment::Literal(
-                                "::__zulon_builtin_panic(".to_string()
-                            ),
-                            TemplateFragment::Var("message".to_string()),
-                            TemplateFragment::Literal(")".to_string()),
-                        ],
+                    // Formatted form: panic!("format: {}", arg1, arg2)
+                    MacroRule {
+                        matcher: MacroMatcher {
+                            patterns: vec![
+                                PatternFragment::Var("format_string".to_string()),
+                                PatternFragment::Literal(", ".to_string()),
+                                PatternFragment::Var("args".to_string()),
+                            ],
+                        },
+                        expander: MacroExpander {
+                            template: vec![
+                                TemplateFragment::Literal(
+                                    "::__zulon_builtin_panic_formatted(".to_string(),
+                                ),
+                                TemplateFragment::Var("format_string".to_string()),
+                                TemplateFragment::Literal(", ".to_string()),
+                                TemplateFragment::Var("args".to_string()),
+                                TemplateFragment::Literal(")".to_string()),
+                            ],
+                        },
                     },
-                },
-                // Formatted form: panic!("format: {}", arg1, arg2)
-                MacroRule {
-                    matcher: MacroMatcher {
-                        patterns: vec![
-                            PatternFragment::Var("format_string".to_string()),
-                            PatternFragment::Literal(", ".to_string()),
-                            PatternFragment::Var("args".to_string()),
-                        ],
-                    },
-                    expander: MacroExpander {
-                        template: vec![
-                            TemplateFragment::Literal(
-                                "::__zulon_builtin_panic_formatted(".to_string()
-                            ),
-                            TemplateFragment::Var("format_string".to_string()),
-                            TemplateFragment::Literal(", ".to_string()),
-                            TemplateFragment::Var("args".to_string()),
-                            TemplateFragment::Literal(")".to_string()),
-                        ],
-                    },
-                },
-            ],
-        });
+                ],
+            },
+        );
 
         // stringify!($expr) - converts expression to string
-        self.macros.insert("stringify".to_string(), Macro {
-            name: Identifier::new("stringify"),
-            rules: vec![
-                MacroRule {
+        self.macros.insert(
+            "stringify".to_string(),
+            Macro {
+                name: Identifier::new("stringify"),
+                rules: vec![MacroRule {
                     matcher: MacroMatcher {
-                        patterns: vec![
-                            PatternFragment::Var("expr".to_string()),
-                        ],
+                        patterns: vec![PatternFragment::Var("expr".to_string())],
                     },
                     expander: MacroExpander {
                         template: vec![
@@ -254,44 +258,40 @@ impl MacroExpanderEngine {
                             TemplateFragment::Literal("\"".to_string()),
                         ],
                     },
-                },
-            ],
-        });
+                }],
+            },
+        );
 
         // assert!($condition)
-        self.macros.insert("assert".to_string(), Macro {
-            name: Identifier::new("assert"),
-            rules: vec![
-                MacroRule {
+        self.macros.insert(
+            "assert".to_string(),
+            Macro {
+                name: Identifier::new("assert"),
+                rules: vec![MacroRule {
                     matcher: MacroMatcher {
-                        patterns: vec![
-                            PatternFragment::Var("condition".to_string()),
-                        ],
+                        patterns: vec![PatternFragment::Var("condition".to_string())],
                     },
                     expander: MacroExpander {
                         template: vec![
-                            TemplateFragment::Literal(
-                                "if (".to_string()
-                            ),
+                            TemplateFragment::Literal("if (".to_string()),
                             TemplateFragment::Var("condition".to_string()),
-                            TemplateFragment::Literal(
-                                ") { } else { return 1; }".to_string()
-                            ),
+                            TemplateFragment::Literal(") { } else { return 1; }".to_string()),
                         ],
                     },
-                },
-            ],
-        });
+                }],
+            },
+        );
 
         // assert_eq!($left, $right)
         // Expands to an if statement that checks the condition
         // NOTE: Early return from if blocks is a known limitation in current MIR lowering
         // The macro compiles successfully but the return doesn't actually exit the function early
         // This will be fixed when proper early return support is implemented
-        self.macros.insert("assert_eq".to_string(), Macro {
-            name: Identifier::new("assert_eq"),
-            rules: vec![
-                MacroRule {
+        self.macros.insert(
+            "assert_eq".to_string(),
+            Macro {
+                name: Identifier::new("assert_eq"),
+                rules: vec![MacroRule {
                     matcher: MacroMatcher {
                         patterns: vec![
                             PatternFragment::Var("left".to_string()),
@@ -301,28 +301,23 @@ impl MacroExpanderEngine {
                     },
                     expander: MacroExpander {
                         template: vec![
-                            TemplateFragment::Literal(
-                                "if (".to_string()
-                            ),
+                            TemplateFragment::Literal("if (".to_string()),
                             TemplateFragment::Var("left".to_string()),
-                            TemplateFragment::Literal(
-                                " != ".to_string()
-                            ),
+                            TemplateFragment::Literal(" != ".to_string()),
                             TemplateFragment::Var("right".to_string()),
-                            TemplateFragment::Literal(
-                                ") { return 1; }".to_string()
-                            ),
+                            TemplateFragment::Literal(") { return 1; }".to_string()),
                         ],
                     },
-                },
-            ],
-        });
+                }],
+            },
+        );
 
         // assert_ne!($left, $right)
-        self.macros.insert("assert_ne".to_string(), Macro {
-            name: Identifier::new("assert_ne"),
-            rules: vec![
-                MacroRule {
+        self.macros.insert(
+            "assert_ne".to_string(),
+            Macro {
+                name: Identifier::new("assert_ne"),
+                rules: vec![MacroRule {
                     matcher: MacroMatcher {
                         patterns: vec![
                             PatternFragment::Var("left".to_string()),
@@ -332,80 +327,73 @@ impl MacroExpanderEngine {
                     },
                     expander: MacroExpander {
                         template: vec![
-                            TemplateFragment::Literal(
-                                "if (".to_string()
-                            ),
+                            TemplateFragment::Literal("if (".to_string()),
                             TemplateFragment::Var("left".to_string()),
-                            TemplateFragment::Literal(
-                                " == ".to_string()
-                            ),
+                            TemplateFragment::Literal(" == ".to_string()),
                             TemplateFragment::Var("right".to_string()),
                             TemplateFragment::Literal(
                                 ") {\n    \
-                                    ::__zulon_builtin_panic(\"assertion failed: \", stringify!(".to_string()
+                                    ::__zulon_builtin_panic(\"assertion failed: \", stringify!("
+                                    .to_string(),
                             ),
                             TemplateFragment::Var("left".to_string()),
-                            TemplateFragment::Literal(
-                                "), \" == \", stringify!(".to_string()
-                            ),
+                            TemplateFragment::Literal("), \" == \", stringify!(".to_string()),
                             TemplateFragment::Var("right".to_string()),
                             TemplateFragment::Literal(
                                 "));\n\
-                                }".to_string()
+                                }"
+                                .to_string(),
                             ),
                         ],
                     },
-                },
-            ],
-        });
+                }],
+            },
+        );
 
         // println!($format_string, $args...)
         // Expands to a call to external printf function
         // Note: Requires "extern fn printf(s: &u8, ...) -> i32;" at module level
         // Simple form: println!("Hello")
-        self.macros.insert("println".to_string(), Macro {
-            name: Identifier::new("println"),
-            rules: vec![
-                // Simple form with just format string
-                MacroRule {
-                    matcher: MacroMatcher {
-                        patterns: vec![
-                            PatternFragment::Var("format_string".to_string()),
-                        ],
+        self.macros.insert(
+            "println".to_string(),
+            Macro {
+                name: Identifier::new("println"),
+                rules: vec![
+                    // Simple form with just format string
+                    MacroRule {
+                        matcher: MacroMatcher {
+                            patterns: vec![PatternFragment::Var("format_string".to_string())],
+                        },
+                        expander: MacroExpander {
+                            template: vec![
+                                TemplateFragment::Literal("printf(".to_string()),
+                                TemplateFragment::Var("format_string".to_string()),
+                                TemplateFragment::Literal(");\n".to_string()),
+                            ],
+                        },
                     },
-                    expander: MacroExpander {
-                        template: vec![
-                            TemplateFragment::Literal(
-                                "printf(".to_string()
-                            ),
-                            TemplateFragment::Var("format_string".to_string()),
-                            TemplateFragment::Literal(");\n".to_string()),
-                        ],
+                    // Form with arguments: println!("Value: {}", x)
+                    MacroRule {
+                        matcher: MacroMatcher {
+                            patterns: vec![
+                                PatternFragment::Var("format_string".to_string()),
+                                PatternFragment::Literal(", ".to_string()),
+                                PatternFragment::Var("args".to_string()),
+                            ],
+                        },
+                        expander: MacroExpander {
+                            template: vec![
+                                TemplateFragment::Literal("printf(".to_string()),
+                                TemplateFragment::Var("format_string".to_string()),
+                                TemplateFragment::Literal(", ".to_string()),
+                                TemplateFragment::Var("args".to_string()),
+                                TemplateFragment::Literal(");\n".to_string()),
+                            ],
+                        },
                     },
-                },
-                // Form with arguments: println!("Value: {}", x)
-                MacroRule {
-                    matcher: MacroMatcher {
-                        patterns: vec![
-                            PatternFragment::Var("format_string".to_string()),
-                            PatternFragment::Literal(", ".to_string()),
-                            PatternFragment::Var("args".to_string()),
-                        ],
-                    },
-                    expander: MacroExpander {
-                        template: vec![
-                            TemplateFragment::Literal(
-                                "printf(".to_string()
-                            ),
-                            TemplateFragment::Var("format_string".to_string()),
-                            TemplateFragment::Literal(", ".to_string()),
-                            TemplateFragment::Var("args".to_string()),
-                            TemplateFragment::Literal(");\n".to_string()),
-                        ],
-                    },
-                },
-            ],
-        });
+                ],
+            },
+        );
     }
 }
 
@@ -493,14 +481,13 @@ mod tests {
     fn test_simple_expansion() {
         let mut engine = MacroExpanderEngine::new();
 
-        engine.macros.insert("test".to_string(), Macro {
-            name: Identifier::new("test"),
-            rules: vec![
-                MacroRule {
+        engine.macros.insert(
+            "test".to_string(),
+            Macro {
+                name: Identifier::new("test"),
+                rules: vec![MacroRule {
                     matcher: MacroMatcher {
-                        patterns: vec![
-                            PatternFragment::Var("x".to_string()),
-                        ],
+                        patterns: vec![PatternFragment::Var("x".to_string())],
                     },
                     expander: MacroExpander {
                         template: vec![
@@ -508,9 +495,9 @@ mod tests {
                             TemplateFragment::Var("x".to_string()),
                         ],
                     },
-                },
-            ],
-        });
+                }],
+            },
+        );
 
         // Test with proper input that matches pattern "!(...)"
         let result = engine.expand("test", "foo)");

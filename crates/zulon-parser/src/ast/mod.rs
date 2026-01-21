@@ -80,13 +80,13 @@ pub struct Function {
     pub generics: Option<Generics>,
     pub params: Vec<Param>,
     pub return_type: Option<Type>,
-    pub error_type: Option<Type>,  // Error type for | separator
-    pub effects: Vec<Type>,         // Effect list for | effects
-    pub is_variadic: bool,          // Variadic function (uses ...)
+    pub error_type: Option<Type>, // Error type for | separator
+    pub effects: Vec<Type>,       // Effect list for | effects
+    pub is_variadic: bool,        // Variadic function (uses ...)
     pub body: Block,
     pub is_async: bool,
     pub is_unsafe: bool,
-    pub attributes: Vec<Attribute>,  // Function attributes (e.g., #[test])
+    pub attributes: Vec<Attribute>, // Function attributes (e.g., #[test])
 }
 
 /// Attribute: #[attribute] or #[attribute(arg)] or #[attribute(key = value)]
@@ -464,14 +464,27 @@ pub enum ExpressionKind {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum BinaryOp {
     // Arithmetic
-    Add, Sub, Mul, Div, Mod,
+    Add,
+    Sub,
+    Mul,
+    Div,
+    Mod,
     // Bitwise
-    BitAnd, BitOr, BitXor,
-    LeftShift, RightShift,
+    BitAnd,
+    BitOr,
+    BitXor,
+    LeftShift,
+    RightShift,
     // Comparison
-    Eq, NotEq, Less, LessEq, Greater, GreaterEq,
+    Eq,
+    NotEq,
+    Less,
+    LessEq,
+    Greater,
+    GreaterEq,
     // Logical
-    And, Or,
+    And,
+    Or,
 }
 
 /// Unary operators
@@ -484,11 +497,11 @@ pub enum UnaryOp {
     // Bitwise
     BitNot, // ^
     // Reference/Dereference
-    Ref,    // &
-    Deref,  // *
+    Ref,   // &
+    Deref, // *
     // Borrow
-    Borrow,     // &
-    BorrowMut,  // &mut
+    Borrow,    // &
+    BorrowMut, // &mut
 }
 
 /// Range kind
@@ -553,7 +566,7 @@ pub struct MatchArm {
     pub span: Span,
     pub patterns: Vec<Pattern>,
     pub guard: Option<Box<Expression>>, // Box to break recursion
-    pub body: Box<Expression>, // Box to break recursion
+    pub body: Box<Expression>,          // Box to break recursion
 }
 
 /// Patterns for matching

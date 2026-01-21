@@ -10,15 +10,16 @@
 //! - **Entry Point**: C runtime entry point that calls `zulon_main()`
 //! - **Outcome Type**: Error handling support with `Outcome<T, E>`
 //! - **System Calls**: Wrappers for common system operations
-//! - **Build Integration**: Automatically compiled and linked
+//! - **Time/Date**: Instant, Duration, Date, and formatting utilities
 //!
-//! The C runtime is compiled by the build script and linked automatically.
+//! The C runtime is compiled by build script and linked automatically.
 
 pub mod outcome;
+pub mod time;
 
-pub use outcome::{
-    Outcome, From, Into,
-    Error, ContextError, OutcomeExt, panic,
+pub use outcome::{panic, ContextError, Error, From, Into, Outcome, OutcomeExt};
+pub use time::{
+    format_timestamp, parse_time, Date, DateError, Duration, DurationError, Instant, InstantError,
 };
 
 /// Get the runtime library path for linking
@@ -32,7 +33,7 @@ pub fn get_runtime_lib_path() -> Option<String> {
         // We need to find the parent target directory
         if let Some(target_pos) = out_dir.find("/target/") {
             let target_path = &out_dir[..target_pos + 7]; // Keep up to /target/
-            // Search for libzulon_entry.a in the target directory
+                                                          // Search for libzulon_entry.a in the target directory
             return find_library_in_target(target_path);
         }
     }
@@ -42,8 +43,8 @@ pub fn get_runtime_lib_path() -> Option<String> {
 
 /// Search for libzulon_entry.a in the target directory
 fn find_library_in_target(target_path: &str) -> Option<String> {
-    use std::path::Path;
     use std::fs;
+    use std::path::Path;
 
     let target_dir = Path::new(target_path);
     let debug_dir = target_dir.join("debug");

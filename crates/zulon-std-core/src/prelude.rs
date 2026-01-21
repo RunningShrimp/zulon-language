@@ -20,4 +20,3 @@ pub mod prelude_doc {
     //! This module documents what the compiler automatically injects.
     //! The actual injection happens in compiler/src/compiler.rs.
 }
-

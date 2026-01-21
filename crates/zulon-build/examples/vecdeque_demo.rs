@@ -13,7 +13,11 @@ fn main() {
 
     println!("   Create empty VecDeque:");
     let mut deque: VecDeque<i32> = VecDeque::new();
-    println!("      VecDeque::new() -> len={}, is_empty={}\n", deque.len(), deque.is_empty());
+    println!(
+        "      VecDeque::new() -> len={}, is_empty={}\n",
+        deque.len(),
+        deque.is_empty()
+    );
 
     println!("   Push to back:");
     deque.push_back(10);
@@ -26,11 +30,11 @@ fn main() {
     println!("      push_front(5): len={}", deque.len());
     match deque.front() {
         zulon_std_core::Optional::Some(val) => println!("      front() = {}", val),
-        zulon_std_core::Optional::None => {},
+        zulon_std_core::Optional::None => {}
     }
     match deque.back() {
         zulon_std_core::Optional::Some(val) => println!("      back() = {}\n", val),
-        zulon_std_core::Optional::None => {},
+        zulon_std_core::Optional::None => {}
     }
 
     // Part 2: Pop Operations
@@ -46,7 +50,7 @@ fn main() {
     println!("      pop_front() = {:?}", popped_front);
     match deque.front() {
         zulon_std_core::Optional::Some(val) => println!("      front() now = {}\n", val),
-        zulon_std_core::Optional::None => {},
+        zulon_std_core::Optional::None => {}
     }
 
     // Part 3: Access and Clear
@@ -60,12 +64,16 @@ fn main() {
     println!("   Get by index:");
     match deque2.get(1) {
         zulon_std_core::Optional::Some(val) => println!("      get(1) = {}", val),
-        zulon_std_core::Optional::None => {},
+        zulon_std_core::Optional::None => {}
     }
 
     println!("\n   Clear deque:");
     deque2.clear();
-    println!("      After clear: len={}, is_empty={}\n", deque2.len(), deque2.is_empty());
+    println!(
+        "      After clear: len={}, is_empty={}\n",
+        deque2.len(),
+        deque2.is_empty()
+    );
 
     // Summary
     println!("=== SUMMARY ===");

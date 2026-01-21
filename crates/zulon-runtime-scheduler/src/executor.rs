@@ -3,8 +3,8 @@
 
 //! Executor trait for async task execution
 
-use zulon_async_futures::Future;
 use crate::task::Task;
+use zulon_async_futures::Future;
 
 /// Core trait for executing async tasks
 ///

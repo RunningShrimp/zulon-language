@@ -6,8 +6,8 @@
 //! This module handles preprocessing of ZULON source code to expand
 //! macro invocations before lexical analysis and parsing.
 
-use zulon_macros::MacroExpanderEngine;
 use crate::error::Result as CompilerResult;
+use zulon_macros::MacroExpanderEngine;
 
 /// Macro expander for ZULON compiler
 ///
@@ -22,18 +22,18 @@ impl MacroExpander {
         let mut expander = Self {
             engine: MacroExpanderEngine::new(),
         };
-        
+
         // Register standard macros
         expander.register_standard_macros();
         expander
     }
-    
+
     /// Register all standard ZULON macros
     fn register_standard_macros(&mut self) {
         // Use the built-in macros from zulon_macros
         self.engine = MacroExpanderEngine::with_builtins();
     }
-    
+
     /// Expand all macros in source code
     ///
     /// Processes the source code and expands all macro invocations.
@@ -120,7 +120,8 @@ impl MacroExpander {
                     // Skip past ')' to the start of the next character
                     // args_end is at ')' which is a valid UTF-8 boundary
                     // Use char_indices on the full source to avoid slicing at invalid boundary
-                    last_end = source.char_indices()
+                    last_end = source
+                        .char_indices()
                         .skip_while(|&(pos, _)| pos <= args_end)
                         .next()
                         .map(|(pos, _)| pos)
@@ -218,13 +219,15 @@ impl MacroExpander {
             // Look for potential macro invocation: identifier + '!'
             if let Some((macro_name, macro_name_end)) = self.find_macro_at(source, pos) {
                 // Check for '!' after macro name
-                if macro_name_end < source.len() && source.chars().nth(macro_name_end) == Some('!') {
+                if macro_name_end < source.len() && source.chars().nth(macro_name_end) == Some('!')
+                {
                     // Find the matching parenthesis
                     if let Some(args_start) = source[macro_name_end + 1..].find('(') {
                         let args_start_abs = macro_name_end + 1 + args_start;
 
                         // Find matching closing parenthesis
-                        if let Some(args_end) = self.find_matching_paren(&source[args_start_abs..]) {
+                        if let Some(args_end) = self.find_matching_paren(&source[args_start_abs..])
+                        {
                             let args_end_abs = args_start_abs + args_end;
                             let args = &source[args_start_abs + 1..args_end_abs]; // Exclude parens
 
@@ -252,7 +255,7 @@ impl MacroExpander {
 
         Ok(result)
     }
-    
+
     /// Find a macro name at the current position
     ///
     /// Returns the macro name and its end position if this looks like a macro invocation start.
@@ -282,14 +285,14 @@ impl MacroExpander {
         let macro_name: String = chars[pos..pos + len].iter().collect();
         Some((macro_name, pos + len))
     }
-    
+
     /// Find the matching closing parenthesis
     ///
     /// Handles nested parentheses correctly.
     fn find_matching_paren(&self, source: &str) -> Option<usize> {
         let chars: Vec<char> = source.chars().collect();
         let mut depth = 0;
-        
+
         for (i, &c) in chars.iter().enumerate() {
             match c {
                 '(' => depth += 1,
@@ -302,7 +305,7 @@ impl MacroExpander {
                 _ => {}
             }
         }
-        
+
         None
     }
 }

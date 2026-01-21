@@ -321,11 +321,11 @@ impl HirExpression {
             HirExpression::Continue(_) => &HirTy::Never,
             HirExpression::While { .. } | HirExpression::For { .. } => &HirTy::Unit,
             HirExpression::Closure { ty, .. } => ty,
-            HirExpression::Throw(..) => &HirTy::Never,  // throw doesn't return normally
-            HirExpression::QuestionMark(_, ty, _) => ty,  // ? returns the success type
+            HirExpression::Throw(..) => &HirTy::Never, // throw doesn't return normally
+            HirExpression::QuestionMark(_, ty, _) => ty, // ? returns the success type
             HirExpression::Try(try_block) => &try_block.try_block.ty,
             HirExpression::TemplateString { ty, .. } => ty,
-            HirExpression::Await { ty, .. } => ty,  // await returns the Future's Output type
+            HirExpression::Await { ty, .. } => ty, // await returns the Future's Output type
         }
     }
 
@@ -377,16 +377,30 @@ pub enum HirLiteral {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum HirBinOp {
     // Arithmetic
-    Add, Sub, Mul, Div, Mod,
+    Add,
+    Sub,
+    Mul,
+    Div,
+    Mod,
 
     // Bitwise
-    BitAnd, BitOr, BitXor, LeftShift, RightShift,
+    BitAnd,
+    BitOr,
+    BitXor,
+    LeftShift,
+    RightShift,
 
     // Logical
-    And, Or,
+    And,
+    Or,
 
     // Comparison
-    Eq, NotEq, Less, LessEq, Greater, GreaterEq,
+    Eq,
+    NotEq,
+    Less,
+    LessEq,
+    Greater,
+    GreaterEq,
 
     // Assignment (desugared)
     Assign,
@@ -395,10 +409,10 @@ pub enum HirBinOp {
 /// Unary operators
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum HirUnaryOp {
-    Neg,   // -x
-    Not,   // !x
-    Deref, // *x
-    Ref,   // &x
+    Neg,    // -x
+    Not,    // !x
+    Deref,  // *x
+    Ref,    // &x
     RefMut, // &mut x
 }
 
@@ -570,7 +584,9 @@ pub struct HirEffectMethod {
 impl HirFunction {
     /// Check if this function has a specific attribute
     pub fn has_attribute(&self, attr_name: &str) -> bool {
-        self.attributes.iter().any(|attr| attr.name.name == attr_name)
+        self.attributes
+            .iter()
+            .any(|attr| attr.name.name == attr_name)
     }
 
     /// Check if this is a test function (marked with #[test])
@@ -585,7 +601,8 @@ impl HirFunction {
 
     /// Get all test functions from a list of items
     pub fn filter_tests(items: &[HirItem]) -> Vec<&HirFunction> {
-        items.iter()
+        items
+            .iter()
             .filter_map(|item| {
                 if let HirItem::Function(func) = item {
                     if func.is_test() {

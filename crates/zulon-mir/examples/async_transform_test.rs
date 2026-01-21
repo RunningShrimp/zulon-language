@@ -3,9 +3,9 @@
 
 //! Test async state machine transformation
 
-use zulon_parser::Parser;
 use zulon_hir::lower_ast_simple;
 use zulon_mir::{lower_hir, transform_async_functions};
+use zulon_parser::Parser;
 
 fn main() {
     println!("=== ZULON Async State Machine Transformation Test ===\n");
@@ -106,15 +106,24 @@ async fn async_with_if(x: i32) -> i32 {
     println!("\n=== Step 5: MIR Before Transformation ===");
     let mut mir_async_count = 0;
     for (i, func) in mir.functions.iter().enumerate() {
-        println!("  [{}] {} (is_async={}, has_state_machine={}, blocks={})",
-            i, func.name, func.is_async, func.state_machine.is_some(), func.blocks.len());
+        println!(
+            "  [{}] {} (is_async={}, has_state_machine={}, blocks={})",
+            i,
+            func.name,
+            func.is_async,
+            func.state_machine.is_some(),
+            func.blocks.len()
+        );
 
         if func.is_async {
             mir_async_count += 1;
 
             if let Some(sm) = &func.state_machine {
-                println!("      └─ State machine: {} states, output type: {:?}",
-                    sm.states.len(), sm.output_type);
+                println!(
+                    "      └─ State machine: {} states, output type: {:?}",
+                    sm.states.len(),
+                    sm.output_type
+                );
             }
         }
     }
@@ -135,8 +144,13 @@ async fn async_with_if(x: i32) -> i32 {
 
     println!("\n=== Step 7: MIR After Transformation ===");
     for (i, func) in transformed_mir.functions.iter().enumerate() {
-        println!("  [{}] {} (is_async={}, blocks={})",
-            i, func.name, func.is_async, func.blocks.len());
+        println!(
+            "  [{}] {} (is_async={}, blocks={})",
+            i,
+            func.name,
+            func.is_async,
+            func.blocks.len()
+        );
 
         if func.is_async {
             if let Some(sm) = &func.state_machine {
@@ -144,33 +158,46 @@ async fn async_with_if(x: i32) -> i32 {
 
                 // Show state details
                 for state in &sm.states {
-                    println!("         - State {}: block={}, captured={} locals",
-                        state.id, state.block_id, state.captured.len());
+                    println!(
+                        "         - State {}: block={}, captured={} locals",
+                        state.id,
+                        state.block_id,
+                        state.captured.len()
+                    );
                 }
             }
 
             // Show basic blocks
             println!("      └─ Basic blocks:");
             for (block_id, block) in &func.blocks {
-                println!("         - Block {}: {} instrs, terminator: {:?}",
-                    block_id, block.instructions.len(),
-                    block.terminator.as_ref().map(|t| format!("{:?}", t)));
+                println!(
+                    "         - Block {}: {} instrs, terminator: {:?}",
+                    block_id,
+                    block.instructions.len(),
+                    block.terminator.as_ref().map(|t| format!("{:?}", t))
+                );
             }
         }
     }
 
     println!("\n=== Step 8: Analysis ===");
-    let transformed_async_count = transformed_mir.functions.iter()
+    let transformed_async_count = transformed_mir
+        .functions
+        .iter()
         .filter(|f| f.is_async)
         .count();
 
-    println!("✅ Async functions preserved: {} -> {}",
-        mir_async_count, transformed_async_count);
+    println!(
+        "✅ Async functions preserved: {} -> {}",
+        mir_async_count, transformed_async_count
+    );
 
     // Check that regular functions were not modified
     let regular_func = &transformed_mir.functions[3]; // regular_func
-    println!("✅ Regular function blocks: {} (should be minimal)",
-        regular_func.blocks.len());
+    println!(
+        "✅ Regular function blocks: {} (should be minimal)",
+        regular_func.blocks.len()
+    );
 
     // Check that async functions have state machines
     for func in transformed_mir.functions.iter().filter(|f| f.is_async) {

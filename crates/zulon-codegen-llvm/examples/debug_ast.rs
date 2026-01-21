@@ -32,7 +32,11 @@ fn main() -> i32 {
 fn print_ast_block(block: &zulon_parser::ast::Block, indent: usize) {
     let indent_str = "  ".repeat(indent);
 
-    println!("{}Block ({} statements):\n", indent_str, block.statements.len());
+    println!(
+        "{}Block ({} statements):\n",
+        indent_str,
+        block.statements.len()
+    );
 
     for (idx, stmt) in block.statements.iter().enumerate() {
         println!("{}  [{}]: {:?}\n", indent_str, idx, stmt.kind);

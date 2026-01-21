@@ -1,6 +1,6 @@
-use zulon_parser::Parser;
 use zulon_hir::lower_ast_simple;
 use zulon_mir::lower_hir;
+use zulon_parser::Parser;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let source = r#"

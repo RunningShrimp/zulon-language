@@ -8,9 +8,7 @@
 
 use std::collections::HashMap;
 use zulon_build::{BuildConfig, BuildPipeline};
-use zulon_lir::{
-    LirBlock, LirConstant, LirFunction, LirInstruction, LirTerminator, LirTy,
-};
+use zulon_lir::{LirBlock, LirConstant, LirFunction, LirInstruction, LirTerminator, LirTy};
 
 fn main() {
     println!("🚀 ZULON Print Example\n");
@@ -23,7 +21,7 @@ fn main() {
         output: "print_example".into(),
         keep_intermediates: true,
         target: None,
-        ..Default::default()  // Uses opt_level: 2 (-O2)
+        ..Default::default() // Uses opt_level: 2 (-O2)
     };
 
     println!("📦 Building executable...");

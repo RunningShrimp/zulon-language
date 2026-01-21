@@ -7,8 +7,4 @@ license.workspace = true
 repository.workspace = true
 homepage.workspace = true
 
-# TODO: Add dependencies when needed
-[dependencies]
-lazy_static = "1.4"
-
 [dev-dependencies]

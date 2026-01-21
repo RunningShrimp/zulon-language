@@ -6,9 +6,9 @@
 //! This module provides a simple thread-per-task executor for running async futures.
 
 use crate::Executor;
-use zulon_async_futures::{Future, Poll, Context, Waker, RawWaker, RawWakerVTable};
-use std::thread::{self, JoinHandle};
 use std::sync::{Arc, Mutex};
+use std::thread::{self, JoinHandle};
+use zulon_async_futures::{Context, Future, Poll, RawWaker, RawWakerVTable, Waker};
 
 /// Create a dummy waker for polling
 ///
@@ -17,9 +17,15 @@ use std::sync::{Arc, Mutex};
 fn create_dummy_waker() -> Waker {
     static VTABLE: RawWakerVTable = RawWakerVTable {
         clone: |data| RawWaker::new(data, &VTABLE),
-        wake: |data| { let _ = data; },
-        wake_by_ref: |data| { let _ = data; },
-        drop: |data| { let _ = data; },
+        wake: |data| {
+            let _ = data;
+        },
+        wake_by_ref: |data| {
+            let _ = data;
+        },
+        drop: |data| {
+            let _ = data;
+        },
     };
 
     let raw_waker = RawWaker::new(std::ptr::null(), &VTABLE);

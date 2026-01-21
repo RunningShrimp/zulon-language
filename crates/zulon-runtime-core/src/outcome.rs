@@ -780,15 +780,15 @@ pub extern "C" fn __zulon_builtin_panic_formatted(
 /// fall back to a simple implementation that may not be accurate.
 #[no_mangle]
 pub extern "C" fn __zulon_builtin_current_time_ms() -> i32 {
+    use std::sync::atomic::{AtomicU64, Ordering};
     use std::time::SystemTime;
     use std::time::UNIX_EPOCH;
-    use std::sync::atomic::{AtomicU64, Ordering};
 
     // Use a static variable to store the start time on first call
     static START_TIME: AtomicU64 = AtomicU64::new(0);
 
     let now = match SystemTime::now().duration_since(UNIX_EPOCH) {
-        Ok(duration) => duration.as_millis() as u64,  // Convert u128 to u64
+        Ok(duration) => duration.as_millis() as u64, // Convert u128 to u64
         Err(_) => return 0,
     };
 
@@ -1008,7 +1008,8 @@ mod tests {
         }
 
         // Test From trait for error conversion using fully qualified syntax
-        let outcome: Outcome<(), Error2> = <Outcome<(), Error2> as From<Error1>>::from(Error1::Variant1);
+        let outcome: Outcome<(), Error2> =
+            <Outcome<(), Error2> as From<Error1>>::from(Error1::Variant1);
         assert_eq!(outcome, Outcome::Err(Error2::Variant2));
     }
 

@@ -6,15 +6,15 @@
 //! This module integrates ZULON's async executor with Phase 2.2's event loop,
 //! enabling automatic task wake-up when I/O events occur.
 
-use crate::Executor;
 use crate::waker_registry::{global_registry, init_global_registry};
-use zulon_async_futures::{Future, Poll, Context, Waker, RawWaker, RawWakerVTable};
-use zulon_runtime_io::event_loop::{EventLoop, EventHandler, EventSource, Token, Interest};
-use zulon_runtime_io::{IoError, IoResult};
-use std::collections::{VecDeque, HashMap};
+use crate::Executor;
+use std::collections::{HashMap, VecDeque};
 use std::os::unix::io::RawFd;
-use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::Arc;
+use zulon_async_futures::{Context, Future, Poll, RawWaker, RawWakerVTable, Waker};
+use zulon_runtime_io::event_loop::{EventHandler, EventLoop, EventSource, Interest, Token};
+use zulon_runtime_io::{IoError, IoResult};
 
 /// A task with associated I/O resources
 struct IOTask {
@@ -203,10 +203,9 @@ impl IntegratedEventLoopExecutor {
     ///
     /// Returns a list of (fd, task_id, interest) tuples
     pub fn get_fds_to_register(&self) -> Vec<(RawFd, usize, EventInterest)> {
-        self.tasks.iter()
-            .filter_map(|task| {
-                task.fd.map(|fd| (fd, task.id, task.interest))
-            })
+        self.tasks
+            .iter()
+            .filter_map(|task| task.fd.map(|fd| (fd, task.id, task.interest)))
             .collect()
     }
 
@@ -263,10 +262,7 @@ impl IntegratedEventLoopExecutor {
     /// Create a waker for a specific task
     fn create_task_waker(task_id: usize) -> Waker {
         let data = Arc::new(TaskWakerData { task_id });
-        let raw_waker = RawWaker::new(
-            Arc::into_raw(data) as *const (),
-            &TASK_WAKER_VTABLE,
-        );
+        let raw_waker = RawWaker::new(Arc::into_raw(data) as *const (), &TASK_WAKER_VTABLE);
         unsafe { Waker::from_raw(raw_waker) }
     }
 
@@ -308,10 +304,10 @@ impl IntegratedEventLoopExecutor {
     /// Returns an error if registration fails for any FD
     pub fn register_fds_with_event_loop<E: EventLoop + ?Sized>(
         &mut self,
-        event_loop: &mut E
+        event_loop: &mut E,
     ) -> IoResult<Vec<(RawFd, Token)>> {
         let mut registrations = Vec::new();
-        
+
         for task in &self.tasks {
             if let Some(fd) = task.fd {
                 // Create an EventSource wrapper for this FD
@@ -319,13 +315,13 @@ impl IntegratedEventLoopExecutor {
                     fd,
                     interest: task.interest,
                 };
-                
+
                 // Register with event loop
                 let token = event_loop.register(&source)?;
                 registrations.push((fd, token));
             }
         }
-        
+
         Ok(registrations)
     }
 
@@ -363,17 +359,17 @@ impl IntegratedEventLoopExecutor {
     /// ```
     pub fn run_with_event_loop<E: EventLoop + ?Sized>(
         &mut self,
-        event_loop: &mut E
+        event_loop: &mut E,
     ) -> IoResult<()> {
         // Register all task FDs with event loop
         let _registrations = self.register_fds_with_event_loop(event_loop)?;
-        
+
         // Run the event loop (which will call our EventHandler methods)
         event_loop.run()?;
-        
+
         // After event loop stops, run any remaining tasks
         self.run();
-        
+
         Ok(())
     }
 }
@@ -393,7 +389,7 @@ impl Executor for IntegratedEventLoopExecutor {
     fn spawn(&mut self, future: impl Future<Output = ()> + 'static) {
         // Generate task ID using our counter
         let id = self.task_counter.fetch_add(1, Ordering::SeqCst);
-        
+
         // Register with global registry
         let mut registry_guard = global_registry().lock().unwrap();
         if let Some(registry) = registry_guard.as_mut() {
@@ -525,7 +521,7 @@ impl EventHandler for IntegratedEventLoopExecutor {
     fn error(&mut self, token: Token, err: IoError) {
         // Log error and wake all tasks so they can handle it
         eprintln!("Event loop error on token {:?}: {}", token, err);
-        
+
         for (_fd, task_id) in &self.fd_to_task {
             self.wake_task(*task_id);
         }

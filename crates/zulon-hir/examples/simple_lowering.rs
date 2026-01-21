@@ -82,7 +82,11 @@ fn inspect_hir_item(item: &HirItem, indent: usize) {
                 println!("{}    {}: {:?}", indent_str, param.name, param.ty);
             }
             println!("{}  Return type: {:?}", indent_str, func.return_type);
-            println!("{}  Body has {} statements", indent_str, func.body.statements.len());
+            println!(
+                "{}  Body has {} statements",
+                indent_str,
+                func.body.statements.len()
+            );
 
             // Show statements
             for stmt in &func.body.statements {

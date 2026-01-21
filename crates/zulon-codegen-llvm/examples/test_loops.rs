@@ -1,8 +1,8 @@
 // Test if loops are supported in the compiler pipeline
-use zulon_parser::Parser;
 use zulon_hir::lower_ast_simple;
-use zulon_mir::lower_hir;
 use zulon_lir::lower::LirLoweringContext;
+use zulon_mir::lower_hir;
+use zulon_parser::Parser;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("=== Testing Loop Support ===\n");
@@ -101,7 +101,10 @@ fn test_compile(source: &str, _name: &str) -> Result<(), Box<dyn std::error::Err
 
     let mut lir_ctx = LirLoweringContext::new();
     let lir = lir_ctx.lower_body(&mir)?;
-    println!("  LIR lowering successful - {} functions", lir.functions.len());
+    println!(
+        "  LIR lowering successful - {} functions",
+        lir.functions.len()
+    );
 
     Ok(())
 }

@@ -113,8 +113,10 @@ pub fn run_tests(tests: &[Test]) -> TestStats {
 
     println!();
     println!("Test result:");
-    println!("  {} passed, {} failed, {} ignored, {} panicking",
-        stats.passed, stats.failed, stats.ignored, stats.panicking);
+    println!(
+        "  {} passed, {} failed, {} ignored, {} panicking",
+        stats.passed, stats.failed, stats.ignored, stats.panicking
+    );
 
     if stats.failed > 0 || stats.panicking > 0 {
         println!();
@@ -138,9 +140,7 @@ fn run_test(test: &Test) -> TestResult {
     // 3. Return Panicked result if panic occurred
 
     unsafe {
-        match std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-            (test.func)()
-        })) {
+        match std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| (test.func)())) {
             Ok(return_code) => {
                 if return_code == 0 {
                     TestResult::Passed

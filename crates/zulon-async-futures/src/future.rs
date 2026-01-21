@@ -5,7 +5,7 @@
 //!
 //! The Future trait is the core abstraction for asynchronous values in ZULON.
 
-use crate::{Context, Poll, Pin};
+use crate::{Context, Pin, Poll};
 
 /// A future representing an asynchronous computation
 ///

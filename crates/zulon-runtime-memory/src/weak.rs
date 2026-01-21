@@ -142,9 +142,7 @@ impl<T: ?Sized> Weak<T> {
             }
 
             // Success, create Arc
-            Some(Arc {
-                ptr: self.ptr,
-            })
+            Some(Arc { ptr: self.ptr })
         }
     }
 

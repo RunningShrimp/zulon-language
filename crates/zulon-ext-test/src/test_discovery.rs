@@ -23,13 +23,7 @@ pub struct TestMetadata {
 
 impl TestMetadata {
     /// Create new test metadata
-    pub fn new(
-        name: String,
-        module: String,
-        file: String,
-        line: usize,
-        ignored: bool,
-    ) -> Self {
+    pub fn new(name: String, module: String, file: String, line: usize, ignored: bool) -> Self {
         TestMetadata {
             name,
             module,
@@ -61,9 +55,7 @@ pub struct TestDiscovery {
 impl TestDiscovery {
     /// Create a new test discovery instance
     pub fn new() -> Self {
-        TestDiscovery {
-            tests: Vec::new(),
-        }
+        TestDiscovery { tests: Vec::new() }
     }
 
     /// Discover tests from source code
@@ -73,7 +65,10 @@ impl TestDiscovery {
     /// 2. Find functions with `#[test]` attribute
     /// 3. Extract metadata (name, location)
     /// 4. Return list of tests
-    pub fn discover_from_source(&mut self, _source_root: &str) -> Result<Vec<TestMetadata>, String> {
+    pub fn discover_from_source(
+        &mut self,
+        _source_root: &str,
+    ) -> Result<Vec<TestMetadata>, String> {
         // TODO: Implement actual test discovery
         // Strategy:
         // 1. Walk source tree
@@ -90,7 +85,10 @@ impl TestDiscovery {
     /// 2. Find test functions (prefixed with test__)
     /// 3. Extract metadata section
     /// 4. Return list of tests
-    pub fn discover_from_binary(&mut self, _binary_path: &str) -> Result<Vec<TestMetadata>, String> {
+    pub fn discover_from_binary(
+        &mut self,
+        _binary_path: &str,
+    ) -> Result<Vec<TestMetadata>, String> {
         // TODO: Implement actual binary discovery
         // Strategy:
         // 1. Use object file parsing (e.g., goblin, object)

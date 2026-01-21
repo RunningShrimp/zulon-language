@@ -5,8 +5,8 @@
 //!
 //! Tests the complete pipeline: Parser → AST → HIR
 
-use zulon_parser::Parser;
 use zulon_hir::simple_lower::lower_ast_simple;
+use zulon_parser::Parser;
 
 /// Test throw statement parsing
 #[test]
@@ -98,7 +98,10 @@ fn test_error_type_variants() {
     let hir = lower_ast_simple(&ast).expect("Failed to lower to HIR");
 
     // Verify HIR has items
-    assert!(hir.items.len() >= 2, "HIR should have at least enum and function");
+    assert!(
+        hir.items.len() >= 2,
+        "HIR should have at least enum and function"
+    );
 }
 
 /// Test nested error handling
@@ -160,7 +163,10 @@ fn test_explicit_outcome_syntax() {
         if hir_result.is_err() {
             println!("Expected: HIR lowering not yet implemented for throw");
         } else {
-            assert!(!hir_result.unwrap().items.is_empty(), "HIR should have items");
+            assert!(
+                !hir_result.unwrap().items.is_empty(),
+                "HIR should have items"
+            );
         }
     }
 }

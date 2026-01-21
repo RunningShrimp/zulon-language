@@ -11,38 +11,44 @@
 //! - Core traits: `Clone`, `Copy`, `PartialEq`, `Eq`, `PartialOrd`, `Ord`
 //! - Optional values: `Optional<T>`
 //! - Error handling: `Outcome<T, E>`
+//! - File I/O: `File`, `Path`, `Metadata`
+//! - I/O traits: `Read`, `Write`, `Seek`
 
 #![warn(unused_extern_crates)]
 
-mod traits;
-mod option;
-mod result;
-mod vec;
+mod fs;
 mod hashmap;
 mod hashset;
-mod vecdeque;
+mod io;
+mod option;
+mod prelude;
+mod result;
 mod string;
 mod test;
 mod test_runner;
-mod prelude;
+mod traits;
+mod vec;
+mod vecdeque;
 
 // Re-export core traits
-pub use traits::{
-    Clone, Copy, Eq, Ord, PartialEq, PartialOrd, Ordering, Hash,
-};
+pub use traits::{Clone, Copy, Eq, Hash, Ord, Ordering, PartialEq, PartialOrd};
 
 // Re-export core types
-pub use option::Optional;
-pub use result::Outcome;
-pub use vec::{Vec, IntoIter as VecIntoIter, Iter as VecIter, IterMut as VecIterMut};
+#[allow(unused_imports)]
+pub use fs::error::IoResult;
+pub use fs::{error::IoError, File, FileType, Metadata, OpenOptions, Path, PathBuf};
 pub use hashmap::HashMap;
 pub use hashset::HashSet;
-pub use vecdeque::VecDeque;
+pub use io::buffered::{BufReader, BufWriter};
+pub use io::traits::{Read, Seek, SeekFrom, Write};
+pub use option::Optional;
+pub use result::Outcome;
 pub use string::String;
+pub use vec::{IntoIter as VecIntoIter, Iter as VecIter, IterMut as VecIterMut, Vec};
+pub use vecdeque::VecDeque;
 
 // Re-export testing functions
-// Note: We use qualified paths to avoid ambiguity with Rust's prelude assert macro
-pub use test::{assert_eq, assert_ne, panic};
-pub use test::assert as zassert;
+pub use test::{assert as zassert, assert_eq, assert_ne, panic};
+
 // Re-export test runner
-pub use test_runner::{run_tests, run_test_verbose, Test, TestFunc, TestResult, TestStats};
+pub use test_runner::{run_test_verbose, run_tests, Test, TestFunc, TestResult, TestStats};

@@ -2,10 +2,10 @@
 // Demonstrates external function linkage and string formatting
 
 use std::io::{Cursor, Write};
-use zulon_parser::Parser;
 use zulon_hir::lower_ast_simple;
-use zulon_mir::lower_hir;
 use zulon_lir::lower::LirLoweringContext;
+use zulon_mir::lower_hir;
+use zulon_parser::Parser;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let source = r#"
@@ -36,7 +36,10 @@ fn main() -> i32 {
     writeln!(&mut buffer)?;
 
     // Declare string constant for "Hello, World!\n"
-    writeln!(&mut buffer, "@.str = private unnamed_addr constant [15 x i8] c\"Hello, World!\\0A\\00\", align 1")?;
+    writeln!(
+        &mut buffer,
+        "@.str = private unnamed_addr constant [15 x i8] c\"Hello, World!\\0A\\00\", align 1"
+    )?;
     writeln!(&mut buffer)?;
 
     // Generate main function

@@ -13,9 +13,20 @@ use std::fmt;
 pub enum HirTy {
     // Primitives
     Bool,
-    I8, I16, I32, I64, I128, ISize,
-    U8, U16, U32, U64, U128, USize,
-    F32, F64,
+    I8,
+    I16,
+    I32,
+    I64,
+    I128,
+    ISize,
+    U8,
+    U16,
+    U32,
+    U64,
+    U128,
+    USize,
+    F32,
+    F64,
     Char,
     String,
 
@@ -66,27 +77,38 @@ pub enum HirTy {
 impl HirTy {
     /// Check if type is numeric
     pub fn is_numeric(&self) -> bool {
-        matches!(self,
-            HirTy::I8 | HirTy::I16 | HirTy::I32 | HirTy::I64 |
-            HirTy::I128 | HirTy::ISize | HirTy::U8 | HirTy::U16 |
-            HirTy::U32 | HirTy::U64 | HirTy::U128 | HirTy::USize |
-            HirTy::F32 | HirTy::F64
+        matches!(
+            self,
+            HirTy::I8
+                | HirTy::I16
+                | HirTy::I32
+                | HirTy::I64
+                | HirTy::I128
+                | HirTy::ISize
+                | HirTy::U8
+                | HirTy::U16
+                | HirTy::U32
+                | HirTy::U64
+                | HirTy::U128
+                | HirTy::USize
+                | HirTy::F32
+                | HirTy::F64
         )
     }
 
     /// Check if type is signed integer
     pub fn is_signed_integer(&self) -> bool {
-        matches!(self,
-            HirTy::I8 | HirTy::I16 | HirTy::I32 | HirTy::I64 |
-            HirTy::I128 | HirTy::ISize
+        matches!(
+            self,
+            HirTy::I8 | HirTy::I16 | HirTy::I32 | HirTy::I64 | HirTy::I128 | HirTy::ISize
         )
     }
 
     /// Check if type is unsigned integer
     pub fn is_unsigned_integer(&self) -> bool {
-        matches!(self,
-            HirTy::U8 | HirTy::U16 | HirTy::U32 | HirTy::U64 |
-            HirTy::U128 | HirTy::USize
+        matches!(
+            self,
+            HirTy::U8 | HirTy::U16 | HirTy::U32 | HirTy::U64 | HirTy::U128 | HirTy::USize
         )
     }
 
@@ -105,9 +127,18 @@ impl HirTy {
         match self {
             // Primitives are copy
             HirTy::Bool | HirTy::Char => true,
-            HirTy::I8 | HirTy::I16 | HirTy::I32 | HirTy::I64 |
-            HirTy::I128 | HirTy::ISize | HirTy::U8 | HirTy::U16 |
-            HirTy::U32 | HirTy::U64 | HirTy::U128 | HirTy::USize => true,
+            HirTy::I8
+            | HirTy::I16
+            | HirTy::I32
+            | HirTy::I64
+            | HirTy::I128
+            | HirTy::ISize
+            | HirTy::U8
+            | HirTy::U16
+            | HirTy::U32
+            | HirTy::U64
+            | HirTy::U128
+            | HirTy::USize => true,
             HirTy::F32 | HirTy::F64 => true,
 
             // References and pointers are copy
@@ -144,14 +175,19 @@ impl HirTy {
                 }
             }
             HirTy::Tuple(tys) => {
-                let inner = tys.iter()
+                let inner = tys
+                    .iter()
                     .map(|t| t.display_name())
                     .collect::<Vec<_>>()
                     .join(", ");
                 format!("({})", inner)
             }
-            HirTy::Function { params, return_type } => {
-                let params = params.iter()
+            HirTy::Function {
+                params,
+                return_type,
+            } => {
+                let params = params
+                    .iter()
                     .map(|p| p.display_name())
                     .collect::<Vec<_>>()
                     .join(", ");
@@ -161,7 +197,8 @@ impl HirTy {
                 if generics.is_empty() {
                     name.clone()
                 } else {
-                    let gens = generics.iter()
+                    let gens = generics
+                        .iter()
                         .map(|g| g.display_name())
                         .collect::<Vec<_>>()
                         .join(", ");
@@ -203,68 +240,54 @@ impl From<zulon_typeck::Ty> for HirTy {
             zulon_typeck::Ty::Unit => HirTy::Unit,
             zulon_typeck::Ty::Never => HirTy::Never,
 
-            zulon_typeck::Ty::Ref { inner, mutable } => {
-                HirTy::Ref {
-                    inner: Box::new((*inner).into()),
-                    mutable,
-                }
-            }
+            zulon_typeck::Ty::Ref { inner, mutable } => HirTy::Ref {
+                inner: Box::new((*inner).into()),
+                mutable,
+            },
 
-            zulon_typeck::Ty::Ptr { inner, mutable } => {
-                HirTy::Ptr {
-                    inner: Box::new((*inner).into()),
-                    mutable,
-                }
-            }
+            zulon_typeck::Ty::Ptr { inner, mutable } => HirTy::Ptr {
+                inner: Box::new((*inner).into()),
+                mutable,
+            },
 
-            zulon_typeck::Ty::Array { inner, len } => {
-                HirTy::Array {
-                    inner: Box::new((*inner).into()),
-                    len,
-                }
-            }
+            zulon_typeck::Ty::Array { inner, len } => HirTy::Array {
+                inner: Box::new((*inner).into()),
+                len,
+            },
 
-            zulon_typeck::Ty::Slice(inner) => {
-                HirTy::Slice(Box::new((*inner).into()))
-            }
+            zulon_typeck::Ty::Slice(inner) => HirTy::Slice(Box::new((*inner).into())),
 
             zulon_typeck::Ty::Tuple(tys) => {
                 HirTy::Tuple(tys.into_iter().map(|ty| ty.into()).collect())
             }
 
-            zulon_typeck::Ty::Function { params, return_type, variadic: _ } => {
-                HirTy::Function {
-                    params: params.into_iter().map(|ty| ty.into()).collect(),
-                    return_type: Box::new((*return_type).into()),
-                }
-            }
+            zulon_typeck::Ty::Function {
+                params,
+                return_type,
+                variadic: _,
+            } => HirTy::Function {
+                params: params.into_iter().map(|ty| ty.into()).collect(),
+                return_type: Box::new((*return_type).into()),
+            },
 
-            zulon_typeck::Ty::Struct { name, generics } => {
-                HirTy::Struct {
-                    name: name.name.clone(),
-                    generics: generics.into_iter().map(|ty| ty.into()).collect(),
-                }
-            }
+            zulon_typeck::Ty::Struct { name, generics } => HirTy::Struct {
+                name: name.name.clone(),
+                generics: generics.into_iter().map(|ty| ty.into()).collect(),
+            },
 
-            zulon_typeck::Ty::Enum { name, generics } => {
-                HirTy::Enum {
-                    name: name.name.clone(),
-                    generics: generics.into_iter().map(|ty| ty.into()).collect(),
-                }
-            }
+            zulon_typeck::Ty::Enum { name, generics } => HirTy::Enum {
+                name: name.name.clone(),
+                generics: generics.into_iter().map(|ty| ty.into()).collect(),
+            },
 
-            zulon_typeck::Ty::Optional(inner) => {
-                HirTy::Optional(Box::new((*inner).into()))
-            }
+            zulon_typeck::Ty::Optional(inner) => HirTy::Optional(Box::new((*inner).into())),
 
             zulon_typeck::Ty::TraitObject(inner) => {
                 // For now, convert to simplified trait object
                 HirTy::TraitObject(vec![format!("{:?}", *inner)])
             }
 
-            zulon_typeck::Ty::ImplTrait(inner) => {
-                HirTy::ImplTrait(vec![format!("{:?}", *inner)])
-            }
+            zulon_typeck::Ty::ImplTrait(inner) => HirTy::ImplTrait(vec![format!("{:?}", *inner)]),
 
             // Type variables should be resolved by now
             zulon_typeck::Ty::TyVar(id) => {

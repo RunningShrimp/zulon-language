@@ -3,10 +3,10 @@
 
 //! End-to-end test for async/await pipeline
 
-use zulon_parser::Parser;
 use zulon_hir::lower_ast_simple;
-use zulon_mir::{lower_hir, transform_async_functions};
 use zulon_lir::lower_mir;
+use zulon_mir::{lower_hir, transform_async_functions};
+use zulon_parser::Parser;
 
 fn main() {
     println!("=== ZULON Async/Await End-to-End Test ===\n");
@@ -212,7 +212,10 @@ async fn with_await() -> i32 {
 
             // Check entry block for state switch
             if let Some(entry) = func.blocks.get(&func.entry_block) {
-                println!("    Entry block has {} instructions", entry.instructions.len());
+                println!(
+                    "    Entry block has {} instructions",
+                    entry.instructions.len()
+                );
                 if let Some(zulon_mir::MirTerminator::Switch { .. }) = entry.terminator {
                     println!("    ✅ State machine switch generated");
                 }

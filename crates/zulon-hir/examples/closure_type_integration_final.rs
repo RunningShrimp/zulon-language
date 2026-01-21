@@ -119,12 +119,14 @@ fn print_closure_info(hir: &zulon_hir::HirCrate) {
                         return_ty,
                         ty,
                         ..
-                    }) = &local.init {
+                    }) = &local.init
+                    {
                         println!("  ✅ Closure: {}", local.name);
                         println!("     Full Type: {:?}", ty);
 
                         // Print parameter types
-                        let param_types: Vec<String> = params.iter()
+                        let param_types: Vec<String> = params
+                            .iter()
                             .map(|p| format!("{}: {:?}", p.name, p.ty))
                             .collect();
                         println!("     Parameters: [{}]", param_types.join(", "));

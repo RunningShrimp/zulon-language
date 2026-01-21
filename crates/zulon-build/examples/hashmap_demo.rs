@@ -13,7 +13,11 @@ fn main() {
 
     println!("   Create empty HashMap:");
     let mut map: HashMap<&str, i32> = HashMap::new();
-    println!("      HashMap::new() -> len={}, is_empty={}\n", map.len(), map.is_empty());
+    println!(
+        "      HashMap::new() -> len={}, is_empty={}\n",
+        map.len(),
+        map.is_empty()
+    );
 
     println!("   Insert key-value pairs:");
     map.insert("apple", 10);
@@ -37,7 +41,9 @@ fn main() {
     println!("   Update existing key:");
     map.insert("apple", 100);
     match map.get(&"apple") {
-        zulon_std_core::Optional::Some(value) => println!("      After update: get(\"apple\") = {}\n", value),
+        zulon_std_core::Optional::Some(value) => {
+            println!("      After update: get(\"apple\") = {}\n", value)
+        }
         zulon_std_core::Optional::None => {}
     }
 
@@ -60,7 +66,11 @@ fn main() {
 
     println!("   Clear map:");
     map2.clear();
-    println!("      After clear: len={}, is_empty={}\n", map2.len(), map2.is_empty());
+    println!(
+        "      After clear: len={}, is_empty={}\n",
+        map2.len(),
+        map2.is_empty()
+    );
 
     // Summary
     println!("=== SUMMARY ===");

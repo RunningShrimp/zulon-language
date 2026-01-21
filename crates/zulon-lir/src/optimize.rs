@@ -25,7 +25,13 @@ pub fn constant_fold(func: &mut LirFunction) -> Result<()> {
 /// Try to fold an instruction
 fn try_fold(inst: &LirInstruction) -> Option<LirInstruction> {
     match inst {
-        LirInstruction::BinaryOp { dest: _, op: _, left: _, right: _, ty: _ } => {
+        LirInstruction::BinaryOp {
+            dest: _,
+            op: _,
+            left: _,
+            right: _,
+            ty: _,
+        } => {
             // Only fold if both operands are constants
             // (In real SSA, this requires reaching definitions analysis)
             None

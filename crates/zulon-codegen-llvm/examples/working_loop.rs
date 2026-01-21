@@ -1,10 +1,10 @@
 // Working loop example - simple counter with return
 use std::io::Cursor;
-use zulon_parser::Parser;
-use zulon_hir::lower_ast_simple;
-use zulon_mir::lower_hir;
-use zulon_lir::lower::LirLoweringContext;
 use zulon_codegen_llvm::CodeGenerator;
+use zulon_hir::lower_ast_simple;
+use zulon_lir::lower::LirLoweringContext;
+use zulon_mir::lower_hir;
+use zulon_parser::Parser;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let source = r#"
@@ -36,7 +36,10 @@ fn main() -> i32 {
 
     let mut lir_ctx = LirLoweringContext::new();
     let lir = lir_ctx.lower_body(&mir)?;
-    println!("✅ LIR lowering successful - {} functions", lir.functions.len());
+    println!(
+        "✅ LIR lowering successful - {} functions",
+        lir.functions.len()
+    );
 
     // Generate LLVM IR
     let mut buffer = Cursor::new(Vec::new());

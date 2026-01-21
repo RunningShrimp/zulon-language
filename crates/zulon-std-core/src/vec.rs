@@ -5,7 +5,7 @@
 
 use crate::traits::{Clone, PartialEq};
 use crate::Optional;
-use std::iter::{Iterator, IntoIterator};
+use std::iter::{IntoIterator, Iterator};
 
 /// A growable list type with heap-allocated contents
 #[derive(Debug)]
@@ -32,19 +32,27 @@ impl<T> Vec<T> {
             (std::ptr::null_mut(), 0)
         } else {
             let size = capacity * std::mem::size_of::<T>();
-            unsafe {
-                (zulon_runtime_alloc(size) as *mut T, capacity)
-            }
+            unsafe { (zulon_runtime_alloc(size) as *mut T, capacity) }
         };
 
-        Vec { ptr, capacity, len: 0 }
+        Vec {
+            ptr,
+            capacity,
+            len: 0,
+        }
     }
 
-    pub fn len(&self) -> usize { self.len }
+    pub fn len(&self) -> usize {
+        self.len
+    }
 
-    pub fn is_empty(&self) -> bool { self.len == 0 }
+    pub fn is_empty(&self) -> bool {
+        self.len == 0
+    }
 
-    pub fn capacity(&self) -> usize { self.capacity }
+    pub fn capacity(&self) -> usize {
+        self.capacity
+    }
 
     pub fn push(&mut self, value: T) {
         if self.len == self.capacity {
@@ -63,9 +71,7 @@ impl<T> Vec<T> {
         }
 
         self.len -= 1;
-        unsafe {
-            Optional::Some(std::ptr::read(self.ptr.add(self.len)))
-        }
+        unsafe { Optional::Some(std::ptr::read(self.ptr.add(self.len))) }
     }
 
     pub fn reserve(&mut self, additional: usize) {
@@ -140,15 +146,11 @@ impl<T> Vec<T> {
     }
 
     pub fn as_slice(&self) -> &[T] {
-        unsafe {
-            std::slice::from_raw_parts(self.ptr, self.len)
-        }
+        unsafe { std::slice::from_raw_parts(self.ptr, self.len) }
     }
 
     pub fn as_mut_slice(&mut self) -> &mut [T] {
-        unsafe {
-            std::slice::from_raw_parts_mut(self.ptr, self.len)
-        }
+        unsafe { std::slice::from_raw_parts_mut(self.ptr, self.len) }
     }
 
     /// Insert an element at a specific index, shifting elements to the right
@@ -165,7 +167,11 @@ impl<T> Vec<T> {
         unsafe {
             // Shift elements to the right
             if index < self.len {
-                std::ptr::copy(self.ptr.add(index), self.ptr.add(index + 1), self.len - index);
+                std::ptr::copy(
+                    self.ptr.add(index),
+                    self.ptr.add(index + 1),
+                    self.len - index,
+                );
             }
 
             // Write new element
@@ -261,9 +267,7 @@ impl<T> Vec<T> {
         if self.len == 0 {
             Optional::None
         } else {
-            unsafe {
-                Optional::Some(&*self.ptr)
-            }
+            unsafe { Optional::Some(&*self.ptr) }
         }
     }
 
@@ -272,9 +276,7 @@ impl<T> Vec<T> {
         if self.len == 0 {
             Optional::None
         } else {
-            unsafe {
-                Optional::Some(&*self.ptr.add(self.len - 1))
-            }
+            unsafe { Optional::Some(&*self.ptr.add(self.len - 1)) }
         }
     }
 
@@ -283,9 +285,7 @@ impl<T> Vec<T> {
         if self.len == 0 {
             Optional::None
         } else {
-            unsafe {
-                Optional::Some(&mut *self.ptr)
-            }
+            unsafe { Optional::Some(&mut *self.ptr) }
         }
     }
 
@@ -294,9 +294,7 @@ impl<T> Vec<T> {
         if self.len == 0 {
             Optional::None
         } else {
-            unsafe {
-                Optional::Some(&mut *self.ptr.add(self.len - 1))
-            }
+            unsafe { Optional::Some(&mut *self.ptr.add(self.len - 1)) }
         }
     }
 
@@ -338,9 +336,7 @@ impl<T> Iterator for IntoIter<T> {
 
     fn next(&mut self) -> Option<T> {
         if self.next_idx < self.vec.len {
-            let item = unsafe {
-                std::ptr::read(self.vec.ptr.add(self.next_idx))
-            };
+            let item = unsafe { std::ptr::read(self.vec.ptr.add(self.next_idx)) };
             self.next_idx += 1;
             Some(item)
         } else {
@@ -372,9 +368,7 @@ impl<'a, T> Iterator for Iter<'a, T> {
 
     fn next(&mut self) -> Option<&'a T> {
         if self.next_idx < self.vec.len {
-            let item = unsafe {
-                &*self.vec.ptr.add(self.next_idx)
-            };
+            let item = unsafe { &*self.vec.ptr.add(self.next_idx) };
             self.next_idx += 1;
             Some(item)
         } else {
@@ -395,9 +389,7 @@ impl<'a, T> Iterator for IterMut<'a, T> {
     fn next(&mut self) -> Option<&'a mut T> {
         if self.next_idx < self.vec.len {
             // SAFETY: We use raw pointers and lifetimes to allow mutable iteration
-            let item = unsafe {
-                &mut *(self.vec.ptr.add(self.next_idx))
-            };
+            let item = unsafe { &mut *(self.vec.ptr.add(self.next_idx)) };
             self.next_idx += 1;
             Some(item)
         } else {
@@ -668,12 +660,12 @@ mod tests {
 
         match vec.first() {
             Optional::Some(_) => panic!("Expected None"),
-            Optional::None => {},
+            Optional::None => {}
         }
 
         match vec.last() {
             Optional::Some(_) => panic!("Expected None"),
-            Optional::None => {},
+            Optional::None => {}
         }
     }
 
@@ -781,7 +773,7 @@ mod tests {
 
         match iter.next() {
             Some(_) => panic!("Expected None"),
-            None => {},
+            None => {}
         }
     }
 
@@ -826,7 +818,7 @@ mod tests {
 
         match iter.next() {
             Some(_) => panic!("Expected None"),
-            None => {},
+            None => {}
         }
     }
 

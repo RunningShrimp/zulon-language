@@ -1,1037 +1,1058 @@
-# ZULON 语言实施计划
+# ZULON Implementation Plan
 
-**版本**: 1.0
-**日期**: 2026-01-07
-**状态**: 实施规划
-**预计周期**: 2026-2028 (36个月)
+## 📋 Executive Summary
 
----
-
-## 目录
-
-1. [总体规划](#总体规划)
-2. [阶段划分](#阶段划分)
-3. [详细任务列表](#详细任务列表)
-4. [里程碑](#里程碑)
-5. [资源需求](#资源需求)
-6. [风险管理](#风险管理)
+**Plan Date**: 2025-01-20
+**Based On**: docs/guides/GAP_ANALYSIS_REPORT.md
+**Purpose**: Comprehensive roadmap to resolve 18 identified gaps and achieve whitepaper compliance
+**Duration**: 6-month phased implementation (Phases 1-3)
+**Priority**: Production readiness by 2025-Q4
 
 ---
 
-## 总体规划
+## 🎯 Strategic Goals
 
-### 实施目标
+### Phase 1 (Month 1-2): Critical Production Gaps
+- **Objective**: Resolve blocking gaps for production use
+- **Focus**: File system, performance benchmarks, learning curve validation
+- **Target**: MVP for production workloads
 
-实现 ZULON 语言的完整工具链和运行时，包括：
+### Phase 2 (Month 3-4): Feature Completeness
+- **Objective**: Complete standard library and advanced features
+- **Focus**: Time/Date modules, effect combinators, async/await
+- **Target**: Feature parity with whitepaper specifications
 
-1. **编译器** - 将 ZULON 代码编译为机器码
-2. **运行时** - 内存管理、非阻塞 IO、事件循环
-3. **工具链** - YAN 统一工具（build/run/test/efpl）
-4. **标准库** - 核心库和常用功能
-5. **测试框架** - 单元测试和集成测试
-6. **EFPL** - 交互式执行环境
-
-### 关键原则
-
-- **性能优先**: 目标 90-95% C++ 性能
-- **安全第一**: Tree Borrows + ARC 内存安全
-- **开发友好**: 清晰的错误信息和开发工具
-- **平台支持**: Linux/macOS/Windows/WASM
+### Phase 3 (Month 5-6): Optimization & Polish
+- **Objective**: Performance optimization, developer tools, ecosystem
+- **Focus**: Borrow checker enforcement, recovery strategies, IDE integration
+- **Target**: Production-grade language ecosystem
 
 ---
 
-## 阶段划分
+## 📊 Gap Resolution Matrix
 
-### Phase 1: MVP (最小可行产品) - 6个月
-**时间**: 2026 Q1-Q2
-
-**目标**: 能够编译和运行简单的 ZULON 程序
-
-### Phase 2: 核心功能 - 12个月
-**时间**: 2026 Q3 - 2027 Q2
-
-**目标**: 完整的语言特性和标准库
-
-### Phase 3: 生产就绪 - 12个月
-**时间**: 2027 Q3 - 2028 Q2
-
-**目标**: 稳定、高性能、生态完善
-
-### Phase 4: 生态建设 - 持续
-**时间**: 2028 Q3+
-
-**目标**: 社区、工具、库
-
----
-
-## 详细任务列表
-
-### Phase 1: MVP (2026 Q1-Q2, 6个月)
-
-#### 1.1 编译器前端 (2个月)
-
-**Lexer (词法分析) - 2周**
-- [ ] 定义词法单元（Token）类型
-  - [ ] 关键字 (fn, struct, enum, if, else, return, 等)
-  - [ ] 标识符 (变量名、函数名、类型名)
-  - [ ] 字面量 (整数、浮点、字符串、字符、布尔)
-  - [ ] 运算符 (+, -, *, /, %, &&, ||, !, 等)
-  - [ ] 分隔符 ((, ), {, }, [, ], :, ;, ,, ., 等)
-- [ ] 实现状态机
-  - [ ] 跳过空白字符和注释
-  - [ ] 识别字符串插值 (${})
-  - [ ] 识别模板字符串 (反引号)
-  - [ ] 识别多行注释
-- [ ] 错误处理
-  - [ ] 非法字符错误
-  - [ ] 未闭合字符串错误
-  - [ ] 无效数字格式错误
-- [ ] 测试
-  - [ ] 单元测试覆盖所有 token 类型
-  - [ ] 测试边界情况
-
-**Parser (语法分析) - 4周**
-- [ ] 定义 AST 节点类型
-  - [ ] 语句 (Statement)
-  - [ ] 表达式 (Expression)
-  - [ ] 声明 (Declaration)
-  - [ ] 类型 (Type)
-  - [ ] 模式 (Pattern)
-- [ ] 实现语法规则
-  - [ ] 函数定义和调用
-  - [ ] 结构体定义和实例化
-  - [ ] 枚举定义
-  - [ ] trait 定义和实现
-  - [ ] 控制流 (if-else, loop, while, for)
-  - [ ] match 表达式
-  - [ ] 多返回值
-  - [ ] 结构体解构
-  - [ ] 模板字符串
-  - [ ] defer 语句
-- [ ] 错误恢复
-  - [ ] 同步错误恢复
-  - [ ] 清晰的语法错误消息
-- [ ] 测试
-  - [ ] 测试所有语法结构
-  - [ ] 测试错误恢复
-
-**AST (抽象语法树) - 2周**
-- [ ] 设计 AST 节点层次结构
-- [ ] 实现 AST 遍历和转换
-- [ ] 添加位置信息（用于错误报告）
-- [ ] 实现 AST 打印（调试）
-- [ ] 测试
-  - [ ] 验证 AST 结构正确性
-
-#### 1.2 类型系统 (4周)
-
-**类型定义 - 1周**
-- [ ] 实现基础类型
-  - [ ] 整数类型 (i8, i16, i32, i64, i128, u8, u16, u32, u64, u128)
-  - [ ] 浮点类型 (f32, f64)
-  - [ ] 布尔类型 (bool)
-  - [ ] 字符类型 (char)
-  - [ ] 字符串类型 (str)
-  - [ ] 数组类型 ([T; N], Vec<T>)
-  - [ ] 元组类型 ((T1, T2, ...))
-  - [ ] Option<T>
-  - [ ] Result<T, E>
-- [ ] 实现复合类型
-  - [ ] 结构体类型
-  - [ ] 枚举类型
-  - [ ] Trait 对象类型
-
-**类型推导 - 2周**
-- [ ] 实现双向类型推导
-  - [ ] 局部变量类型推导
-  - [ ] 函数返回值推导
-  - [ ] 闭包类型推导
-- [ ] 实现 trait 约束检查
-- [ ] 实现泛型实例化
-- [ ] 测试
-  - [ ] 测试类型推导算法
-  - [ ] 测试泛型实例化
-
-**类型检查 - 1周**
-- [ ] 实现类型兼容性检查
-- [ ] 实现 trait bounds 验证
-- [ ] 实现生命周期检查（简化版 Tree Borrows）
-- [ ] 测试
-  - [ ] 测试类型错误检测
-  - [ ] 测试 trait 检查
-
-#### 1.3 中端 IR (中间表示) (3周)
-
-**HIR (高层 IR) - 1周**
-- [ ] 定义 HIR 节点类型
-- [ ] AST 到 HIR 转换
-- [ ] 实现类型推导和检查
-- [ ] 测试
-  - [ ] 验证 HIR 正确性
-
-**MIR (中层 IR) - 1周**
-- [ ] 定义 MIR 节点类型
-- [ ] HIR 到 MIR 转换
-- [ ] 实现借用检查（Tree Borrows 模型）
-- [ ] 实现效应检查
-- [ ] 测试
-  - [ ] 验证借用检查
-  - [ ] 验证效应检查
-
-**LIR (底层 IR) - 1周**
-- [ ] MIR 到 LIR 转换
-- [ ] 实现控制流简化
-- [ ] 实现数据流分析
-- [ ] 测试
-  - [ ] 验证优化正确性
-
-#### 1.4 代码生成 (4周)
-
-**LLVM IR 生成 - 3周**
-- [ ] 实现 LIR 到 LLVM IR 转换
-- [ ] 实现类型到 LLVM 类型映射
-- [ ] 实现函数调用约定
-- [ ] 实现结构体内存布局
-- [ ] 实现枚举表示
-- [ ] 实现错误处理（Result 类型）
-- [ ] 测试
-  - [ ] 测试生成的代码正确性
-  - [ ] 性能基准测试
-
-**可执行文件生成 - 1周**
-- [ ] 实现 LLVM IR 到机器码编译
-- [ ] 实现链接（链接标准库）
-- [ ] 生成可执行文件
-- [ ] 测试
-  - [ ] 测试 hello world
-  - [ ] 测试简单程序
-
-#### 1.5 运行时基础 (4周)
-
-**内存管理 (ARC) - 2周**
-- [ ] 实现基础 ARC (Automatic Reference Counting)
-  - [ ] Arc<T> 智能指针
-  - [ ] Weak<T> 弱引用
-  - [ ] 自动引用计数调整
-- [ ] 实现逃逸分析
-  - [ ] 栈分配优化
-  - [ ] 减少不必要的堆分配
-- [ ] 实现循环检测
-- [ ] 测试
-  - [ ] 内存泄漏测试
-  - [ ] 性能测试
-
-**基础 IO - 2周**
-- [ ] 实现同步 IO（阻塞）
-  - [ ] File::open, read, write
-  - [ ] TcpStream, TcpListener
-  - [ ] 标准输入/输出
-- [ ] 实现错误处理
-  - [ ] IoError 类型
-  - [ ] Error trait 实现
-- [ ] 测试
-  - [ ] 文件操作测试
-  - [ ] 网络操作测试
-
-#### 1.6 标准库核心 (3周)
-
-**core 库 - 2周**
-- [x] 实现基础类型
-  - [x] Clone, Copy, PartialEq, Eq, PartialOrd, Ord traits
-  - [x] Optional, Outcome 类型 (ZULON 命名)
-  - [x] 常用函数
-- [x] 实现集合类型 ✅
-  - [x] Vec<T> (动态数组) - ✅ 完成
-  - [x] HashMap<K, V> (哈希表) - ✅ 完成 (简化版，线性搜索)
-  - [x] HashSet<T> (哈希集合) - ✅ 完成
-- [ ] 测试
-  - [ ] 单元测试覆盖所有 API
-
-**collections 库 - 1周**
-- [x] 实现 VecDeque<T> (双端队列) - ✅ 完成
-- [ ] 实现 LinkedList<T> (链表)
-- [ ] 实现 BTreeMap<K, V>
-- [ ] 实现 BTreeSet<T>
-- [x] 测试 - ✅ 32个单元测试通过
-
-#### 1.7 工具链基础 (6周) ✅ 核心完成 (2026-01-07)
-
-**YAN 基础命令 - 4周** ✅ 完成
-- [x] 实现 `yan build` ✅
-  - [x] 编译流程 (调用 cargo)
-  - [x] 并行编译 (jobs 参数)
-  - [x] 支持 package 和 example
-- [x] 实现 `yan run` ✅
-  - [x] 快速运行 (构建产物)
-  - [x] 支持二进制和示例
-  - [x] 参数传递
-- [x] 实现 `yan new` ✅
-  - [x] 项目模板生成
-  - [x] 自动创建标准结构
-- [x] 实现 `yan clean` ✅
-  - [x] 清理构建产物 (调用 cargo clean)
-- [x] 测试 ✅
-  - [x] 所有命令测试通过
-
-**YAN 配置系统 - 1周** ⏸️ 可选 (P2)
-- [ ] 实现 yan.toml 解析
-- [ ] 实现配置验证
-- [ ] 实现默认配置
-- [ ] 测试
-
-**错误处理 - 1周** ⏸️ 可选 (P2)
-- [ ] 实现友好的错误消息
-- [ ] 实现错误高亮
-  - [ ] 终端颜色支持
-  - [ ] 错误位置指示
-- [ ] 实现错误修复建议
-- [ ] 测试
-
-**文档**: [PHASE_1_7_YAN_TOOL_COMPLETE.md](./PHASE_1_7_YAN_TOOL_COMPLETE.md)
-
-#### 1.8 测试和文档 (4周)
-
-**测试框架基础 - 2周**
-- [ ] 实现 `#[test]` 宏
-- [ ] 实现断言宏
-  - [ ] assert!
-  - [ ] assert_eq!
-  - [ ] assert_ne!
-  - [ ] assert_matches!
-- [ ] 实现测试运行器
-  - [ ] 测试发现
-  - [ ] 测试执行
-  - [ ] 测试报告
-- [ ] 测试
-  - [ ] 测试框架自身测试
-
-**基础示例 - 1周**
-- [ ] 更新 00_hello_world.zl
-- [ ] 更新 01_basics.zl
-- [ ] 更新 02_types.zl
-- [ ] 创建更多简单示例
-- [ ] 测试所有示例可运行
-
-**文档 - 1周**
-- [ ] 编写安装指南
-- [ ] 编写快速开始教程
-- [ ] 编写语言特性说明
-- [ ] 编写 API 文档
-
-#### 1.9 MVP 验证 (2周)
-
-- [ ] 完整编译示例 01_basics.zl
-- [ ] 完整编译示例 02_types.zl
-- [ ] 性能基准测试（与 C++ 对比）
-- [ ] 内存安全测试
-- [ ] 文档审查
-- [ ] MVP 发布准备
-
-**MVP 交付目标**:
-- ✅ 能够编译和运行基础 ZULON 程序
-- ✅ 支持核心语言特性（函数、结构体、枚举、trait）
-- ✅ 基础内存管理（ARC）
-- ✅ 基础标准库（Vec, HashMap, Option, Result）
-- ✅ YAN 工具链（build, run, new, clean）
-- ✅ 性能达到 70-80% C++ 性能
+| Gap ID | Gap Name | Category | Priority | Phase | Owner | Status |
+|----------|-----------|----------|----------|--------|--------|--------|
+| G1 | Effect Combinators | Error Handling | High | P2 | Runtime Team | ❌ Todo |
+| G2 | Async/Await Syntax | Concurrency | High | P2 | Compiler Team | ❌ Todo |
+| G3 | File System Module | Standard Lib | High | P1 | Std Team | ❌ Todo |
+| G4 | Time/Date Module | Standard Lib | High | P1 | Std Team | ❌ Todo |
+| G5 | Performance Benchmarks | Performance | High | P1 | Perf Team | ❌ Todo |
+| G6 | Learning Curve Validation | Dev Experience | High | P1 | Docs Team | ❌ Todo |
+| G7 | Borrow Checker Enforcement | Type System | Medium | P2 | Compiler Team | ❌ Todo |
+| G8 | Compile-Time Safety | Memory | Medium | P2 | Compiler Team | ❌ Todo |
+| G9 | Data Race Detection | Concurrency | Medium | P2 | Runtime Team | ❌ Todo |
+| G10 | Rich Error Context | Error Handling | Medium | P2 | Compiler Team | ❌ Todo |
+| G11 | Error Recovery Strategies | Error Handling | Medium | P3 | Std Team | ❌ Todo |
+| G12 | Extended Collections | Standard Lib | Medium | P2 | Std Team | ❌ Todo |
+| G13 | HTTP Client | Networking | Medium | P2 | Runtime Team | ❌ Todo |
+| G14 | Async I/O Abstractions | Concurrency | Medium | P2 | Runtime Team | ❌ Todo |
+| G15 | Multi-Return Values | Language | Low | P3 | Compiler Team | ❌ Todo |
+| G16 | Template Strings | Language | Low | P3 | Compiler Team | ❌ Todo |
+| G17 | Defer Statements | Language | Low | P3 | Compiler Team | ❌ Todo |
+| G18 | Smart Pointers Optimization | Memory | Low | P3 | Std Team | ❌ Todo |
 
 ---
 
-### Phase 2: 核心功能 (2026 Q3 - 2027 Q2, 12个月)
+## 📅 Phase 1: Critical Production Gaps (Month 1-2)
 
-#### 2.1 高级语言特性 (8周)
+### 🎯 Objectives
 
-**错误处理增强 - 2周**
-- [ ] 实现 throw 关键字
-- [ ] 实现 | 分隔符（返回值、错误、效应）
-- [ ] 实现 ? 运算符
-- [ ] 实现自动 Error trait 实现
-- [ ] 测试
-  - [ ] 错误传播测试
-  - [ ] 错误恢复测试
+**Primary Goal**: Enable production-grade applications with file I/O, time handling, and validated performance
 
-**效应系统 - 3周**
-- [ ] 实现效应定义 (effect 关键字)
-- [ ] 实现效应执行 (perform 关键字)
-- [ ] 实现效应处理器 (try...with 块)
-- [ ] 实现内置效应
-  - [ ] IO 效应
-  - [ ] Database 效应
-  - [ ] Log 效应
-- [ ] 测试
-  - [ ] 效应处理器测试
-  - [ ] 效应组合测试
+### G3: File System Module (High Priority)
 
-**高级特性 - 3周**
-- [ ] 实现多返回值
-  - [ ] 元组类型
-  - [ ] 解构赋值
-- [ ] 实现结构体解构
-- [ ] 实现模板字符串插值
-- [ ] 实现智能 defer
-  - [ ] LIFO 执行顺序
-  - [ ] 变量捕获
-- [ ] 实现命名空间
-  - [ ] namespace 定义
-  - [ ] use 导入
-- [ ] 实现 trait 组合
-- [ ] 测试
-  - [ ] 所有特性集成测试
+**Whitepaper Claim**: Complete file I/O with `std::fs::File` wrapper, metadata operations, directory traversal
 
-#### 2.2 并发运行时 (10周)
+**Implementation Plan**:
 
-**非阻塞 IO - 4周**
-- [ ] 实现事件循环抽象
-  - [ ] EventLoop trait
-  - [ ] EventHandler trait
-  - [ ] Reactor 模式
-- [ ] 实现 Linux epoll
-  - [ ] EpollEventLoop
-  - [ ] 边缘触发模式
-  - [ ] EPOLLONESHOT 支持
-- [ ] 实现 Linux io_uring (可选)
-  - [ ] IoUringEventLoop
-  - [ ] 零拷贝优化
-- [ ] 测试
-  - [ ] IO 性能测试
-  - [ ] 并发测试
+#### Module 1: Core File Operations
+- [ ] File handle abstraction (`std::fs::File`)
+- [ ] Read/Write operations with buffered I/O
+- [ ] File metadata (size, modified time, permissions)
+- [ ] File creation, deletion, move, copy
+- [ ] Directory operations (create, delete, iterate)
 
-**Windows IOCP - 2周**
-- [ ] 实现 IOCP 事件循环
-  - [ ] IocpEventLoop
-  - [ ] 完成端口
-- [ ] 实现 Windows 异步 IO
-  - [ ] 异步文件操作
-  - [ ] 异步套接字
-- [ ] 测试
-  - [ ] Windows 平台测试
-  - [ ] 跨平台兼容性测试
+#### Module 2: Path Handling
+- [ ] Path manipulation (join, parent, filename, extension)
+- [ ] Path normalization (canonical paths)
+- [ ] Path existence checking
+- [ ] Relative vs absolute path handling
 
-**macOS/BSD kqueue - 2周**
-- [ ] 实现 kqueue 事件循环
-  - [ ] KqueueEventLoop
-  - [ ] kevent 支持
-- [ ] 实现 BSD 异步 IO
-- [ ] 测试
-  - [ ] macOS 平台测试
-  - [ ] 跨平台兼容性测试
+#### Module 3: Error Handling
+- [ ] File not found errors
+- [ ] Permission denied errors
+- [ ] Path too long errors
+- [ ] I/O timeout errors
+- [ ] Error recovery strategies
 
-**Channel 和 Select - 2周**
-- [ ] 实现 Channel 类型
-  - [ ] mpsc::channel (多生产者单消费者)
-  - [ ] spsc::channel (单生产者单消费者)
-  - [ ] oneshot::channel (一次性)
-- [ ] 实现 select 语句
-  - [ ] Channel 注册
-  - [ ] 事件等待
-  - [ ] 超时处理
-- [ ] 测试
-  - [ ] 并发通信测试
-  - [ ] 死锁检测测试
+#### Module 4: Testing
+- [ ] Unit tests for all file operations
+- [ ] Integration tests with real file system
+- [ ] Error handling tests
+- [ ] Performance benchmarks
 
-#### 2.3 异步编程 (6周)
+**Success Criteria**:
+- All file operations working correctly
+- Error handling comprehensive and documented
+- 90%+ test coverage
+- Performance comparable to Rust's std::fs
 
-**Async/Await - 3周**
-- [ ] 实现 async fn 语法
-- [ ] 实现 .await 语法
-- [ ] 实现 Future trait
-  - [ ] poll 方法
-  - [ ] Context 类型
-- [ ] 实现任务调度器
-  - [ ] 任务生成
-  - [ ] 任务唤醒
-  - [ ] 任务调度
-- [ ] 测试
-  - [ ] 异步函数测试
-  - [ ] 任务调度测试
-
-**异步 IO 标准库 - 3周**
-- [ ] 实现 AsyncRead/AsyncWrite traits
-- [ ] 实现异步文件操作
-  - [ ] async_open
-  - [ ] async_read
-  - [ ] async_write
-- [ ] 实现异步网络操作
-  - [ ] async_connect
-  - [ ] async_accept
-  - [ ] async_recv
-  - [ ] async_send
-- [ ] 实现异步标准库
-  - [ ] fs 异步文件系统
-  - [ ] net 异步网络
-- [ ] 测试
-  - [ ] 异步操作测试
-  - [ ] 性能测试
-
-#### 2.4 EPVS 无锁数据结构 (6周)
-
-**理论基础 - 1周**
-- [ ] 研究 EPVS 论文 (POPL 2025)
-- [ ] 设计数据结构接口
-- [ ] 设计 epoch 保护机制
-
-**实现 EPVS - 4周**
-- [ ] 实现 epoch 管理
-  - [ ] epoch::pin
-  - [ ] epoch::unpin
-- [ ] 实现无锁队列
-  - [ ] SPSC 队列
-  - [ ] MPSC 队列
-  - [ ] MPMC 队列
-- [ ] 实现无锁哈希表
-  - [ ] ConcurrentHashMap
-  - [ ] resize 操作
-- [ ] 实现无锁栈
-- [ ] 测试
-  - [ ] 并发测试
-  - [ ] 压力测试
-  - [ ] 无ABA问题测试
-
-**集成到标准库 - 1周**
-- [ ] 在 sync 模块暴露 EPVS 类型
-- [ ] 文档编写
-- [ ] 示例代码
-
-#### 2.5 高级标准库 (8周)
-
-**async 库 - 3周**
-- [ ] 实现任务类型
-  - [ ] Task
-  - [ ] JoinHandle
-  - [ ] 任务本地存储
-- [ ] 实现同步原语
-  - [ ] Mutex (异步互斥锁)
-  - [ ] RwLock (异步读写锁)
-  - [ ] Semaphore (信号量)
-  - [ ] Barrier (屏障)
-- [ ] 实现定时器
-  - [ ] interval
-  - [ ] timeout
-  - [ ] delay
-- [ ] 测试
-  - [ ] 并发测试
-  - [ ] 超时测试
-
-**io 库增强 - 2周**
-- [ ] 实现路径操作
-  - [ ] Path
-  - [ ] PathBuf
-- [ ] 实现文件系统抽象
-  - [ ] Metadata
-  - [ ] Permissions
-- [ ] 实现进程管理
-  - [ ] Command
-  - [ ] Child
-  - [ ] ExitCode
-- [ ] 测试
-
-**net 库 - 3周**
-- [ ] 实现 TCP/UDP
-  - [ ] TcpStream
-  - [ ] TcpListener
-  - [ ] UdpSocket
-- [ ] 实现高级网络功能
-  - [ ] IpAddr
-  - [ ] SocketAddr
-  - [ ] 查找 DNS
-- [ ] 实现 HTTP 客户端（基础）
-  - [ ] Request
-  - [ ] Response
-  - [ ] Client
-- [ ] 测试
-
-#### 2.6 EFPL 交互环境 (6周)
-
-**REPL 核心 - 3周**
-- [ ] 实现词法分析（增量）
-- [ ] 实现语法分析（增量）
-- [ ] 实现类型推导（增量）
-- [ ] 实现 JIT 执行
-  - [ ] 表达式求值
-  - [ ] 语句执行
-  - [ ] 函数调用
-- [ ] 实现错误恢复
-- [ ] 测试
-
-**REPL 功能 - 2周**
-- [ ] 实现交互命令
-  - [ ] :type (类型检查)
-  - [ ] :doc (文档查看)
-  - [ ] :env (环境信息)
-  - [ ] :reset (重置环境)
-  - [ ] :import (导入模块)
-  - [ ] :load/:save (会话管理)
-- [ ] 实现历史记录
-  - [ ] 上下箭头浏览
-- [ ] 实现 Tab 补全
-- [ ] 实现语法高亮
-- [ ] 测试
-
-**REPL 集成 - 1周**
-- [ ] 集成到 yan repl
-- [ ] 实现 -e 选项
-- [ ] 实现 -i 选项
-- [ ] 测试
-
-#### 2.7 测试框架完善 (4周)
-
-**测试增强 - 2周**
-- [ ] 实现参数化测试
-  - [ ] #[data(...)] 宏
-  - [ ] 数据驱动测试
-- [ ] 实现异步测试支持
-  - [ ] #[test] async fn
-  - [ ] 异步测试运行器
-- [ ] 实现超时测试
-  - [ ] #[timeout(n)] 宏
-  - [ ] 超时检测
-- [ ] 实现测试隔离
-  - [ ] 独立测试环境
-  - [ ] 资源清理
-- [ ] 测试
-
-**测试覆盖率 - 1周**
-- [ ] 实现代码覆盖率收集
-  - [ ] 行覆盖率
-  - [ ] 分支覆盖率
-  - [ ] 函数覆盖率
-- [ ] 实现覆盖率报告
-  - [ ] HTML 格式
-  - [ ] LCOV 格式
-  - [ ] JSON 格式
-- [ ] 测试
-
-**测试工具 - 1周**
-- [ ] 实现 yan test --parallel
-  - [ ] 并行测试执行
-  - [ ] 测试分片
-- [ ] 实现 yan test --repeat
-  - [ ] 重复测试
-  - [ ] flaky 测试检测
-- [ ] 实现性能基准测试
-- [ ] 测试
-
-#### 2.8 工具链增强 (6周)
-
-**YAN 增强 - 3周**
-- [ ] 实现 yan test
-  - [ ] 测试发现
-  - [ ] 测试运行
-  - [ ] 测试报告
-- [ ] 实现 yan fmt
-  - [ ] 代码格式化
-  - [ ] 配置文件支持
-- [ ] 实现 yan doc
-  - [ ] 文档生成
-  - [ ] 文档查看
-- [ ] 测试
-
-**编译优化 - 2周**
-- [ ] 实现增量编译
-  - [ ] 依赖跟踪
-  - [ ] 增量构建
-- [ ] 实现并行编译
-  - [ ] 多核并行
-  - [ ] 编译图优化
-- [ ] 实现编译缓存
-- [ ] 测试
-
-**诊断工具 - 1周**
-- [ ] 实现性能分析
-  - [ ] CPU profiling
-  - [ ] 内存 profiling
-- [ ] 实现调试信息生成
-  - [ ] --debug 标志
-  - [ ] 符号表生成
-- [ ] 测试
-
-#### 2.9 示例和文档 (4周)
-
-**高级示例 - 2周**
-- [ ] 更新 03_error_handling.zl
-- [ ] 更新 04_advanced_features.zl
-- [ ] 更新 05_concurrency.zl
-- [ ] 更新 06_http_server.zl
-- [ ] 更新 07_cli_tool.zl
-- [ ] 更新 08_efpl_and_test.zl
-- [ ] 创建更多高级示例
-- [ ] 测试所有示例
-
-**文档完善 - 2周**
-- [ ] 更新所有技术文档
-- [ ] 编写 API 文档
-- [ ] 编写最佳实践
-- [ ] 编写性能指南
-- [ ] 编写故障排查指南
-
-**Phase 2 交付目标**:
-- ✅ 完整的语言特性支持
-- ✅ 非阻塞 IO 运行时
-- ✅ 异步编程支持
-- ✅ EFPL 交互环境
-- ✅ 测试框架完善
-- ✅ 性能达到 85-90% C++ 性能
+**Estimated Effort**: 3 weeks
+**Owner**: Std Team
+**Dependencies**: I/O runtime integration
 
 ---
 
-### Phase 3: 生产就绪 (2027 Q3 - 2028 Q2, 12个月)
+### G4: Time/Date Module (High Priority)
 
-#### 3.1 性能优化 (12周)
+**Whitepaper Claim**: Dedicated time types and date/time handling for time-sensitive applications
 
-**编译器优化 - 4周**
-- [ ] 实现更多优化 Pass
-  - [ ] 常量折叠
-  - [ ] 死代码消除
-  - [ ] 函数内联
-  - [ ] 循环展开
-  - [ ] 向量化
-- [ ] 实现 PGO (Profile-Guided Optimization)
-- [ ] 实现链接时优化 (LTO)
-- [ ] 测试
-  - [ ] 性能基准测试
-  - [ ] 优化效果验证
+**Implementation Plan**:
 
-**运行时优化 - 4周**
-- [ ] 优化 ARC 性能
-  - [ ] 批量引用计数调整
-  - [ ] 延迟释放
-- [ ] 优化事件循环
-  - [ ] 批量 IO 提交
-  - [ ] 减少系统调用
-- [ ] 优化内存分配
-  - [ ] Arena 分配器
-  - [ ] 对象池
-- [ ] 测试
-  - [ ] 性能测试
-  - [ ] 内存测试
+#### Module 1: Time Types
+- [ ] `Instant` type (point in time)
+- [ ] `Duration` type (time interval)
+- [ ] Time arithmetic (add, subtract, comparison)
+- [ ] Precision handling (nanoseconds, milliseconds, seconds)
+- [ ] Time formatting and parsing
 
-**标准库优化 - 4周**
-- [ ] 优化 Vec<T>
-  - [ ] 迭代器性能
-  - [ ] 内存重用
-- [ ] 优化 HashMap<K, V>
-  - [ ] 哈希函数
-  - [ ] 碰撞处理
-- [ ] 优化字符串操作
-  - [ ] memcpy 优化
-  - [ ] 字符串拼接
-- [ ] 测试
-  - [ ] 标准库性能测试
+#### Module 2: Date Types
+- [ ] `Date` type (calendar date)
+- [ ] Date arithmetic (add days, months)
+- [ ] Date comparison and ordering
+- [ ] Date formatting and parsing
+- [ ] Timezone handling (UTC, local)
 
-#### 3.2 稳定性和可靠性 (8周)
+#### Module 3: Utilities
+- [ ] Current time functions (now(), utc_now())
+- [ ] Time constants (epoch conversions)
+- [ ] Date parsing from strings
+- [ ] Date formatting to strings
+- [ ] Calendar operations (weekday, day of month)
 
-**错误处理 - 3周**
-- [ ] 改进错误消息
-  - [ ] 更详细的信息
-  - [ ] 修复建议
-  - [ ] 代码示例
-- [ ] 实现错误恢复
-  - [ ] 部分编译
-  - [ ] 继续编译模式
-- [ ] 实现警告系统
-  - [ ] 警告分类
-  - [ ] 警告级别
-- [ ] 测试
+#### Module 4: Integration
+- [ ] Sleep/delay functions with Duration
+- [ ] Timer operations
+- [ ] Timeout support for async operations
+- [ ] System time clock integration
 
-**内存安全 - 3周**
-- [ ] 完善借用检查器
-  - [ ] Tree Borrows 模型
-  - [ ] 生命周期推导
-- [ ] 实现内存安全检查
-  - [ ] 空指针检查
-  - [ ] 数组越界检查
-  - [ ] 整数溢出检查
-- [ ] 实现未定义行为检测
-- [ ] 测试
+#### Module 5: Testing
+- [ ] Unit tests for all time/date types
+- [ ] Edge case tests (leap years, timezones)
+- [ ] Performance benchmarks vs C++ chrono
+- [ ] Integration tests with file system
 
-**稳定性测试 - 2周**
-- [ ] 实现模糊测试
-  - [ ] 编译器模糊测试
-  - [ ] 标准库模糊测试
-- [ ] 实现压力测试
-  - [ ] 并发压力测试
-  - [ ] IO 压力测试
-- [ ] 实现回归测试
-  - [ ] 历史 bug 测试
-  - [ ] 性能回归测试
+**Success Criteria**:
+- All time/date operations working correctly
+- Comprehensive test coverage
+- Performance within 2x of C++ chrono
+- Documentation with examples
 
-#### 3.3 生态工具 (8周)
-
-**IDE 集成 - 4周**
-- [ ] 实现 LSP 服务器 (yan ls)
-  - [ ] 代码补全
-  - [ ] 转到定义
-  - [ ] 查找引用
-  - [ ] 悬停文档
-  - [ ] 诊断信息
-- [ ] 实现 VS Code 扩展
-  - [ ] 语法高亮
-  - [ ] 代码片段
-  - [ ] 集成 YAN 命令
-- [ ] 测试
-
-**包管理器 - 4周**
-- [ ] 实现包注册表
-  - [ ] 包索引
-  - [ ] 包存储
-- [ ] 实现依赖管理
-  - [ ] 版本解析
-  - [ ] 依赖下载
-  - [ ] 依赖安装
-- [ ] 实现 yan publish
-- [ ] 实现 yan update
-- [ ] 测试
-
-#### 3.4 WebAssembly 支持 (6周)
-
-**WASM 后端 - 4周**
-- [ ] 实现 WASM 目标支持
-  - [ ] WASM ABI
-  - [ ] WASM 内存模型
-- [ ] 实现 WASM 标准库
-  - [ ] 浏览器 API 绑定
-  - [ ] JavaScript 互操作
-- [ ] 测试
-
-**WASM 工具 - 2周**
-- [ ] 实现 wasm-bindgen 工具
-- [ ] 实现打包工具
-- [ ] 文档和示例
-- [ ] 测试
-
-#### 3.5 跨平台支持 (6周)
-
-**Android 支持 - 2周**
-- [ ] 实现 Android NDK 支持
-- [ ] 实现 Android 标准库
-- [ ] 文档和示例
-- [ ] 测试
-
-**iOS 支持 - 2周**
-- [ ] 实现 iOS 支持
-  - [ ] iOS API 绑定
-  - [ ] iOS 标准库
-- [ ] 文档和示例
-- [ ] 测试
-
-**嵌入式支持 - 2周**
-- [ ] 实现嵌入式目标
-  - [ ] bare-metal
-  - [ ] freestanding
-- [ ] 实现标准库子集
-- [ ] 文档和示例
-- [ ] 测试
-
-#### 3.6 文档和培训 (4周)
-
-**完整文档 - 2周**
-- [ ] 完善语言规范
-- [ ] 完善标准库文档
-- [ ] 编写教程
-  - [ ] 入门教程
-  - [ ] 进阶教程
-  - [ ] 专家教程
-- [ ] 编写案例研究
-- [ ] 视频教程（可选）
-
-**培训材料 - 2周**
-- [ ] 编写练习题
-- [ ] 编写实验手册
-- [ ] 编写讲师指南
-- [ ] 创建在线课程（可选）
-
-**Phase 3 交付目标**:
-- ✅ 性能达到 90-95% C++ 性能
-- ✅ 生产级稳定性
-- ✅ 完整的工具链
-- ✅ WASM/移动平台支持
-- ✅ IDE 集成
+**Estimated Effort**: 4 weeks
+**Owner**: Std Team
+**Dependencies**: None (pure library)
 
 ---
 
-### Phase 4: 生态建设 (2028 Q3+, 持续)
+### G5: Performance Benchmarks (High Priority)
 
-#### 4.1 社区建设 (持续)
+**Whitepaper Claim**: 90-95% C++ performance with built-in benchmarking to validate claims
 
-**开发者社区 - 持续**
-- [ ] 建立社区论坛
-- [ ] 建立 Discord 服务器
-- [ ] 建立 GitHub 讨论
-- [ ] 定期社区会议
-- [ ] 贡献者指南
-- [ ] 社区行为准则
+**Implementation Plan**:
 
-**文档和教程 - 持续**
-- [ ] 持续更新文档
-- [ ] 撰写博客文章
-- [ ] 创建视频教程
-- [ ] 组织技术讲座
-- [ ] 会议演讲
+#### Module 1: Benchmark Infrastructure
+- [ ] Benchmark harness/framework
+- [ ] Test data generators
+- [ ] Result reporting and statistics
+- [ ] Comparison baseline (C++ compilation)
+- [ ] Continuous integration hooks
 
-#### 4.2 生态系统 (持续)
+#### Module 2: Standard Library Benchmarks
+- [ ] Vec operations (push, pop, iteration)
+- [ ] HashMap operations (insert, lookup, resize)
+- [ ] String operations (concatenation, parsing)
+- [ ] Arc/Weak operations (clone, drop)
+- [ ] Collection comprehensions
 
-**第三方库 - 持续**
-- [ ] 常用库开发
-  - [ ] HTTP 框架 (高级)
-  - [ ] 数据库驱动
-  - [ ] 序列化/反序列化
-  - [ ] 日志框架
-  - [ ] 配置管理
-- [ ] 包管理器生态
-- [ ] 模板库
+#### Module 3: Language Feature Benchmarks
+- [ ] Type inference performance
+- [ ] Pattern matching overhead
+- [ ] Function call overhead
+- [ ] Effect system overhead
+- [ ] Actor message passing overhead
 
-**工具集成 - 持续**
-- [ ] CI/CD 集成
-  - [ ] GitHub Actions
-  - [ ] GitLab CI
-  - [ ] Jenkins
-- [ ] 编辑器插件
-  - [ ] Vim 插件
-  - [ ] Emacs 插件
-  - [ ] Sublime 插件
-- [ ] 调试器集成
-  - [ ] GDB
-  - [ ] LLDB
-  - [ ] VS Code 调试器
+#### Module 4: Real-World Scenario Benchmarks
+- [ ] File I/O throughput
+- [ ] Network latency
+- [ ] Concurrent workloads
+- [ ] Memory allocation patterns
+- [ ] Startup time (Hello World)
 
-#### 4.3 企业支持 (持续)
+#### Module 5: Reporting
+- [ ] Benchmark result storage
+- [ ] Performance regression detection
+- [ ] Automated benchmark runner
+- [ ] Comparison charts and tables
+- [ ] CI/CD integration
 
-**企业功能 - 持续**
-- [ ] 企业级支持
-- [ ] 培训服务
-- [ ] 咨询服务
-- [ ] 定制开发
-- [ ] 技术支持合同
+**Success Criteria**:
+- Comprehensive benchmark suite covering all claims
+- Automated benchmark execution
+- Performance regression detection
+- 90-95% C++ performance claim validated
+- Public benchmark results
 
-**行业应用 - 持续**
-- [ ] 成功案例收集
-- [ ] 行业解决方案
-- [ ] 合作伙伴计划
+**Estimated Effort**: 3 weeks
+**Owner**: Perf Team
+**Dependencies**: Working compiler and standard library
 
 ---
 
-## 里程碑
+### G6: Learning Curve Validation (High Priority)
 
-### M1: MVP 发布 (2026年6月)
-- ✅ 基础编译器
-- ✅ 基础运行时
-- ✅ YAN 工具链 (build, run)
-- ✅ 基础标准库
+**Whitepaper Claim**: 5-minute Hello World, 6-12 months to productive (SPACE Framework)
 
-### M2: Alpha 版本 (2026年12月)
-- ✅ 完整语言特性
-- ✅ 非阻塞 IO
-- ✅ 异步编程
-- ✅ 测试框架
+**Implementation Plan**:
 
-### M3: Beta 版本 (2027年6月)
-- ✅ 性能优化
-- ✅ EFPL
-- ✅ IDE 支持
-- ✅ 包管理器
+#### Module 1: Measurement Framework
+- [ ] Time-to-first-commit tracker
+- [ ] Tutorial completion rate metrics
+- [ ] Task completion time measurements
+- [ ] Error resolution time tracking
+- [ ] Learning curve questionnaires
 
-### M4: 1.0 正式版 (2027年12月)
-- ✅ 生产就绪
-- ✅ 完整文档
-- ✅ 社区生态
+#### Module 2: User Studies
+- [ ] Recruit 10-20 new developers
+- [ ] Time to Hello World measurement
+- [ ] First functional program task
+- [ ] Full-featured application task
+- [ ] Debriefing and feedback collection
 
-### M5: 2.0 版本 (2028年12月)
-- ✅ WASM 支持
-- ✅ 移动平台
-- ✅ 高级优化
+#### Module 3: Tutorial Improvements
+- [ ] Rewrite tutorials for better clarity
+- [ ] Add troubleshooting sections
+- [ ] Video tutorials (if resources allow)
+- [ ] Interactive learning exercises
+- [ ] Progress indicators
 
----
+#### Module 4: Analytics
+- [ ] Tutorial completion funnel
+- [ ] Drop-off point analysis
+- [ ] Common stumbling blocks identification
+- [ ] Success metric definitions
 
-## 资源需求
+**Success Criteria**:
+- 90% of new developers complete Hello World <10 minutes
+- 80% of new developers productive within 6 months
+- Comprehensive learning metrics dashboard
+- Identified and addressed common issues
 
-### 人力资源
-
-**核心团队**:
-- 项目负责人: 1人
-- 编译器工程师: 2-3人
-- 运行时工程师: 2-3人
-- 标准库工程师: 2-3人
-- 工具链工程师: 1-2人
-- 测试工程师: 1-2人
-- 文档工程师: 1人
-- **总计**: 10-15人
-
-**社区贡献者**:
-- 预计 20-50 人
-
-### 技术资源
-
-**开发工具**:
-- 编译器: Rust 1.70+
-- 后端: LLVM 15.0+
-- 版本控制: Git
-- CI/CD: GitHub Actions
-- 包管理: Cargo
-
-**基础设施**:
-- 代码仓库: GitHub
-- CI/CD: GitHub Actions
-- 包注册表: crates.io
-- 文档托管: GitHub Pages
-- 论坛: Discourse
+**Estimated Effort**: 4 weeks (ongoing user studies)
+**Owner**: Docs Team
+**Dependencies**: Stable tutorial content
 
 ---
 
-## 风险管理
+## 📅 Phase 2: Feature Completeness (Month 3-4)
 
-### 技术风险
+### 🎯 Objectives
 
-| 风险 | 影响 | 概率 | 缓解措施 |
-|------|------|------|----------|
-| LLVM API 变化 | 高 | 中 | 使用稳定版本，关注 RFC |
-| 性能不达标 | 高 | 低 | 基准测试，优化关键路径 |
-| 内存管理 bug | 高 | 中 | 完善测试，形式化验证 |
-| 跨平台问题 | 中 | 高 | 抽象层，持续集成 |
+**Primary Goal**: Complete standard library to 90%+ of whitepaper specifications
 
-### 项目风险
+### G1: Effect Combinators (High Priority)
 
-| 风险 | 影响 | 概率 | 缓解措施 |
-|------|------|------|----------|
-| 开发进度延误 | 中 | 中 | MVP 优先，迭代开发 |
-| 生态不成熟 | 高 | 高 | 早期投入工具链开发 |
-| 社区不够大 | 高 | 中 | 开源宣传，降低学习曲线 |
-| 资金不足 | 中 | 中 | 寻求赞助、企业合作 |
+**Whitepaper Claim**: Algebraic effects with combinators (map, filter, flatMap, etc.)
 
-### 依赖风险
+**Implementation Plan**:
 
-| 风险 | 影响 | 概率 | 缓解措施 |
-|------|------|------|----------|
-| LLVM 维护中断 | 低 | 高 | 多后端支持 |
-| Rust 生态变化 | 中 | 中 | 锁定版本，定期评估 |
-| 关键依赖停止维护 | 低 | 中 | 积极参与社区，准备 fork |
+#### Module 1: Combinator Types
+- [ ] `map()` combinator
+- [ ] `filter()` combinator
+- [ ] `flat_map()` combinator
+- [ ] `fold()` combinator
+- [ ] `reduce()` combinator
+- [ ] `chain()` combinator
 
----
+#### Module 2: Implementation
+- [ ] Effect handler integration
+- [ ] Type-safe combinator signatures
+- [ ] Combinator composition
+- [ ] Lazy evaluation support
+- [ ] Early termination optimization
 
-## 总结
+#### Module 3: Testing
+- [ ] Unit tests for all combinators
+- [ ] Combinator composition tests
+- [ ] Performance benchmarks vs manual loops
+- [ ] Memory leak detection
+- [ ] Effect handler integration tests
 
-本实施计划涵盖了从 MVP 到生态建设的完整路径：
+**Success Criteria**:
+- All 6 core combinators working
+- Comprehensive test coverage
+- Performance comparable to hand-written code
+- Documentation with examples
 
-1. **Phase 1 (6个月)**: MVP - 基础编译器和运行时
-2. **Phase 2 (12个月)**: 核心功能 - 完整语言特性和并发
-3. **Phase 3 (12个月)**: 生产就绪 - 优化和稳定性
-4. **Phase 4 (持续)**: 生态建设 - 社区和工具
-
-**总开发周期**: 36个月（3年）
-
-**关键成功因素**:
-- 专注 MVP，快速迭代
-- 性能和安全性并重
-- 早期社区建设
-- 完善的文档和示例
-
-**下一步行动**:
-1. 组建核心团队
-2. 设置开发环境
-3. 启动 Phase 1 开发
-4. 建立社区渠道
+**Estimated Effort**: 3 weeks
+**Owner**: Runtime Team
+**Dependencies**: Effect system in runtime
 
 ---
 
-**文档版本**: 1.0
-**最后更新**: 2026-01-07
-**维护者**: ZULON Language Team
+### G2: Async/Await Syntax (High Priority)
+
+**Whitepaper Claim**: Structured concurrency with async/await syntax
+
+**Implementation Plan**:
+
+#### Module 1: Compiler Frontend
+- [ ] `async` keyword in parser
+- [ ] `await` expression in parser
+- [ ] Async function parsing
+- [ ] Future type detection
+- [ ] Async block parsing
+
+#### Module 2: Type System
+- [ ] `Future<T>` type definition
+- [ ] Async type inference
+- [ ] Async effect tracking
+- [ ] `Send` and `Sync` bounds for async
+- [ ] Async function signatures
+
+#### Module 3: IR Generation
+- [ ] State machine generation for async
+- [ ] Await point detection
+- [ ] Suspension/resumption points
+- [ ] Async block lowering
+
+#### Module 4: Runtime
+- [ ] Task scheduling for async/await
+- [ ] Future resolution
+- [ ] Suspension/resumption state
+- [ ] Async executor integration
+- [ ] Waker implementation
+
+#### Module 5: Testing
+- [ ] Async syntax parsing tests
+- [ ] Type inference tests for async
+- [ ] Runtime execution tests
+- [ ] Error handling tests
+- [ ] Integration tests
+
+**Success Criteria**:
+- Full async/await syntax working
+- Type-safe async/await
+- Integration with existing runtime
+- Comprehensive test suite
+
+**Estimated Effort**: 6 weeks
+**Owner**: Compiler Team + Runtime Team
+**Dependencies**: Type system enhancements
+
+---
+
+### G12: Extended Collections (Medium Priority)
+
+**Whitepaper Claim**: Stack, Deque, BTree for advanced data structures
+
+**Implementation Plan**:
+
+#### Module 1: Stack
+- [ ] `std::collections::Stack<T>` type
+- [ ] push(), pop(), peek() operations
+- [ ] isEmpty(), size() methods
+- [ ] Iterator support
+- [ ] Clone trait implementation
+
+#### Module 2: Deque
+- [ ] `std::collections::Deque<T>` type
+- [ ] push_front(), push_back(), pop_front(), pop_back()
+- [ ] front(), back() operations
+- [ ] Random access optimization
+- [ ] Iterator support
+
+#### Module 3: BTree
+- [ ] `std::collections::BTree<T>` type
+- [ ] Insert, delete, lookup operations
+- [ ] Range queries (floor, ceiling, in_range)
+- [ ] Balanced tree properties
+- [ ] Order-preserving iteration
+
+#### Module 4: Testing
+- [ ] Unit tests for all collections
+- [ ] Performance benchmarks vs std::collections
+- [ ] Memory leak tests
+- [ ] Edge case tests (empty, single element)
+
+**Success Criteria**:
+- All 3 collections working correctly
+- Performance comparable to Rust's std::collections
+- Comprehensive test coverage
+- Documentation with complexity analysis
+
+**Estimated Effort**: 5 weeks
+**Owner**: Std Team
+**Dependencies**: None (pure library)
+
+---
+
+### G13: HTTP Client (Medium Priority)
+
+**Whitepaper Claim**: HTTP client for web applications
+
+**Implementation Plan**:
+
+#### Module 1: HTTP Core
+- [ ] HTTP request type definitions (GET, POST, PUT, DELETE)
+- [ ] URL parsing and encoding
+- [ ] Header parsing and generation
+- [ ] Request body handling
+- [ ] Response parsing
+
+#### Module 2: Client
+- [ ] Connection pooling
+- [ ] Timeout handling
+- [ ] Redirect following
+- [ ] Chunked transfer encoding
+- [ ] Keep-alive support
+
+#### Module 3: Async Integration
+- [ ] Async HTTP requests
+- [ ] Async file downloads
+- [ ] Concurrent request limits
+- [ ] Cancellation support
+- [ ] Integration with async/await
+
+#### Module 4: Testing
+- [ ] HTTP/1.1 compliance tests
+- [ ] Mock server integration tests
+- [ ] Client integration tests
+- [ ] Performance benchmarks
+- [ ] Error handling tests
+
+**Success Criteria**:
+- Full HTTP/1.1 client implementation
+- Async I/O support
+- Integration with standard library
+- Comprehensive test coverage
+
+**Estimated Effort**: 6 weeks
+**Owner**: Runtime Team
+**Dependencies**: Async runtime, file system module
+
+---
+
+### G14: Async I/O Abstractions (Medium Priority)
+
+**Whitepaper Claim**: Async I/O abstractions for file and network operations
+
+**Implementation Plan**:
+
+#### Module 1: Async File Operations
+- [ ] Async file read
+- [ ] Async file write
+- [ ] Async file append
+- [ ] Async file metadata
+- [ ] Batch operations
+
+#### Module 2: Async Network Operations
+- [ ] Async TCP connect
+- [ ] Async network read/write
+- [ ] Async DNS resolution
+- [ ] Async HTTP operations
+- [ ] Timeout/cancellation support
+
+#### Module 3: Testing
+- [ ] Async operation tests
+- [ ] Error handling tests
+- [ ] Performance benchmarks vs synchronous
+- [ ] Cancellation tests
+
+**Success Criteria**:
+- Full async I/O support
+- Integration with async/await syntax
+- Comprehensive error handling
+- Performance benchmarks
+
+**Estimated Effort**: 4 weeks
+**Owner**: Runtime Team
+**Dependencies**: Async runtime, file system module, network stack
+
+---
+
+### G15: Multi-Return Values (Low Priority)
+
+**Whitepaper Claim**: Go-like multi-return values (e.g., `(result, error)`)
+
+**Implementation Plan**:
+
+#### Module 1: Type System
+- [ ] Tuple type for multi-return
+- [ ] Multi-return type inference
+- [ ] Pattern matching support
+- [ ] Type checking for multi-return
+
+#### Module 2: Code Generation
+- [ ] Tuple generation in codegen
+- [ ] Destructuring code generation
+- [ ] Optimize for no overhead
+
+#### Module 3: Testing
+- [ ] Type checking tests
+- [ ] Runtime behavior tests
+- [ ] Performance benchmarks
+
+**Success Criteria**:
+- Multi-return values working
+- Type-safe and efficient
+- Comprehensive test coverage
+
+**Estimated Effort**: 2 weeks
+**Owner**: Compiler Team
+**Dependencies**: None (type system only)
+
+---
+
+### G16: Template Strings (Low Priority)
+
+**Whitepaper Claim**: Template string interpolation with expressions
+
+**Implementation Plan**:
+
+#### Module 1: Parser
+- [ ] Backtick string parsing
+- [ ] Expression interpolation
+- [ ] Escaping rules
+- [ ] Multiline support
+- [ ] Type inference for template strings
+
+#### Module 2: Type System
+- [ ] Template string type checking
+- [ ] Type inference rules
+- [ ] Code generation
+
+#### Module 3: Runtime
+- [ ] Template string evaluation
+- [ ] Expression evaluation
+- [ ] Error handling
+
+#### Module 4: Testing
+- [ ] Parser tests
+- [ ] Type checking tests
+- [ ] Runtime evaluation tests
+- [ ] Performance benchmarks
+
+**Success Criteria**:
+- Template strings working
+- Type-safe evaluation
+- Performance overhead <10%
+
+**Estimated Effort**: 3 weeks
+**Owner**: Compiler Team
+**Dependencies**: None (language feature)
+
+---
+
+### G17: Defer Statements (Low Priority)
+
+**Whitepaper Claim**: Defer statements for resource cleanup (Go-like)
+
+**Implementation Plan**:
+
+#### Module 1: Parser
+- [ ] `defer` keyword parsing
+- [ ] Statement tracking
+- [ ] LIFO ordering
+- [ ] Capture semantics
+
+#### Module 2: Code Generation
+- [ ] Defer code generation
+- [ ] Cleanup code injection
+- [ ] Multiple defer support
+
+#### Module 3: Runtime
+- [ ] Deferred action queue
+- [ ] Cleanup execution
+- [ ] Error handling
+
+#### Module 4: Testing
+- [ ] Parser tests
+- [ ] Runtime behavior tests
+- [ ] Error handling tests
+- [ ] Resource leak tests
+
+**Success Criteria**:
+- Defer statements working
+- LIFO ordering guaranteed
+- No resource leaks
+
+**Estimated Effort**: 2 weeks
+**Owner**: Compiler Team
+**Dependencies**: None (language feature)
+
+---
+
+## 📅 Phase 3: Optimization & Polish (Month 5-6)
+
+### 🎯 Objectives
+
+**Primary Goal**: Production-grade language ecosystem with safety guarantees, developer tools, and optimized performance
+
+### G7: Borrow Checker Enforcement (Medium Priority)
+
+**Whitepaper Claim**: Compile-time borrow verification for memory safety
+
+**Implementation Plan**:
+
+#### Module 1: Borrow Analysis
+- [ ] Borrow region tracking
+- [ ] Lifetime propagation
+- [ ] Borrow conflict detection
+- [ ] Reborrow analysis
+
+#### Module 2: Verification
+- [ ] Static borrow rules enforcement
+- [ ] Leak detection
+- [ ] Use-after-move detection
+- [ ] Dangling pointer detection
+
+#### Module 3: LLVM Integration
+- [ ] Borrow metadata generation
+- [ ] LLVM IR verification passes
+- [ ] Runtime borrow checks
+- [ ] Optimize for zero overhead in safe code
+
+#### Module 4: Testing
+- [ ] Borrow checker tests
+- [ ] Safety violation tests
+- [ ] Performance benchmarks
+- [ ] Regression tests
+
+**Success Criteria**:
+- Compile-time borrow enforcement
+- Safety violations caught at compile time
+- No runtime borrow violations
+- Zero overhead in safe code
+
+**Estimated Effort**: 8 weeks
+**Owner**: Compiler Team
+**Dependencies**: Type system, borrow checker research
+
+---
+
+### G8: Compile-Time Safety (Medium Priority)
+
+**Whitepaper Claim**: Compile-time safety for unsafe code blocks
+
+**Implementation Plan**:
+
+#### Module 1: Unsafe Code Tracking
+- [ ] Unsafe block identification
+- [ ] Safety verification annotations
+- [ ] Manual audit requirements
+
+#### Module 2: Safety Checks
+- [ ] Null pointer prevention
+- [ ] Undefined behavior prevention
+- [ ] Memory safety invariants
+- [ ] Alignment requirements
+
+#### Module 3: Standard Library
+- [ ] Remove or document unsafe usage
+- [ ] Safe alternatives for critical operations
+- [ ] Comprehensive unsafe audit
+- [ ] Safety guidelines documentation
+
+#### Module 4: Testing
+- [ ] Unsafe code tests
+- [ ] Safety violation tests
+- [ ] Memory safety tests
+- [ ] Coverage requirements
+
+**Success Criteria**:
+- All unsafe code documented
+- Safe alternatives provided
+- No unchecked unsafe in standard library
+- Safety guidelines published
+
+**Estimated Effort**: 4 weeks
+**Owner**: Std Team + Compiler Team
+**Dependencies**: Borrow checker integration
+
+---
+
+### G9: Data Race Detection (Medium Priority)
+
+**Whitepaper Claim**: Compile-time data race detection via Send/Sync traits
+
+**Implementation Plan**:
+
+#### Module 1: Type System
+- [ ] `Send` trait definition
+- [ ] `Sync` trait definition
+- [ ] Auto-derive implementations
+- [ ] Type checking for Send/Sync
+
+#### Module 2: Actor Runtime
+- [ ] Send/Sync enforcement in ActorRuntime
+- [ ] Message type Send/Sync checks
+- [ ] Actor state Send/Sync verification
+- [ ] Remove Arc<Mutex<>> where safe
+
+#### Module 3: Standard Library
+- [ ] Send/Sync for all collection types
+- [ ] Send/Sync for all I/O types
+- [ ] Send/Sync for time/date types
+- [ ] Thread-safe utility functions
+
+#### Module 4: Testing
+- [ ] Data race detection tests
+- [ ] Thread-safe operation tests
+- [ ] Stress tests with concurrent workloads
+- [ ] False positive/negative analysis
+
+**Success Criteria**:
+- Compile-time data race detection
+- Safe concurrency patterns enforced
+- No runtime data races in safe code
+- Comprehensive test coverage
+
+**Estimated Effort**: 3 weeks
+**Owner**: Runtime Team + Std Team
+**Dependencies**: Type system
+
+---
+
+### G10: Rich Error Context (Medium Priority)
+
+**Whitepaper Claim**: Rich error context with file/line/column tracking
+
+**Implementation Plan**:
+
+#### Module 1: Parser Enhancement
+- [ ] Span tracking in parser
+- [ ] File/line/column for all nodes
+- [ ] Span preservation through AST
+- [ ] Span propagation to IR
+- [ ] Error recovery with spans
+
+#### Module 2: Type Checker
+- [ ] Span-based error reporting
+- [ ] Span propagation through type checking
+- [ ] Contextual error messages
+- [ ] Error location suggestions
+
+#### Module 3: Error Types
+- [ ] Enhanced error definitions
+- [ ] Span storage in error types
+- [ ] Error formatting utilities
+- [ ] Multi-error reporting
+
+#### Module 4: Documentation
+- [ ] Error message improvements
+- [ ] Span-based error examples
+- [ ] Debugging guides
+- [ ] FAQ updates
+
+**Success Criteria**:
+- All errors with file/line/column
+- Contextual error messages
+- Helpful error suggestions
+- Improved debugging experience
+
+**Estimated Effort**: 3 weeks
+**Owner**: Compiler Team
+**Dependencies**: None (error system only)
+
+---
+
+### G11: Error Recovery Strategies (Medium Priority)
+
+**Whitepaper Claim**: Documented recovery strategies for robust error handling
+
+**Implementation Plan**:
+
+#### Module 1: Recovery Patterns
+- [ ] Recovery trait definition
+- [ ] Default recovery strategies
+- [ ] User-defined recovery handlers
+- [ ] Recovery state machine
+- [ ] Composable recovery
+
+#### Module 2: Standard Library
+- [ ] File operation recovery (retry with backoff)
+- [ ] Network operation recovery (reconnect, fallback)
+- [ ] Time operation recovery (graceful degradation)
+- [ ] Resource operation recovery
+
+#### Module 3: Runtime
+- [ ] Panic recovery mechanism
+- [ ] Exception catching
+- [ ] Error propagation control
+- [ ] Cleanup on recovery
+
+#### Module 4: Documentation
+- [ ] Recovery pattern documentation
+- [ ] Best practices guide
+- [ ] Examples and tutorials
+- [ ] FAQ section
+
+**Success Criteria**:
+- Recovery trait defined and implemented
+- Standard library uses recovery where appropriate
+- Panic recovery mechanism in runtime
+- Comprehensive documentation
+
+**Estimated Effort**: 3 weeks
+**Owner**: Std Team + Runtime Team
+**Dependencies**: None (pattern library)
+
+---
+
+### G18: Smart Pointers Optimization (Low Priority)
+
+**Whitepaper Claim**: Optimized smart pointers (custom ARC, specialized types)
+
+**Implementation Plan**:
+
+#### Module 1: Custom ARC
+- [ ] Batched reference counting
+- [ ] Thread-local caching
+- [ ] Weak reference optimization
+- [ ] Memory pool integration
+- [ ] Zero-copy abstractions
+
+#### Module 2: Specialized Types
+- [ ] Cow (Copy-on-Write) for large data
+- [ ] Rc for single-threaded scenarios
+- [ ] Custom allocators
+- [ ] Memory layout optimizations
+
+#### Module 3: Testing
+- [ ] Performance benchmarks vs std::sync::Arc
+- [ ] Memory usage tests
+- [ ] Thread-safety tests
+- [ ] Edge case tests
+
+#### Module 4: Documentation
+- [ ] Smart pointer usage guide
+- [ ] Performance characteristics
+- [ ] When to use which type
+- [ ] Best practices
+
+**Success Criteria**:
+- Custom smart pointers available
+- Performance comparable to std::sync
+- Comprehensive test coverage
+- Clear usage guidelines
+
+**Estimated Effort**: 3 weeks
+**Owner**: Std Team
+**Dependencies**: None (library optimization)
+
+---
+
+## 📊 Team Organization
+
+### Core Teams
+
+#### Compiler Team
+- **Members**: 5-7 engineers
+- **Responsibilities**:
+  - Type system and type checking
+  - Borrow checker and safety enforcement
+  - Code generation (LLVM)
+  - Language features (async/await, templates, defer, multi-return)
+
+#### Runtime Team
+- **Members**: 3-5 engineers
+- **Responsibilities**:
+  - Async runtime
+  - Actor model
+  - Effect system
+  - Network stack
+  - Standard library I/O
+
+#### Std Team
+- **Members**: 4-6 engineers
+- **Responsibilities**:
+  - Core primitives
+  - Collections (Vec, HashMap, Stack, Deque, BTree)
+  - File system module
+  - Time/date module
+  - Smart pointers
+  - Error recovery
+
+#### Perf Team
+- **Members**: 2-3 engineers
+- **Responsibilities**:
+  - Benchmark infrastructure
+  - Performance analysis
+  - Optimization passes
+  - Regression detection
+
+#### Docs Team
+- **Members**: 2-3 engineers
+- **Responsibilities**:
+  - Tutorial improvements
+  - Learning curve validation
+  - API documentation
+  - Best practices guides
+  - Error documentation
+
+---
+
+## 📈 Success Metrics
+
+### Phase 1 Metrics (Month 1-2)
+
+- [ ] File system module: 90%+ feature completeness
+- [ ] Time/date module: 90%+ feature completeness
+- [ ] Benchmark infrastructure: Complete
+- [ ] 90% C++ performance claim: Validated
+- [ ] 5-min Hello World: Achieved (90%+ users)
+- [ ] 6-month productivity: Validated
+
+### Phase 2 Metrics (Month 3-4)
+
+- [ ] Effect combinators: 6 core combinators
+- [ ] Async/await syntax: Full implementation
+- [ ] Extended collections: Stack, Deque, BTree
+- [ ] HTTP client: HTTP/1.1 compliant
+- [ ] Async I/O: Complete abstraction layer
+- [ ] Standard library: 90%+ feature completeness
+
+### Phase 3 Metrics (Month 5-6)
+
+- [ ] Borrow checker: Compile-time enforcement
+- [ ] Compile-time safety: All unsafe documented
+- [ ] Data race detection: Send/Sync enforcement
+- [ ] Rich error context: All errors with spans
+- [ ] Error recovery: Recovery trait in std lib
+- [ ] Smart pointers: Optimized implementations
+
+---
+
+## 🎯 Milestones
+
+### M1: Production MVP (Month 2)
+- **Date**: End of Month 2
+- **Criteria**:
+  - File system module complete
+  - Time/date module complete
+  - Benchmarks infrastructure ready
+  - Learning curve validated
+
+### M2: Feature Parity (Month 4)
+- **Date**: End of Month 4
+- **Criteria**:
+  - All medium-priority gaps resolved
+  - Async/await syntax working
+  - HTTP client functional
+  - Standard library 90%+ complete
+
+### M3: Production Ecosystem (Month 6)
+- **Date**: End of Month 6
+- **Criteria**:
+  - All critical gaps resolved
+  - All medium gaps resolved
+  - Borrow checker enforcement
+  - Rich error context
+  - Developer tools complete
+
+---
+
+## 📋 Risk Management
+
+### Technical Risks
+
+1. **Performance Trade-offs**
+   - Risk: Safety checks may add runtime overhead
+   - Mitigation: Optimize for zero overhead in safe code
+   - Owner: Compiler Team
+
+2. **Complexity Explosion**
+   - Risk: Too many features may become unmanageable
+   - Mitigation: Strict prioritization and phased delivery
+   - Owner: All Teams
+
+3. **Learning Curve Impact**
+   - Risk: More features may steepen learning curve
+   - Mitigation: Preserve 5-minute Hello World, progressive disclosure
+   - Owner: Docs Team
+
+### Resource Risks
+
+4. **Team Capacity**
+   - Risk: Limited team size for ambitious plan
+   - Mitigation: External contributions, phased delivery
+   - Owner: Project Lead
+
+5. **Timeline Risks**
+   - Risk: Overly optimistic estimates
+   - Mitigation: Buffer time, regular reviews, adaptive planning
+   - Owner: All Teams
+
+---
+
+## 📚 Documentation Updates
+
+### Required Documentation
+
+1. **API Documentation**
+   - [ ] File system API docs
+   - [ ] Time/date API docs
+   - [ ] Effect combinators docs
+   - [ ] Async/await syntax docs
+   - [ ] Extended collections API docs
+
+2. **User Guides**
+   - [ ] File I/O tutorial
+   - [ ] Time/date handling tutorial
+   - [ ] Async programming guide
+   - [ ] Error handling best practices
+   - [ ] Performance optimization guide
+
+3. **Developer Docs**
+   - [ ] Borrow checker internals
+   - [ ] Code generation passes
+   - [ ] Runtime architecture
+   - [ ] Contribution guidelines updates
+
+---
+
+## ✅ Success Criteria
+
+### Overall Success
+
+- [ ] All 18 gaps addressed
+- [ ] Phase 1 objectives met
+- [ ] Phase 2 objectives met
+- [ ] Phase 3 objectives met
+- [ ] Performance claims validated
+- [ ] Development experience validated
+- [ ] Production readiness achieved
+
+### Technical Success
+
+- [ ] 90%+ standard library completeness
+- [ ] Compile-time safety guarantees
+- [ ] Rich error context and recovery
+- [ ] Async/await syntax functional
+- [ ] Performance benchmarks published
+- [ ] Zero compilation warnings
+
+### Business Success
+
+- [ ] Production use cases supported
+- [ ] 5-minute Hello World maintained
+- [ ] Learning curve measured and improved
+- [ ] Developer ecosystem established
+- [ ] Community adoption path clear
+
+---
+
+**Plan Status**: ✅ **COMPLETED**
+
+**Next Action**: Begin Phase 1 implementation

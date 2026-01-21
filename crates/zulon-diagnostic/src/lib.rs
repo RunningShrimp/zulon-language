@@ -18,17 +18,17 @@ mod suggestion;
 mod type_display;
 
 pub use diagnostic::Diagnostic;
-pub use error_codes::{ErrorCode, ErrorCategory};
+pub use error_codes::{ErrorCategory, ErrorCode};
 pub use label::Label;
 pub use severity::Severity;
 pub use span::{FileId, Loc, Span};
 pub use suggestion::Suggestion;
-pub use type_display::{TypeDisplay, format_type_list, format_type_mismatch};
+pub use type_display::{format_type_list, format_type_mismatch, TypeDisplay};
 
 /// Re-export commonly used types
 pub mod prelude {
     pub use crate::{
-        Diagnostic, ErrorCode, ErrorCategory, FileId, Label, Loc, Severity, Span, Suggestion,
-        TypeDisplay, format_type_list, format_type_mismatch,
+        format_type_list, format_type_mismatch, Diagnostic, ErrorCategory, ErrorCode, FileId,
+        Label, Loc, Severity, Span, Suggestion, TypeDisplay,
     };
 }

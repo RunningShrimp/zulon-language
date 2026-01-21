@@ -70,7 +70,8 @@ impl MirFunction {
         };
 
         // Create entry block
-        func.blocks.insert(entry_block, MirBasicBlock::new(entry_block));
+        func.blocks
+            .insert(entry_block, MirBasicBlock::new(entry_block));
         func
     }
 
@@ -142,16 +143,10 @@ pub enum MirInstruction {
     },
 
     /// Copy a variable (if copy type)
-    Copy {
-        dest: TempVar,
-        src: MirPlace,
-    },
+    Copy { dest: TempVar, src: MirPlace },
 
     /// Move a variable (consume source)
-    Move {
-        dest: TempVar,
-        src: MirPlace,
-    },
+    Move { dest: TempVar, src: MirPlace },
 
     /// Binary operation
     BinaryOp {
@@ -172,7 +167,7 @@ pub enum MirInstruction {
 
     /// Function call
     Call {
-        dest: Option<TempVar>,  // None if function returns unit
+        dest: Option<TempVar>, // None if function returns unit
         func: MirPlace,
         args: Vec<MirPlace>,
         return_type: MirTy,
@@ -210,14 +205,11 @@ pub enum MirInstruction {
     },
 
     /// Drop a value (run destructor if needed)
-    Drop {
-        place: MirPlace,
-        ty: MirTy,
-    },
+    Drop { place: MirPlace, ty: MirTy },
 
     /// Perform an effect operation (to be handled by try...with blocks)
     PerformEffect {
-        dest: Option<TempVar>,  // None if effect operation returns unit
+        dest: Option<TempVar>, // None if effect operation returns unit
         effect_name: String,
         operation_name: String,
         args: Vec<MirPlace>,
@@ -249,42 +241,49 @@ pub enum MirPlace {
     Param(String),
 
     /// Field access: base.field
-    Field {
-        base: Box<MirPlace>,
-        field: String,
-    },
+    Field { base: Box<MirPlace>, field: String },
 
     /// Index access: base[index]
-    Index {
-        base: Box<MirPlace>,
-        index: TempVar,
-    },
+    Index { base: Box<MirPlace>, index: TempVar },
 
     /// Dereference: *place
     Deref(Box<MirPlace>),
 
     /// Reference place (for borrow checking)
-    Ref {
-        place: Box<MirPlace>,
-        mutable: bool,
-    },
+    Ref { place: Box<MirPlace>, mutable: bool },
 }
 
 /// Binary operation
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum MirBinOp {
-    Add, Sub, Mul, Div, Mod,
-    BitAnd, BitOr, BitXor,
-    LeftShift, RightShift,
-    And, Or,
-    Eq, NotEq, Less, LessEq, Greater, GreaterEq,
+    Add,
+    Sub,
+    Mul,
+    Div,
+    Mod,
+    BitAnd,
+    BitOr,
+    BitXor,
+    LeftShift,
+    RightShift,
+    And,
+    Or,
+    Eq,
+    NotEq,
+    Less,
+    LessEq,
+    Greater,
+    GreaterEq,
 }
 
 /// Unary operation
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum MirUnaryOp {
-    Neg, Not, Deref,
-    Ref, RefMut,
+    Neg,
+    Not,
+    Deref,
+    Ref,
+    RefMut,
 }
 
 /// Terminator - ends a basic block with control flow
@@ -297,9 +296,7 @@ pub enum MirTerminator {
     Throw(MirPlace),
 
     /// Unconditional jump
-    Goto {
-        target: MirNodeId,
-    },
+    Goto { target: MirNodeId },
 
     /// Conditional branch
     If {
@@ -414,4 +411,3 @@ impl AsyncStateMachine {
         id
     }
 }
-

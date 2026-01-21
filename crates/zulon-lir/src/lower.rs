@@ -8,8 +8,8 @@
 use crate::error::Result;
 use crate::lir::*;
 use crate::ty::LirTy;
-use zulon_mir::{MirBody, MirFunction, MirInstruction, MirNodeId, MirPlace, MirTerminator};
 use std::collections::{HashMap, HashSet};
+use zulon_mir::{MirBody, MirFunction, MirInstruction, MirNodeId, MirPlace, MirTerminator};
 
 /// Context for lowering MIR to LIR
 pub struct LirLoweringContext {
@@ -76,7 +76,10 @@ impl LirLoweringContext {
             variadic: true,
         });
 
-        eprintln!("DEBUG: Injected {} externals (printf, scanf)", lir_body.externals.len());
+        eprintln!(
+            "DEBUG: Injected {} externals (printf, scanf)",
+            lir_body.externals.len()
+        );
 
         for func in &mir_body.functions {
             let lir_func = self.lower_function(func)?;
@@ -114,11 +117,8 @@ impl LirLoweringContext {
             self.param_map.insert(param.name.clone(), vreg);
         }
 
-        let mut lir_func = LirFunction::new(
-            func.name.clone(),
-            params,
-            func.return_type.clone().into(),
-        );
+        let mut lir_func =
+            LirFunction::new(func.name.clone(), params, func.return_type.clone().into());
 
         // Allocate stack slots for mutable locals
         // We'll emit these as allocas at the start of the entry block (block 0)
@@ -128,7 +128,9 @@ impl LirLoweringContext {
                 for inst in &block.instructions {
                     if let MirInstruction::Store { dest, ty: _, .. } = inst {
                         if let MirPlace::Local(name) = dest {
-                            if self.mutable_locals.contains(name) && !self.local_stack_slots.contains_key(name) {
+                            if self.mutable_locals.contains(name)
+                                && !self.local_stack_slots.contains_key(name)
+                            {
                                 // Allocate a stack slot vreg for this mutable local
                                 let stack_slot = lir_func.alloc_vreg();
                                 self.local_stack_slots.insert(name.clone(), stack_slot);
@@ -178,7 +180,10 @@ impl LirLoweringContext {
             let mut ty = None;
             for (_block_id, block) in &func.blocks {
                 for inst in &block.instructions {
-                    if let MirInstruction::Store { dest, ty: inst_ty, .. } = inst {
+                    if let MirInstruction::Store {
+                        dest, ty: inst_ty, ..
+                    } = inst
+                    {
                         if let MirPlace::Local(local_name) = dest {
                             if local_name == name {
                                 ty = Some(inst_ty.clone());
@@ -261,7 +266,6 @@ impl LirLoweringContext {
                     _ => None,
                 };
 
-
                 if let Some(temp) = return_temp {
                     // We'll map this to vreg later during instruction lowering
                     // For now, just mark that this block has a return value
@@ -270,7 +274,6 @@ impl LirLoweringContext {
             }
         }
 
-
         Ok(())
     }
 
@@ -278,9 +281,18 @@ impl LirLoweringContext {
     fn get_terminator_targets(&self, terminator: &MirTerminator) -> Vec<MirNodeId> {
         match terminator {
             MirTerminator::Goto { target } => vec![*target],
-            MirTerminator::If { then_block, else_block, .. } => vec![*then_block, *else_block],
-            MirTerminator::Switch { targets, default, .. } => {
-                let mut result = targets.iter().map(|(_, block_id)| *block_id).collect::<Vec<_>>();
+            MirTerminator::If {
+                then_block,
+                else_block,
+                ..
+            } => vec![*then_block, *else_block],
+            MirTerminator::Switch {
+                targets, default, ..
+            } => {
+                let mut result = targets
+                    .iter()
+                    .map(|(_, block_id)| *block_id)
+                    .collect::<Vec<_>>();
                 result.push(*default);
                 result
             }
@@ -337,9 +349,8 @@ impl LirLoweringContext {
                 } else {
                     // Block without phi and without terminator
                     // Check if there's a value-producing instruction that should be returned
-                    let last_value_vreg = block.instructions.iter()
-                        .rev()
-                        .find_map(|inst| match inst {
+                    let last_value_vreg =
+                        block.instructions.iter().rev().find_map(|inst| match inst {
                             LirInstruction::Copy { dest, .. } => Some(*dest),
                             LirInstruction::BinaryOp { dest, .. } => Some(*dest),
                             LirInstruction::UnaryOp { dest, .. } => Some(*dest),
@@ -368,20 +379,19 @@ impl LirLoweringContext {
     fn eliminate_empty_join_blocks(&mut self, func: &mut LirFunction) -> Result<()> {
         // Find empty blocks (no instructions, no phi) that would become unreachable
         // These blocks may or may not have terminators yet
-        let empty_join_blocks: Vec<MirNodeId> = func.blocks.iter()
-            .filter(|(_, block)| {
-                block.instructions.is_empty()
-                    && block.phi_nodes.is_empty()
-            })
+        let empty_join_blocks: Vec<MirNodeId> = func
+            .blocks
+            .iter()
+            .filter(|(_, block)| block.instructions.is_empty() && block.phi_nodes.is_empty())
             .map(|(id, _)| *id)
             .collect();
 
         for empty_block in empty_join_blocks {
             // Find all blocks that branch to this empty block
-            let predecessors: Vec<MirNodeId> = func.blocks.iter()
-                .filter(|(_, block)| {
-                    self.branches_to(block, empty_block)
-                })
+            let predecessors: Vec<MirNodeId> = func
+                .blocks
+                .iter()
+                .filter(|(_, block)| self.branches_to(block, empty_block))
                 .map(|(id, _)| *id)
                 .collect();
 
@@ -428,7 +438,11 @@ impl LirLoweringContext {
                             Some(LirTerminator::Jump { target }) if *target == empty_block => {
                                 *target = succ_block;
                             }
-                            Some(LirTerminator::Branch { then_block, else_block, .. }) => {
+                            Some(LirTerminator::Branch {
+                                then_block,
+                                else_block,
+                                ..
+                            }) => {
                                 if *then_block == empty_block {
                                     *then_block = succ_block;
                                 }
@@ -456,9 +470,11 @@ impl LirLoweringContext {
     fn branches_to(&self, block: &LirBlock, target: MirNodeId) -> bool {
         match &block.terminator {
             Some(LirTerminator::Jump { target: t }) => t == &target,
-            Some(LirTerminator::Branch { then_block, else_block, .. }) => {
-                then_block == &target || else_block == &target
-            }
+            Some(LirTerminator::Branch {
+                then_block,
+                else_block,
+                ..
+            }) => then_block == &target || else_block == &target,
             _ => false,
         }
     }
@@ -472,7 +488,10 @@ impl LirLoweringContext {
         for (block_id, block) in &func.blocks {
             if let Some(LirTerminator::Return(return_vreg)) = block.terminator {
                 // Check if this return vreg corresponds to a mutable local stack slot
-                let needs_load = self.local_stack_slots.values().any(|&slot| Some(slot) == return_vreg);
+                let needs_load = self
+                    .local_stack_slots
+                    .values()
+                    .any(|&slot| Some(slot) == return_vreg);
 
                 if needs_load {
                     if let Some(stack_slot) = return_vreg {
@@ -514,7 +533,6 @@ impl LirLoweringContext {
 
             // Now borrow the block and insert the instruction
             if let Some(block) = func.blocks.get_mut(&block_id) {
-
                 // Insert Load before the terminator
                 block.instructions.push(load_inst);
 
@@ -556,22 +574,31 @@ impl LirLoweringContext {
                 }])
             }
 
-            MirInstruction::BinaryOp { dest, op, left, right, ty } => {
+            MirInstruction::BinaryOp {
+                dest,
+                op,
+                left,
+                right,
+                ty,
+            } => {
                 let dest_vreg = func.alloc_vreg();
                 let mut instructions = Vec::new();
 
                 // Helper to get operand vreg, generating Load if needed for mutable locals
-                let get_operand = |temp: &zulon_mir::TempVar, func: &mut LirFunction, ctx: &mut Self| -> (VReg, Vec<LirInstruction>) {
+                let get_operand = |temp: &zulon_mir::TempVar,
+                                   func: &mut LirFunction,
+                                   ctx: &mut Self|
+                 -> (VReg, Vec<LirInstruction>) {
                     // Check if this temp corresponds to a mutable local that needs loading
                     if let Some(local_name) = ctx.temp_to_local.get(temp) {
                         // This temp was stored to a mutable local - we need to load it back
-                        let stack_slot = *ctx.local_stack_slots.get(local_name)
+                        let stack_slot = *ctx
+                            .local_stack_slots
+                            .get(local_name)
                             .expect("Mutable local should have stack slot");
 
                         // Get the type for this temp
-                        let operand_ty = ctx.temp_types.get(temp)
-                            .cloned()
-                            .unwrap_or(LirTy::I32);
+                        let operand_ty = ctx.temp_types.get(temp).cloned().unwrap_or(LirTy::I32);
 
                         // Allocate a new vreg for the loaded value
                         let loaded_vreg = func.alloc_vreg();
@@ -609,9 +636,12 @@ impl LirLoweringContext {
                 // Check if this is a comparison operation
                 let is_comparison = matches!(
                     *op,
-                    zulon_mir::MirBinOp::Eq | zulon_mir::MirBinOp::NotEq |
-                    zulon_mir::MirBinOp::Less | zulon_mir::MirBinOp::LessEq |
-                    zulon_mir::MirBinOp::Greater | zulon_mir::MirBinOp::GreaterEq
+                    zulon_mir::MirBinOp::Eq
+                        | zulon_mir::MirBinOp::NotEq
+                        | zulon_mir::MirBinOp::Less
+                        | zulon_mir::MirBinOp::LessEq
+                        | zulon_mir::MirBinOp::Greater
+                        | zulon_mir::MirBinOp::GreaterEq
                 );
 
                 if is_comparison {
@@ -638,19 +668,26 @@ impl LirLoweringContext {
                 Ok(instructions)
             }
 
-            MirInstruction::UnaryOp { dest, op, operand, ty } => {
+            MirInstruction::UnaryOp {
+                dest,
+                op,
+                operand,
+                ty,
+            } => {
                 let dest_vreg = func.alloc_vreg();
                 let mut instructions = Vec::new();
 
                 // Get operand, generating Load if needed for mutable locals
-                let (operand_vreg, load_insts) = if let Some(local_name) = self.temp_to_local.get(operand) {
+                let (operand_vreg, load_insts) = if let Some(local_name) =
+                    self.temp_to_local.get(operand)
+                {
                     // This temp was stored to a mutable local - we need to load it back
-                    let stack_slot = *self.local_stack_slots.get(local_name)
+                    let stack_slot = *self
+                        .local_stack_slots
+                        .get(local_name)
                         .expect("Mutable local should have stack slot");
 
-                    let operand_ty = self.temp_types.get(operand)
-                        .cloned()
-                        .unwrap_or(LirTy::I32);
+                    let operand_ty = self.temp_types.get(operand).cloned().unwrap_or(LirTy::I32);
 
                     let loaded_vreg = func.alloc_vreg();
 
@@ -714,7 +751,6 @@ impl LirLoweringContext {
                 // Check if this block is a join point (multiple predecessors)
                 // and we need to generate a Phi node
                 if self.is_join_block(current_block) {
-
                     // Generate Phi node - store in pending_phis
                     let mut phi_sources = Vec::new();
 
@@ -723,10 +759,11 @@ impl LirLoweringContext {
                             // Get the return value from this predecessor
                             if let Some(&return_temp) = self.block_returns.get(&pred_block_id) {
                                 // Map MIR temp to LIR vreg - cast to usize
-                                let src_vreg = self.temp_map.get(&(return_temp as zulon_mir::TempVar))
+                                let src_vreg = self
+                                    .temp_map
+                                    .get(&(return_temp as zulon_mir::TempVar))
                                     .copied()
                                     .unwrap_or(return_temp);
-
 
                                 phi_sources.push((src_vreg, pred_block_id));
                             } else {
@@ -745,7 +782,6 @@ impl LirLoweringContext {
                         ty: LirTy::I32, // TODO: Infer proper type
                     };
 
-
                     self.pending_phis
                         .entry(current_block)
                         .or_insert_with(Vec::new)
@@ -756,7 +792,9 @@ impl LirLoweringContext {
                 } else {
                     // Not a join block - treat as regular Copy
                     let src_vreg = if let MirPlace::Temp(src_temp) = src {
-                        self.temp_map.get(src_temp).copied()
+                        self.temp_map
+                            .get(src_temp)
+                            .copied()
                             .unwrap_or_else(|| *src_temp as VReg)
                     } else {
                         self.get_or_alloc_vreg(src, func)
@@ -770,7 +808,12 @@ impl LirLoweringContext {
                 }
             }
 
-            MirInstruction::Call { dest, func: mir_func, args, return_type } => {
+            MirInstruction::Call {
+                dest,
+                func: mir_func,
+                args,
+                return_type,
+            } => {
                 let dest_vreg = if dest.is_some() {
                     Some(func.alloc_vreg())
                 } else {
@@ -794,10 +837,8 @@ impl LirLoweringContext {
                 };
 
                 // Get argument types from the places
-                let arg_types: Vec<LirTy> = args
-                    .iter()
-                    .map(|arg| self.get_place_type(arg))
-                    .collect();
+                let arg_types: Vec<LirTy> =
+                    args.iter().map(|arg| self.get_place_type(arg)).collect();
 
                 // Track external function
                 if !func.external_funcs.contains(&func_name) {
@@ -870,14 +911,14 @@ impl LirLoweringContext {
                         dest: gep_vreg,
                         base: base_for_gep,
                         indices: vec![
-                            LirOperand::Imm(0),  // struct pointer
-                            LirOperand::Imm(field_index),  // field index
+                            LirOperand::Imm(0),           // struct pointer
+                            LirOperand::Imm(field_index), // field index
                         ],
                         ty: gep_ty,
                     });
                     instructions.push(LirInstruction::Load {
                         dest: dest_vreg,
-                        src: LirOperand::Reg(gep_vreg),  // Load from GEP result
+                        src: LirOperand::Reg(gep_vreg), // Load from GEP result
                         ty: ty.clone().into(),
                     });
 
@@ -886,7 +927,9 @@ impl LirLoweringContext {
                     // Check if this is a load from a mutable local
                     if self.mutable_locals.contains(name) {
                         // Mutable local: generate actual Load from stack slot
-                        let stack_slot = *self.local_stack_slots.get(name)
+                        let stack_slot = *self
+                            .local_stack_slots
+                            .get(name)
                             .expect("Mutable local should have stack slot");
 
                         let dest_vreg = func.alloc_vreg();
@@ -915,13 +958,19 @@ impl LirLoweringContext {
             }
 
             MirInstruction::Store { dest, src, ty } => {
-                let src_vreg = self.temp_map.get(src).copied().unwrap_or_else(|| *src as VReg);
+                let src_vreg = self
+                    .temp_map
+                    .get(src)
+                    .copied()
+                    .unwrap_or_else(|| *src as VReg);
 
                 // Check if this is a store to a mutable local
                 if let MirPlace::Local(name) = dest {
                     if self.mutable_locals.contains(name) {
                         // Mutable local: generate actual Store to stack slot
-                        let stack_slot = *self.local_stack_slots.get(name)
+                        let stack_slot = *self
+                            .local_stack_slots
+                            .get(name)
                             .expect("Mutable local should have stack slot");
 
                         // Track that this src temp corresponds to this mutable local
@@ -952,9 +1001,19 @@ impl LirLoweringContext {
                 }
             }
 
-            MirInstruction::FieldAccess { dest, base, field_name: _, field_index, ty } => {
+            MirInstruction::FieldAccess {
+                dest,
+                base,
+                field_name: _,
+                field_index,
+                ty,
+            } => {
                 // Lower MIR FieldAccess to LIR GEP + Load
-                let base_vreg = self.temp_map.get(base).copied().unwrap_or_else(|| *base as VReg);
+                let base_vreg = self
+                    .temp_map
+                    .get(base)
+                    .copied()
+                    .unwrap_or_else(|| *base as VReg);
                 let dest_vreg = func.alloc_vreg();
                 let gep_vreg = func.alloc_vreg();
 
@@ -967,8 +1026,8 @@ impl LirLoweringContext {
                         dest: gep_vreg,
                         base: base_vreg,
                         indices: vec![
-                            LirOperand::Imm(0),  // struct pointer
-                            LirOperand::Imm(*field_index as u64),  // field index
+                            LirOperand::Imm(0),                   // struct pointer
+                            LirOperand::Imm(*field_index as u64), // field index
                         ],
                         ty: ty.clone().into(),
                     },
@@ -980,7 +1039,13 @@ impl LirLoweringContext {
                 ])
             }
 
-            MirInstruction::PerformEffect { dest, effect_name: _, operation_name: _, args: _, return_type } => {
+            MirInstruction::PerformEffect {
+                dest,
+                effect_name: _,
+                operation_name: _,
+                args: _,
+                return_type,
+            } => {
                 // Effect operations are currently stubbed
                 // In a full implementation, this would:
                 // 1. Pack the effect operation into a continuation
@@ -994,13 +1059,11 @@ impl LirLoweringContext {
 
                     // For now, just return a placeholder value
                     // This will be replaced by proper effect handler dispatch
-                    Ok(vec![
-                        LirInstruction::Const {
-                            dest: dest_vreg,
-                            value: LirConstant::Unit,
-                            ty: return_type.clone().into(),
-                        }
-                    ])
+                    Ok(vec![LirInstruction::Const {
+                        dest: dest_vreg,
+                        value: LirConstant::Unit,
+                        ty: return_type.clone().into(),
+                    }])
                 } else {
                     Ok(vec![])
                 }
@@ -1014,7 +1077,11 @@ impl LirLoweringContext {
     }
 
     /// Lower a MIR terminator to LIR terminator
-    fn lower_terminator(&self, terminator: &MirTerminator, _func: &LirFunction) -> Result<LirTerminator> {
+    fn lower_terminator(
+        &self,
+        terminator: &MirTerminator,
+        _func: &LirFunction,
+    ) -> Result<LirTerminator> {
         match terminator {
             MirTerminator::Return(place) => {
                 let vreg = place.as_ref().and_then(|p| {
@@ -1060,17 +1127,28 @@ impl LirLoweringContext {
                         }
                     }
                     _ => None,
-                }.ok_or_else(|| crate::error::LirError::LoweringError("Throw terminator has invalid place".to_string()))?;
+                }
+                .ok_or_else(|| {
+                    crate::error::LirError::LoweringError(
+                        "Throw terminator has invalid place".to_string(),
+                    )
+                })?;
 
                 Ok(LirTerminator::Throw(vreg))
             }
 
-            MirTerminator::Goto { target } => {
-                Ok(LirTerminator::Jump { target: *target })
-            }
+            MirTerminator::Goto { target } => Ok(LirTerminator::Jump { target: *target }),
 
-            MirTerminator::If { condition, then_block, else_block } => {
-                let cond_vreg = self.temp_map.get(condition).copied().unwrap_or(*condition as VReg);
+            MirTerminator::If {
+                condition,
+                then_block,
+                else_block,
+            } => {
+                let cond_vreg = self
+                    .temp_map
+                    .get(condition)
+                    .copied()
+                    .unwrap_or(*condition as VReg);
 
                 Ok(LirTerminator::Branch {
                     condition: cond_vreg,
@@ -1079,29 +1157,40 @@ impl LirLoweringContext {
                 })
             }
 
-            MirTerminator::Switch { scrutinee, targets, default } => {
-                let scrutinee_vreg = self.temp_map.get(scrutinee).copied().unwrap_or(*scrutinee as VReg);
+            MirTerminator::Switch {
+                scrutinee,
+                targets,
+                default,
+            } => {
+                let scrutinee_vreg = self
+                    .temp_map
+                    .get(scrutinee)
+                    .copied()
+                    .unwrap_or(*scrutinee as VReg);
 
                 // Convert MIR constants to u64 values for LIR
-                let lir_targets = targets.iter().map(|(constant, block_id)| {
-                    let value = match constant {
-                        zulon_mir::MirConstant::Bool(b) => {
-                            if *b { 1 } else { 0 }
-                        }
-                        zulon_mir::MirConstant::Integer(i) => {
-                            *i as u64
-                        }
-                        zulon_mir::MirConstant::Char(c) => {
-                            *c as u64
-                        }
-                        _ => {
-                            // For other constants (float, string, unit), use 0 as default
-                            // These shouldn't appear in match patterns for now
-                            0
-                        }
-                    };
-                    (value, *block_id)
-                }).collect();
+                let lir_targets = targets
+                    .iter()
+                    .map(|(constant, block_id)| {
+                        let value = match constant {
+                            zulon_mir::MirConstant::Bool(b) => {
+                                if *b {
+                                    1
+                                } else {
+                                    0
+                                }
+                            }
+                            zulon_mir::MirConstant::Integer(i) => *i as u64,
+                            zulon_mir::MirConstant::Char(c) => *c as u64,
+                            _ => {
+                                // For other constants (float, string, unit), use 0 as default
+                                // These shouldn't appear in match patterns for now
+                                0
+                            }
+                        };
+                        (value, *block_id)
+                    })
+                    .collect();
 
                 Ok(LirTerminator::Switch {
                     scrutinee: scrutinee_vreg,
@@ -1110,9 +1199,7 @@ impl LirLoweringContext {
                 })
             }
 
-            MirTerminator::Unreachable => {
-                Ok(LirTerminator::Unreachable)
-            }
+            MirTerminator::Unreachable => Ok(LirTerminator::Unreachable),
 
             MirTerminator::EffectCall {
                 effect_name: _effect_name,

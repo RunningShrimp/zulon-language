@@ -32,7 +32,13 @@ impl Diagnostic {
         let primary_span = self.span.clone();
         for label in &self.labels {
             if primary_span.as_ref().map_or(false, |ps| label.span != *ps) {
-                self.print_labeled_span(&mut output, &label.span, &label.message, source, use_colors);
+                self.print_labeled_span(
+                    &mut output,
+                    &label.span,
+                    &label.message,
+                    source,
+                    use_colors,
+                );
             }
         }
 
@@ -80,7 +86,13 @@ impl Diagnostic {
         output.push_str("\n");
     }
 
-    fn print_source_snippet_with_context(&self, output: &mut String, source: &str, span: &Span, use_colors: bool) {
+    fn print_source_snippet_with_context(
+        &self,
+        output: &mut String,
+        source: &str,
+        span: &Span,
+        use_colors: bool,
+    ) {
         let lines: Vec<&str> = source.lines().collect();
 
         // Determine context window (show 1 line before and after)
@@ -93,7 +105,8 @@ impl Diagnostic {
         line_spans.insert(span.lo.line, vec![(span.clone(), Some("primary"))]);
 
         for label in &self.labels {
-            line_spans.entry(label.span.lo.line)
+            line_spans
+                .entry(label.span.lo.line)
                 .or_insert_with(Vec::new)
                 .push((label.span.clone(), Some(label.message.as_str())));
         }
@@ -119,10 +132,20 @@ impl Diagnostic {
                     if mark_span.lo.line == line_num {
                         let col_start = mark_span.lo.column.saturating_sub(1);
                         let col_end = mark_span.hi.column.saturating_sub(1).min(marker_line.len());
-                        let width = if col_end >= col_start { col_end - col_start + 1 } else { 1 };
+                        let width = if col_end >= col_start {
+                            col_end - col_start + 1
+                        } else {
+                            1
+                        };
 
-                        let marker_char = if mark_span.lo.line == span.lo.line && mark_span.lo.offset == span.lo.offset { '^' } else { '-' };
-                        let _width = width;  // suppress unused warning
+                        let marker_char = if mark_span.lo.line == span.lo.line
+                            && mark_span.lo.offset == span.lo.offset
+                        {
+                            '^'
+                        } else {
+                            '-'
+                        };
+                        let _width = width; // suppress unused warning
 
                         for i in col_start..col_end.min(marker_line.len()) {
                             marker_line[i] = marker_char;
@@ -154,7 +177,14 @@ impl Diagnostic {
         }
     }
 
-    fn print_labeled_span(&self, output: &mut String, span: &Span, label: &str, source: &str, use_colors: bool) {
+    fn print_labeled_span(
+        &self,
+        output: &mut String,
+        span: &Span,
+        label: &str,
+        source: &str,
+        use_colors: bool,
+    ) {
         if span.is_dummy() {
             return;
         }
@@ -174,7 +204,11 @@ impl Diagnostic {
 
         let col_start = span.lo.column.saturating_sub(1);
         let col_end = span.hi.column.saturating_sub(1);
-        let width = if col_end >= col_start { col_end - col_start + 1 } else { 1 };
+        let width = if col_end >= col_start {
+            col_end - col_start + 1
+        } else {
+            1
+        };
 
         for _ in 0..col_start {
             output.push(' ');
@@ -201,7 +235,13 @@ impl Diagnostic {
         output.push_str("\n");
     }
 
-    fn print_suggestion_with_code(&self, output: &mut String, suggestion: &crate::suggestion::Suggestion, source: &str, use_colors: bool) {
+    fn print_suggestion_with_code(
+        &self,
+        output: &mut String,
+        suggestion: &crate::suggestion::Suggestion,
+        source: &str,
+        use_colors: bool,
+    ) {
         let help_str = if use_colors {
             format!("{}help{}: {}", "\x1b[32m", "\x1b[0m", suggestion.message)
         } else {
@@ -217,7 +257,7 @@ impl Diagnostic {
 
             if line_num > 0 && line_num <= lines.len() {
                 output.push_str(&format!("{:>3} | ", line_num));
-                output.push_str("    ");  // indentation for suggestion
+                output.push_str("    "); // indentation for suggestion
 
                 // Show the line with replacement
                 let line = lines[line_num - 1];
@@ -227,7 +267,10 @@ impl Diagnostic {
                 if start <= line.len() && end <= line.len() && start <= end {
                     output.push_str(&line[..start]);
                     if use_colors {
-                        output.push_str(&format!("{}{}{}", "\x1b[32m", suggestion.replacement, "\x1b[0m"));
+                        output.push_str(&format!(
+                            "{}{}{}",
+                            "\x1b[32m", suggestion.replacement, "\x1b[0m"
+                        ));
                     } else {
                         output.push_str(&suggestion.replacement);
                     }

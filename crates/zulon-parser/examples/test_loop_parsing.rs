@@ -3,8 +3,8 @@
 
 //! Test loop parsing functionality
 
-use zulon_parser::{Parser, ast::*};
 use std::fs;
+use zulon_parser::{ast::*, Parser};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("🔍 Testing ZULON Loop Parsing Functionality\n");
@@ -54,8 +54,15 @@ fn analyze_function_for_loops(func: &Function) {
     let mut continue_count = 0;
     let mut mut_var_count = 0;
 
-    analyze_block(&func.body, &mut loop_count, &mut while_count, &mut for_count,
-                  &mut break_count, &mut continue_count, &mut mut_var_count);
+    analyze_block(
+        &func.body,
+        &mut loop_count,
+        &mut while_count,
+        &mut for_count,
+        &mut break_count,
+        &mut continue_count,
+        &mut mut_var_count,
+    );
 
     println!("   ├── Loops: {}", loop_count);
     println!("   ├── While: {}", while_count);
@@ -83,16 +90,30 @@ fn analyze_block(
                 }
             }
             StatementKind::Expr(expr) => {
-                analyze_expression(expr, loop_count, while_count, for_count,
-                                  break_count, continue_count, mut_var_count);
+                analyze_expression(
+                    expr,
+                    loop_count,
+                    while_count,
+                    for_count,
+                    break_count,
+                    continue_count,
+                    mut_var_count,
+                );
             }
             _ => {}
         }
     }
 
     if let Some(expr) = &block.trailing_expr {
-        analyze_expression(expr, loop_count, while_count, for_count,
-                          break_count, continue_count, mut_var_count);
+        analyze_expression(
+            expr,
+            loop_count,
+            while_count,
+            for_count,
+            break_count,
+            continue_count,
+            mut_var_count,
+        );
     }
 }
 
@@ -123,15 +144,36 @@ fn analyze_expression(
             *continue_count += 1;
         }
         ExpressionKind::Block(block) => {
-            analyze_block(block, loop_count, while_count, for_count,
-                         break_count, continue_count, mut_var_count);
+            analyze_block(
+                block,
+                loop_count,
+                while_count,
+                for_count,
+                break_count,
+                continue_count,
+                mut_var_count,
+            );
         }
         ExpressionKind::If(_, then_block, else_block) => {
-            analyze_block(then_block, loop_count, while_count, for_count,
-                         break_count, continue_count, mut_var_count);
+            analyze_block(
+                then_block,
+                loop_count,
+                while_count,
+                for_count,
+                break_count,
+                continue_count,
+                mut_var_count,
+            );
             if let Some(else_blk) = else_block {
-                analyze_block(else_blk, loop_count, while_count, for_count,
-                             break_count, continue_count, mut_var_count);
+                analyze_block(
+                    else_blk,
+                    loop_count,
+                    while_count,
+                    for_count,
+                    break_count,
+                    continue_count,
+                    mut_var_count,
+                );
             }
         }
         _ => {

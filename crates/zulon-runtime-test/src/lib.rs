@@ -50,7 +50,7 @@ pub unsafe extern "C" fn zulon_test_entry(test_fn: unsafe extern "C" fn()) -> i3
         // TODO: Return proper test result
 
         test_fn();
-        0  // Success
+        0 // Success
     }
 }
 

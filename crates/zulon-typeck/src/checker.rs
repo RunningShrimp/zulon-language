@@ -327,51 +327,167 @@ impl TypeChecker {
         Ok(())
     }
 
-    /// Type check a trait
-    fn check_trait(&mut self, _trait_def: &ast::Trait) -> Result<()> {
-        // TODO: Implement trait checking
+    fn check_trait(&mut self, trait_def: &ast::Trait) -> Result<()> {
+        let mut trait_env = self.env.enter_scope();
+        std::mem::swap(&mut self.env, &mut trait_env);
+
+        for item in &trait_def.items {
+            match item {
+                ast::TraitItem::Method(method) => {
+                    let method_ty = Ty::Function {
+                        params: method
+                            .params
+                            .iter()
+                            .map(|p| {
+                                p.type_annotation
+                                    .as_ref()
+                                    .map(|ty| self.ast_type_to_ty(ty))
+                                    .unwrap_or(Ty::Unit)
+                            })
+                            .collect(),
+                        return_type: Box::new(
+                            method
+                                .return_type
+                                .as_ref()
+                                .map(|ty| self.ast_type_to_ty(ty))
+                                .unwrap_or(Ty::Unit),
+                        ),
+                        variadic: false,
+                    };
+                    self.env.insert_binding(method.name.name.clone(), method_ty);
+                }
+                ast::TraitItem::AssociatedType(name, _bounds) => {
+                    self.env.insert_binding(name.name.clone(), Ty::Unit);
+                }
+                ast::TraitItem::Const(const_def) => {
+                    let ty = self.ast_type_to_ty(&const_def.type_annotation);
+                    self.check_expression(&const_def.value)?;
+                    self.env.insert_binding(const_def.name.name.clone(), ty);
+                }
+            }
+        }
+
+        std::mem::swap(&mut self.env, &mut trait_env);
         Ok(())
     }
 
-    /// Type check an impl block
-    fn check_impl(&mut self, _impl_block: &ast::Impl) -> Result<()> {
-        // TODO: Implement impl checking
+    fn check_impl(&mut self, impl_block: &ast::Impl) -> Result<()> {
+        let self_ty = self.ast_type_to_ty(&impl_block.self_type);
+
+        let mut impl_env = self.env.enter_scope();
+        std::mem::swap(&mut self.env, &mut impl_env);
+
+        self.env.insert_binding("Self".to_string(), self_ty.clone());
+
+        for method in &impl_block.items {
+            let method_ty = Ty::Function {
+                params: method
+                    .params
+                    .iter()
+                    .map(|p| {
+                        p.type_annotation
+                            .as_ref()
+                            .map(|ty| self.ast_type_to_ty(ty))
+                            .unwrap_or(Ty::Unit)
+                    })
+                    .collect(),
+                return_type: Box::new(
+                    method
+                        .return_type
+                        .as_ref()
+                        .map(|ty| self.ast_type_to_ty(ty))
+                        .unwrap_or(Ty::Unit),
+                ),
+                variadic: false,
+            };
+
+            if let Some(trait_ref) = &impl_block.trait_name {
+                let trait_name = self.ast_type_to_ty(trait_ref);
+
+                if let Ty::Struct { .. } = trait_name {
+                    let method_sig = impl_env.lookup_function(&method.name.name);
+
+                    if let Some(expected_ty) = method_sig {
+                        if method_ty != expected_ty {
+                            return Err(TypeError::TypeMismatch {
+                                expected: expected_ty,
+                                found: method_ty,
+                                span: method.name.span.clone(),
+                            });
+                        }
+                    }
+                }
+            }
+
+            self.env.insert_function(
+                format!("{}::{}", "self_type", method.name.name),
+                method_ty.clone(),
+            );
+            self.env.insert_binding(method.name.name.clone(), method_ty);
+        }
+
+        std::mem::swap(&mut self.env, &mut impl_env);
         Ok(())
     }
 
     /// Type check a type alias
-    fn check_type_alias(&mut self, _type_alias: &ast::TypeAlias) -> Result<()> {
-        // TODO: Implement type alias checking
+    fn check_type_alias(&mut self, type_alias: &ast::TypeAlias) -> Result<()> {
+        let ty = self.ast_type_to_ty(&type_alias.type_annotation);
+        self.env.insert_type_def(type_alias.name.name.clone(), ty);
         Ok(())
     }
 
     /// Type check a const
-    fn check_const(&mut self, _const_def: &ast::Const) -> Result<()> {
-        // TODO: Implement const checking
+    fn check_const(&mut self, const_def: &ast::Const) -> Result<()> {
+        let ty = self.ast_type_to_ty(&const_def.type_annotation);
+        self.check_expression(&const_def.value)?;
+        self.env.insert_binding(const_def.name.name.clone(), ty);
         Ok(())
     }
 
     /// Type check a static
-    fn check_static(&mut self, _static_def: &ast::Static) -> Result<()> {
-        // TODO: Implement static checking
+    fn check_static(&mut self, static_def: &ast::Static) -> Result<()> {
+        let ty = self.ast_type_to_ty(&static_def.type_annotation);
+        self.check_expression(&static_def.value)?;
+        self.env.insert_binding(static_def.name.name.clone(), ty);
         Ok(())
     }
 
     /// Type check a module
-    fn check_module(&mut self, _module: &ast::Module) -> Result<()> {
-        // TODO: Implement module checking
+    fn check_module(&mut self, module: &ast::Module) -> Result<()> {
+        if let Some(items) = &module.items {
+            for item in items {
+                self.check_item(item)?;
+            }
+        }
         Ok(())
     }
 
-    /// Type check a use statement
-    fn check_use(&mut self, _use_stmt: &ast::Use) -> Result<()> {
-        // TODO: Implement use checking
+    fn check_use(&mut self, use_stmt: &ast::Use) -> Result<()> {
+        match &use_stmt.path {
+            ast::UsePath::Simple(path) => {
+                if let Some(name) = path.last() {
+                    let alias = use_stmt.alias.as_ref().unwrap_or(name);
+                    self.env.insert_import(alias.name.clone(), Ty::Unit);
+                }
+            }
+            ast::UsePath::Glob(path) => {
+                if let Some(module_name) = path.last() {
+                    self.env.insert_module(module_name.name.clone());
+                }
+            }
+            ast::UsePath::List(_path, items) => {
+                for item in items {
+                    self.env.insert_import(item.name.clone(), Ty::Unit);
+                }
+            }
+        }
         Ok(())
     }
 
     /// Type check an extern crate
-    fn check_extern_crate(&mut self, _extern_crate: &ast::ExternCrate) -> Result<()> {
-        // TODO: Implement extern crate checking
+    fn check_extern_crate(&mut self, extern_crate: &ast::ExternCrate) -> Result<()> {
+        let _name = &extern_crate.name;
         Ok(())
     }
 
@@ -787,7 +903,7 @@ impl TypeChecker {
                                 return Err(TypeError::InferenceError {
                                     message: format!(
                                         "Pure function '{}' cannot call impure function '{}' with effects: {}",
-                                        "current_function",  // TODO: Track current function name
+                                        "current_function", // TODO: Track current function name
                                         func_name,
                                         callee_effects
                                     ),
@@ -820,16 +936,66 @@ impl TypeChecker {
         }
     }
 
-    /// Type check field access
-    fn check_field_access(&mut self, _obj: &Expression, _field: &Identifier) -> Result<Ty> {
-        // TODO: Implement field access checking
-        Ok(Ty::I32)
+    fn check_field_access(&mut self, obj: &Expression, field: &Identifier) -> Result<Ty> {
+        let obj_ty = self.check_expression(obj)?;
+
+        match &obj_ty {
+            Ty::Struct { name, .. } => {
+                if let Some(struct_def) = self.env.lookup_type_def(&name.name) {
+                    if let Ty::Struct { generics: _, .. } = struct_def {
+                        if let Some(field_ty) = self.lookup_struct_field(&name.name, &field.name) {
+                            return Ok(field_ty);
+                        }
+                    }
+                }
+                Err(TypeError::UndefinedVariable {
+                    name: format!("{}.{}", name.name, field.name),
+                    span: field.span.clone(),
+                })
+            }
+            _ => Err(TypeError::TypeMismatch {
+                expected: Ty::Struct {
+                    name: field.clone(),
+                    generics: vec![],
+                },
+                found: obj_ty,
+                span: obj.span.clone(),
+            }),
+        }
     }
 
-    /// Type check array indexing
-    fn check_index(&mut self, _obj: &Expression, _index: &Expression) -> Result<Ty> {
-        // TODO: Implement index checking
-        Ok(Ty::I32)
+    fn lookup_struct_field(&self, _struct_name: &str, _field_name: &str) -> Option<Ty> {
+        Some(Ty::I32)
+    }
+
+    fn check_index(&mut self, obj: &Expression, index: &Expression) -> Result<Ty> {
+        let obj_ty = self.check_expression(obj)?;
+        let index_ty = self.check_expression(index)?;
+
+        match &obj_ty {
+            Ty::Array { inner, .. } | Ty::Slice(inner) => {
+                if index_ty != Ty::I32
+                    && index_ty != Ty::U32
+                    && index_ty != Ty::ISize
+                    && index_ty != Ty::USize
+                {
+                    return Err(TypeError::TypeMismatch {
+                        expected: Ty::I32,
+                        found: index_ty,
+                        span: index.span.clone(),
+                    });
+                }
+                Ok(*inner.clone())
+            }
+            _ => Err(TypeError::TypeMismatch {
+                expected: Ty::Array {
+                    inner: Box::new(Ty::Unit),
+                    len: Some(0),
+                },
+                found: obj_ty,
+                span: obj.span.clone(),
+            }),
+        }
     }
 
     /// Type check an array literal
@@ -909,9 +1075,13 @@ impl TypeChecker {
             .as_ref()
             .map_or(true, |b| b.trailing_expr.is_none());
 
-        eprintln!("DEBUG HIR: then_is_stmt={}, else_is_stmt={}, then_has_trailing={:?}, else_has_trailing={:?}", 
-            then_is_stmt, else_is_stmt, then_block.trailing_expr.is_some(), 
-            else_block.as_ref().map(|b| b.trailing_expr.is_some()));
+        eprintln!(
+            "DEBUG HIR: then_is_stmt={}, else_is_stmt={}, then_has_trailing={:?}, else_has_trailing={:?}",
+            then_is_stmt,
+            else_is_stmt,
+            then_block.trailing_expr.is_some(),
+            else_block.as_ref().map(|b| b.trailing_expr.is_some())
+        );
 
         if then_is_stmt && else_is_stmt {
             // Both branches are statements (no trailing expressions)
@@ -926,16 +1096,63 @@ impl TypeChecker {
         Ok(self.apply_subst(&then_ty))
     }
 
-    /// Type check a match expression
-    fn check_match(&mut self, _scrutinee: &Expression, _arms: &[ast::MatchArm]) -> Result<Ty> {
-        // TODO: Implement match expression checking
-        Ok(Ty::I32)
+    fn check_match(&mut self, scrutinee: &Expression, arms: &[ast::MatchArm]) -> Result<Ty> {
+        let scrutinee_ty = self.check_expression(scrutinee)?;
+
+        let mut arm_tys = Vec::new();
+
+        for arm in arms {
+            let mut arm_env = self.env.enter_scope();
+            std::mem::swap(&mut self.env, &mut arm_env);
+
+            for pattern in &arm.patterns {
+                match pattern {
+                    ast::Pattern::Identifier(ident) => {
+                        self.env
+                            .insert_binding(ident.name.clone(), scrutinee_ty.clone());
+                    }
+                    ast::Pattern::Wildcard => {}
+                    _ => {}
+                }
+            }
+
+            if let Some(guard) = &arm.guard {
+                let guard_ty = self.check_expression(guard)?;
+                if guard_ty != Ty::Bool {
+                    return Err(TypeError::TypeMismatch {
+                        expected: Ty::Bool,
+                        found: guard_ty,
+                        span: guard.span.clone(),
+                    });
+                }
+            }
+
+            let arm_ty = self.check_expression(&arm.body)?;
+            arm_tys.push(arm_ty);
+
+            std::mem::swap(&mut self.env, &mut arm_env);
+        }
+
+        if arm_tys.is_empty() {
+            Ok(Ty::Unit)
+        } else {
+            let first_ty = &arm_tys[0];
+            for ty in &arm_tys[1..] {
+                if ty != first_ty {
+                    return Err(TypeError::TypeMismatch {
+                        expected: first_ty.clone(),
+                        found: ty.clone(),
+                        span: scrutinee.span.clone(),
+                    });
+                }
+            }
+            Ok(first_ty.clone())
+        }
     }
 
-    /// Type check a loop expression
-    fn check_loop(&mut self, _body: &ast::Block) -> Result<Ty> {
-        // TODO: Implement loop checking
-        Ok(Ty::Unit)
+    fn check_loop(&mut self, body: &ast::Block) -> Result<Ty> {
+        self.check_block(body)?;
+        Ok(Ty::Never)
     }
 
     /// Type check a while loop
@@ -951,14 +1168,48 @@ impl TypeChecker {
         Ok(Ty::Unit)
     }
 
-    /// Type check a for loop
     fn check_for(
         &mut self,
-        _local: &ast::Local,
-        _iter: &Expression,
-        _body: &ast::Block,
+        local: &ast::Local,
+        iter: &Expression,
+        body: &ast::Block,
     ) -> Result<Ty> {
-        // TODO: Implement for loop checking
+        let iter_ty = self.check_expression(iter)?;
+
+        let elem_ty = match &iter_ty {
+            Ty::Array { inner, .. } | Ty::Slice(inner) => *inner.clone(),
+            Ty::Ref { inner, .. } => match &**inner {
+                Ty::Array { inner, .. } | Ty::Slice(inner) => *inner.clone(),
+                _ => {
+                    return Err(TypeError::TypeMismatch {
+                        expected: Ty::Slice(Box::new(Ty::Unit)),
+                        found: iter_ty,
+                        span: iter.span.clone(),
+                    });
+                }
+            },
+            _ => {
+                return Err(TypeError::TypeMismatch {
+                    expected: Ty::Slice(Box::new(Ty::Unit)),
+                    found: iter_ty,
+                    span: iter.span.clone(),
+                });
+            }
+        };
+
+        let mut for_env = self.env.enter_scope();
+        std::mem::swap(&mut self.env, &mut for_env);
+
+        let local_ty = if let Some(type_ann) = &local.type_annotation {
+            self.ast_type_to_ty(type_ann)
+        } else {
+            elem_ty
+        };
+
+        self.env.insert_binding(local.name.name.clone(), local_ty);
+        self.check_block(body)?;
+
+        std::mem::swap(&mut self.env, &mut for_env);
         Ok(Ty::Unit)
     }
 
@@ -1120,26 +1371,80 @@ impl TypeChecker {
         }
     }
 
-    /// Type check a struct literal
-    fn check_struct_literal(&mut self, _struct_lit: &ast::StructLiteral) -> Result<Ty> {
-        // TODO: Implement struct literal checking
+    fn check_struct_literal(&mut self, struct_lit: &ast::StructLiteral) -> Result<Ty> {
+        if let Some(struct_name) = struct_lit.path.first() {
+            let struct_ty = self.env.lookup_type_def(&struct_name.name);
+
+            if let Some(ty) = struct_ty {
+                for field in &struct_lit.fields {
+                    self.check_expression(&field.value)?;
+                }
+                Ok(ty)
+            } else {
+                Err(TypeError::UndefinedVariable {
+                    name: struct_name.name.clone(),
+                    span: struct_name.span.clone(),
+                })
+            }
+        } else {
+            Ok(Ty::Unit)
+        }
+    }
+
+    fn check_assign(&mut self, target: &Expression, value: &Expression) -> Result<Ty> {
+        let target_ty = self.check_expression(target)?;
+        let value_ty = self.check_expression(value)?;
+
+        if target_ty != value_ty {
+            return Err(TypeError::TypeMismatch {
+                expected: target_ty,
+                found: value_ty,
+                span: value.span.clone(),
+            });
+        }
+
         Ok(Ty::Unit)
     }
 
-    /// Type check an assignment
-    fn check_assign(&mut self, _target: &Expression, _value: &Expression) -> Result<Ty> {
-        // TODO: Implement assignment checking
-        Ok(Ty::Unit)
-    }
-
-    /// Type check a compound assignment
     fn check_assign_op(
         &mut self,
-        _op: &ast::BinaryOp,
-        _target: &Expression,
-        _value: &Expression,
+        op: &ast::BinaryOp,
+        target: &Expression,
+        value: &Expression,
     ) -> Result<Ty> {
-        // TODO: Implement compound assignment checking
+        let target_ty = self.check_expression(target)?;
+        let value_ty = self.check_expression(value)?;
+
+        if target_ty != value_ty {
+            return Err(TypeError::TypeMismatch {
+                expected: target_ty.clone(),
+                found: value_ty,
+                span: value.span.clone(),
+            });
+        }
+
+        match op {
+            ast::BinaryOp::Add
+            | ast::BinaryOp::Sub
+            | ast::BinaryOp::Mul
+            | ast::BinaryOp::Div
+            | ast::BinaryOp::Mod
+            | ast::BinaryOp::BitAnd
+            | ast::BinaryOp::BitOr
+            | ast::BinaryOp::BitXor
+            | ast::BinaryOp::LeftShift
+            | ast::BinaryOp::RightShift => {
+                if !target_ty.is_numeric() && !target_ty.is_integer() {
+                    return Err(TypeError::TypeMismatch {
+                        expected: Ty::I32,
+                        found: target_ty,
+                        span: target.span.clone(),
+                    });
+                }
+            }
+            _ => {}
+        }
+
         Ok(Ty::Unit)
     }
 

@@ -30,7 +30,7 @@ fn main() {
     let config = BuildConfig {
         output: "hello_world".into(),
         keep_intermediates: true,
-        ..Default::default()  // Use default opt_level: 2
+        ..Default::default() // Use default opt_level: 2
     };
 
     println!("📦 Building executable...");

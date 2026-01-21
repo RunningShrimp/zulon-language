@@ -41,17 +41,15 @@ pub struct TestRunner {
 impl TestRunner {
     /// Create a new test runner
     pub fn new() -> Self {
-        TestRunner {
-            tests: Vec::new(),
-        }
+        TestRunner { tests: Vec::new() }
     }
 
     /// Load tests from JSON metadata file
     pub fn load_from_json(&mut self, json_path: &Path) -> Result<usize, String> {
         use std::fs;
 
-        let json_content = fs::read_to_string(json_path)
-            .map_err(|e| format!("Failed to read JSON: {}", e))?;
+        let json_content =
+            fs::read_to_string(json_path).map_err(|e| format!("Failed to read JSON: {}", e))?;
 
         // Parse JSON - our format is array of test objects
         let parsed: serde_json::Value = serde_json::from_str(&json_content)
@@ -62,7 +60,8 @@ impl TestRunner {
         if let Some(arr) = parsed.as_array() {
             for test_obj in arr {
                 if let Some(name) = test_obj.get("name").and_then(|v| v.as_str()) {
-                    let ignored = test_obj.get("ignored")
+                    let ignored = test_obj
+                        .get("ignored")
                         .and_then(|v| v.as_bool())
                         .unwrap_or(false);
 
@@ -87,8 +86,8 @@ impl TestRunner {
     /// Discover tests in a file (simplified version)
     pub fn discover_tests(&mut self, file: &Path) -> Result<usize, String> {
         // For MVP, we'll do a simple text-based search for #[test]
-        let content = std::fs::read_to_string(file)
-            .map_err(|e| format!("Failed to read file: {}", e))?;
+        let content =
+            std::fs::read_to_string(file).map_err(|e| format!("Failed to read file: {}", e))?;
 
         let mut count = 0;
         let file_name = file.to_string_lossy().to_string();
@@ -166,7 +165,8 @@ impl TestRunner {
         }
 
         println!();
-        println!("test result: {}. {} passed; {} failed; {} ignored",
+        println!(
+            "test result: {}. {} passed; {} failed; {} ignored",
             if summary.failed > 0 { "FAILED" } else { "OK" },
             summary.passed,
             summary.failed,
@@ -178,8 +178,8 @@ impl TestRunner {
 
     /// Run a single test
     fn run_single_test(&self, test: &Test) -> TestResult {
-        use std::process::Command;
         use std::path::Path;
+        use std::process::Command;
 
         // The JSON file is like: "test_with_asserts.test.json"
         // The test source is: "test_with_asserts.zl"
@@ -194,9 +194,7 @@ impl TestRunner {
             .and_then(|n| n.strip_suffix(".test.json"))
             .unwrap_or("test");
 
-        let parent_dir = json_path
-            .parent()
-            .unwrap_or_else(|| Path::new("."));
+        let parent_dir = json_path.parent().unwrap_or_else(|| Path::new("."));
 
         let test_source = parent_dir.join(format!("{}.zl", base_name));
         let test_main = parent_dir.join(format!("{}.test_main.zl", base_name));
@@ -232,7 +230,8 @@ impl TestRunner {
 
             // Remove the extern fn printf from test_main (it's already in test source)
             // Also remove comments and empty lines before main
-            let test_main_lines: Vec<&str> = test_main_content.lines()
+            let test_main_lines: Vec<&str> = test_main_content
+                .lines()
                 .skip_while(|line| {
                     let trimmed = line.trim();
                     trimmed.is_empty()
@@ -241,7 +240,8 @@ impl TestRunner {
                 })
                 .collect();
 
-            let merged_source = format!("{}\n\n// Merged test main\n{}",
+            let merged_source = format!(
+                "{}\n\n// Merged test main\n{}",
                 test_source_content,
                 test_main_lines.join("\n")
             );
@@ -259,22 +259,29 @@ impl TestRunner {
             let merged_ll = temp_dir.join(format!("zulon_test_{}.ll", base_name));
             let result1 = Command::new("cargo")
                 .args(["run", "-p", "zulon-compiler", "--"])
-                .arg("-o").arg(&merged_ll)
+                .arg("-o")
+                .arg(&merged_ll)
                 .arg(&merged_source_file)
                 .output();
 
-            let success1 = result1.as_ref()
+            let success1 = result1
+                .as_ref()
                 .map(|r| r.status.success())
                 .unwrap_or(false);
             if !success1 {
-                let stderr = result1.as_ref()
+                let stderr = result1
+                    .as_ref()
                     .err()
                     .map(|e| e.to_string())
-                    .or_else(|| result1.as_ref().ok().map(|r| {
-                        String::from_utf8_lossy(&r.stderr).to_string()
-                    }))
+                    .or_else(|| {
+                        result1
+                            .as_ref()
+                            .ok()
+                            .map(|r| String::from_utf8_lossy(&r.stderr).to_string())
+                    })
                     .unwrap_or_default();
-                let stdout = result1.as_ref()
+                let stdout = result1
+                    .as_ref()
                     .ok()
                     .map(|r| String::from_utf8_lossy(&r.stdout).to_string())
                     .unwrap_or_default();
@@ -291,43 +298,58 @@ impl TestRunner {
             let merged_s = temp_dir.join(format!("zulon_test_{}.s", base_name));
             let result2 = Command::new("llc")
                 .arg(&merged_ll)
-                .arg("-o").arg(&merged_s)
+                .arg("-o")
+                .arg(&merged_s)
                 .output();
 
-            let success2 = result2.as_ref()
+            let success2 = result2
+                .as_ref()
                 .map(|r| r.status.success())
                 .unwrap_or(false);
             if !success2 {
-                let stderr = result2.as_ref()
+                let stderr = result2
+                    .as_ref()
                     .err()
                     .map(|e| e.to_string())
-                    .or_else(|| result2.as_ref().ok().map(|r| {
-                        String::from_utf8_lossy(&r.stderr).to_string()
-                    }))
+                    .or_else(|| {
+                        result2
+                            .as_ref()
+                            .ok()
+                            .map(|r| String::from_utf8_lossy(&r.stderr).to_string())
+                    })
                     .unwrap_or_else(|| "Unknown error".to_string());
                 let _ = std::fs::remove_file(&merged_source_file);
                 let _ = std::fs::remove_file(&merged_ll);
-                return TestResult::Failed(format!("Failed to compile LLVM IR to assembly: {}", stderr));
+                return TestResult::Failed(format!(
+                    "Failed to compile LLVM IR to assembly: {}",
+                    stderr
+                ));
             }
 
             // Assemble and link with runtime
             println!("    📦 Linking executable...");
             let result3 = Command::new("clang")
                 .arg(&merged_s)
-                .arg("-o").arg(&exe_path)
+                .arg("-o")
+                .arg(&exe_path)
                 .arg("-O2")
                 .output();
 
-            let success3 = result3.as_ref()
+            let success3 = result3
+                .as_ref()
                 .map(|r| r.status.success())
                 .unwrap_or(false);
             if !success3 {
-                let stderr = result3.as_ref()
+                let stderr = result3
+                    .as_ref()
                     .err()
                     .map(|e| e.to_string())
-                    .or_else(|| result3.as_ref().ok().map(|r| {
-                        String::from_utf8_lossy(&r.stderr).to_string()
-                    }))
+                    .or_else(|| {
+                        result3
+                            .as_ref()
+                            .ok()
+                            .map(|r| String::from_utf8_lossy(&r.stderr).to_string())
+                    })
                     .unwrap_or_default();
                 // Clean up intermediate files
                 let _ = std::fs::remove_file(&merged_source_file);
@@ -349,8 +371,7 @@ impl TestRunner {
         let exe_path = exe_path.canonicalize().unwrap_or_else(|_| exe_path.clone());
 
         // Execute the test
-        let output = Command::new(&exe_path)
-            .output();
+        let output = Command::new(&exe_path).output();
 
         match output {
             Ok(result) => {
@@ -373,9 +394,7 @@ impl TestRunner {
                     TestResult::Failed(msg)
                 }
             }
-            Err(e) => {
-                TestResult::Failed(format!("Failed to execute test: {}", e))
-            }
+            Err(e) => TestResult::Failed(format!("Failed to execute test: {}", e)),
         }
     }
 

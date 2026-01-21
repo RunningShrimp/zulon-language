@@ -5,8 +5,8 @@
 //!
 //! The parser converts tokens into an Abstract Syntax Tree (AST).
 
-use crate::lexer::{Lexer, Token, TokenKind, Span};
 use crate::ast::*;
+use crate::lexer::{Lexer, Span, Token, TokenKind};
 use std::iter::Peekable;
 use std::vec::IntoIter;
 
@@ -21,15 +21,10 @@ pub enum ParseError {
     },
 
     #[error("unexpected end of input")]
-    UnexpectedEof {
-        span: Span,
-    },
+    UnexpectedEof { span: Span },
 
     #[error("invalid syntax: {message}")]
-    InvalidSyntax {
-        message: String,
-        span: Span,
-    },
+    InvalidSyntax { message: String, span: Span },
 
     #[error("error in module")]
     ModuleError {
@@ -55,10 +50,7 @@ impl Parser {
         let mut tokens = tokens.into_iter().peekable();
         let current = tokens.next();
 
-        Parser {
-            tokens,
-            current,
-        }
+        Parser { tokens, current }
     }
 
     /// Create a parser from source code
@@ -142,9 +134,7 @@ impl Parser {
     fn check(&self, kind: &TokenKind) -> bool {
         match &self.current {
             None => false,
-            Some(token) => {
-                std::mem::discriminant(&token.kind) == std::mem::discriminant(kind)
-            }
+            Some(token) => std::mem::discriminant(&token.kind) == std::mem::discriminant(kind),
         }
     }
 
@@ -390,7 +380,7 @@ impl Parser {
         let mut effects = Vec::new();
 
         while self.check(&TokenKind::Pipe) {
-            self.advance();  // consume |
+            self.advance(); // consume |
 
             // Parse the type after |
             let ty = self.parse_type()?;
@@ -399,9 +389,7 @@ impl Parser {
             // For now, we'll use a simple heuristic: if it's a known type name like "Error", treat it as error type
             // Otherwise, treat it as an effect
             let is_error_type = match &ty {
-                Type::Simple(ident) => {
-                    ident.name == "Error" || ident.name.ends_with("Error")
-                }
+                Type::Simple(ident) => ident.name == "Error" || ident.name.ends_with("Error"),
                 _ => false,
             };
 
@@ -414,7 +402,7 @@ impl Parser {
 
                 // Parse additional effects with + separator
                 while self.check(&TokenKind::Plus) {
-                    self.advance();  // consume +
+                    self.advance(); // consume +
                     effects.push(self.parse_type()?);
                 }
             }
@@ -433,7 +421,7 @@ impl Parser {
             is_variadic,
             body,
             is_async,
-            is_unsafe: false, // TODO: Parse unsafe modifier
+            is_unsafe: false,       // TODO: Parse unsafe modifier
             attributes: Vec::new(), // Will be populated by parse_item
         })
     }
@@ -538,15 +526,24 @@ impl Parser {
 
                 StatementKind::Defer(Box::new(stmt))
             }
-            Some(TokenKind::Fn | TokenKind::Struct | TokenKind::Enum | TokenKind::Trait |
-                 TokenKind::Impl | TokenKind::Type | TokenKind::Const | TokenKind::Static |
-                 TokenKind::Mod | TokenKind::Use) => {
+            Some(
+                TokenKind::Fn
+                | TokenKind::Struct
+                | TokenKind::Enum
+                | TokenKind::Trait
+                | TokenKind::Impl
+                | TokenKind::Type
+                | TokenKind::Const
+                | TokenKind::Static
+                | TokenKind::Mod
+                | TokenKind::Use,
+            ) => {
                 let item = Box::new(self.parse_item()?.unwrap());
                 StatementKind::Item(item)
             }
             _ => {
                 let expr = self.parse_expression()?;
-                StatementKind::Expr(expr)  // Don't consume semicolon here - let parse_block handle it
+                StatementKind::Expr(expr) // Don't consume semicolon here - let parse_block handle it
             }
         };
 
@@ -946,9 +943,7 @@ impl Parser {
                         // else if - parse the if expression and extract block
                         let if_expr = self.parse_primary_base()?;
                         match if_expr.kind {
-                            ExpressionKind::If(_, else_then_block, _) => {
-                                Some(else_then_block)
-                            }
+                            ExpressionKind::If(_, else_then_block, _) => Some(else_then_block),
                             _ => None,
                         }
                     } else {
@@ -1101,11 +1096,12 @@ impl Parser {
             Some(TokenKind::Return) => {
                 self.advance();
 
-                let value = if !self.check(&TokenKind::Semicolon) && !self.check(&TokenKind::RightBrace) {
-                    Some(Box::new(self.parse_expression()?))
-                } else {
-                    None
-                };
+                let value =
+                    if !self.check(&TokenKind::Semicolon) && !self.check(&TokenKind::RightBrace) {
+                        Some(Box::new(self.parse_expression()?))
+                    } else {
+                        None
+                    };
 
                 Ok(Expression {
                     span,
@@ -1170,11 +1166,7 @@ impl Parser {
                         // Parse method body
                         let body = self.parse_block()?;
 
-                        methods.push(EffectMethod {
-                            name,
-                            params,
-                            body,
-                        });
+                        methods.push(EffectMethod { name, params, body });
 
                         // Methods can be separated by commas or semicolons
                         if !self.check(&TokenKind::RightBrace) {
@@ -1295,9 +1287,7 @@ impl Parser {
 
                     Ok(Expression {
                         span,
-                        kind: ExpressionKind::TemplateString(
-                            TemplateString { parts }
-                        ),
+                        kind: ExpressionKind::TemplateString(TemplateString { parts }),
                     })
                 } else {
                     unreachable!()
@@ -1457,8 +1447,12 @@ impl Parser {
     }
 
     /// Parse a macro invocation: macro_name!(args), macro_name! {args}, or macro_name![args]
-    fn parse_macro_invocation(&mut self, macro_name: Identifier, span: Span) -> ParseResult<Expression> {
-        use crate::ast::{MacroDelimiter, ExpressionKind};
+    fn parse_macro_invocation(
+        &mut self,
+        macro_name: Identifier,
+        span: Span,
+    ) -> ParseResult<Expression> {
+        use crate::ast::{ExpressionKind, MacroDelimiter};
 
         // Consume the !
         self.consume(TokenKind::Bang)?;
@@ -1516,8 +1510,12 @@ impl Parser {
     }
 
     /// Parse and expand built-in assertion/panic macros
-    fn parse_builtin_macro(&mut self, macro_name: Identifier, call_span: Span) -> ParseResult<Expression> {
-        use crate::ast::{ExpressionKind, Block};
+    fn parse_builtin_macro(
+        &mut self,
+        macro_name: Identifier,
+        call_span: Span,
+    ) -> ParseResult<Expression> {
+        use crate::ast::{Block, ExpressionKind};
 
         // Consume the opening paren
         self.consume(TokenKind::LeftParen)?;
@@ -1550,28 +1548,29 @@ impl Parser {
                         }),
                         Block {
                             span: call_span.clone(),
-                            statements: vec![
-                                crate::ast::Statement {
+                            statements: vec![crate::ast::Statement {
+                                span: call_span.clone(),
+                                kind: crate::ast::StatementKind::Expr(Expression {
                                     span: call_span.clone(),
-                                    kind: crate::ast::StatementKind::Expr(Expression {
-                                        span: call_span.clone(),
-                                        kind: ExpressionKind::Call(
-                                            Box::new(Expression {
+                                    kind: ExpressionKind::Call(
+                                        Box::new(Expression {
+                                            span: call_span.clone(),
+                                            kind: ExpressionKind::Path(vec![Identifier {
+                                                name: "builtin_panic".to_string(),
                                                 span: call_span.clone(),
-                                                kind: ExpressionKind::Path(vec![
-                                                    Identifier { name: "builtin_panic".to_string(), span: call_span.clone() }
-                                                ]),
-                                            }),
-                                            vec![Box::new(Expression {
-                                                span: call_span.clone(),
-                                                kind: ExpressionKind::Literal(crate::ast::Literal::String(
-                                                    "assertion failed".to_string()
-                                                )),
-                                            })],
-                                        ),
-                                    })
-                                }
-                            ],
+                                            }]),
+                                        }),
+                                        vec![Box::new(Expression {
+                                            span: call_span.clone(),
+                                            kind: ExpressionKind::Literal(
+                                                crate::ast::Literal::String(
+                                                    "assertion failed".to_string(),
+                                                ),
+                                            ),
+                                        })],
+                                    ),
+                                }),
+                            }],
                             trailing_expr: None,
                         },
                         None,
@@ -1610,28 +1609,27 @@ impl Parser {
                         }),
                         Block {
                             span: call_span.clone(),
-                            statements: vec![
-                                crate::ast::Statement {
+                            statements: vec![crate::ast::Statement {
+                                span: call_span.clone(),
+                                kind: crate::ast::StatementKind::Expr(Expression {
                                     span: call_span.clone(),
-                                    kind: crate::ast::StatementKind::Expr(Expression {
-                                        span: call_span.clone(),
-                                        kind: ExpressionKind::Call(
-                                            Box::new(Expression {
+                                    kind: ExpressionKind::Call(
+                                        Box::new(Expression {
+                                            span: call_span.clone(),
+                                            kind: ExpressionKind::Path(vec![Identifier {
+                                                name: "builtin_panic".to_string(),
                                                 span: call_span.clone(),
-                                                kind: ExpressionKind::Path(vec![
-                                                    Identifier { name: "builtin_panic".to_string(), span: call_span.clone() }
-                                                ]),
-                                            }),
-                                            vec![Box::new(Expression {
-                                                span: call_span.clone(),
-                                                kind: ExpressionKind::Literal(crate::ast::Literal::String(
-                                                    error_msg
-                                                )),
-                                            })],
-                                        ),
-                                    })
-                                }
-                            ],
+                                            }]),
+                                        }),
+                                        vec![Box::new(Expression {
+                                            span: call_span.clone(),
+                                            kind: ExpressionKind::Literal(
+                                                crate::ast::Literal::String(error_msg),
+                                            ),
+                                        })],
+                                    ),
+                                }),
+                            }],
                             trailing_expr: None,
                         },
                         None,
@@ -1669,28 +1667,27 @@ impl Parser {
                         }),
                         Block {
                             span: call_span.clone(),
-                            statements: vec![
-                                crate::ast::Statement {
+                            statements: vec![crate::ast::Statement {
+                                span: call_span.clone(),
+                                kind: crate::ast::StatementKind::Expr(Expression {
                                     span: call_span.clone(),
-                                    kind: crate::ast::StatementKind::Expr(Expression {
-                                        span: call_span.clone(),
-                                        kind: ExpressionKind::Call(
-                                            Box::new(Expression {
+                                    kind: ExpressionKind::Call(
+                                        Box::new(Expression {
+                                            span: call_span.clone(),
+                                            kind: ExpressionKind::Path(vec![Identifier {
+                                                name: "builtin_panic".to_string(),
                                                 span: call_span.clone(),
-                                                kind: ExpressionKind::Path(vec![
-                                                    Identifier { name: "builtin_panic".to_string(), span: call_span.clone() }
-                                                ]),
-                                            }),
-                                            vec![Box::new(Expression {
-                                                span: call_span.clone(),
-                                                kind: ExpressionKind::Literal(crate::ast::Literal::String(
-                                                    error_msg
-                                                )),
-                                            })],
-                                        ),
-                                    })
-                                }
-                            ],
+                                            }]),
+                                        }),
+                                        vec![Box::new(Expression {
+                                            span: call_span.clone(),
+                                            kind: ExpressionKind::Literal(
+                                                crate::ast::Literal::String(error_msg),
+                                            ),
+                                        })],
+                                    ),
+                                }),
+                            }],
                             trailing_expr: None,
                         },
                         None,
@@ -1711,9 +1708,10 @@ impl Parser {
                         kind: ExpressionKind::Call(
                             Box::new(Expression {
                                 span: call_span.clone(),
-                                kind: ExpressionKind::Path(vec![
-                                    Identifier { name: "builtin_panic".to_string(), span: call_span.clone() }
-                                ]),
+                                kind: ExpressionKind::Path(vec![Identifier {
+                                    name: "builtin_panic".to_string(),
+                                    span: call_span.clone(),
+                                }]),
                             }),
                             vec![Box::new(message)],
                         ),
@@ -1727,14 +1725,15 @@ impl Parser {
                         kind: ExpressionKind::Call(
                             Box::new(Expression {
                                 span: call_span.clone(),
-                                kind: ExpressionKind::Path(vec![
-                                    Identifier { name: "builtin_panic".to_string(), span: call_span.clone() }
-                                ]),
+                                kind: ExpressionKind::Path(vec![Identifier {
+                                    name: "builtin_panic".to_string(),
+                                    span: call_span.clone(),
+                                }]),
                             }),
                             vec![Box::new(Expression {
                                 span: call_span.clone(),
                                 kind: ExpressionKind::Literal(crate::ast::Literal::String(
-                                    "panicked".to_string()
+                                    "panicked".to_string(),
                                 )),
                             })],
                         ),
@@ -2293,10 +2292,7 @@ impl Parser {
             None
         };
 
-        Ok(Module {
-            name,
-            items,
-        })
+        Ok(Module { name, items })
     }
 
     /// Parse a use statement
@@ -2365,9 +2361,14 @@ impl Parser {
             }
 
             // Literal pattern
-            Some(TokenKind::IntLiteral(_) | TokenKind::FloatLiteral(_) |
-                 TokenKind::StringLiteral(_) | TokenKind::CharLiteral(_) |
-                 TokenKind::True | TokenKind::False) => {
+            Some(
+                TokenKind::IntLiteral(_)
+                | TokenKind::FloatLiteral(_)
+                | TokenKind::StringLiteral(_)
+                | TokenKind::CharLiteral(_)
+                | TokenKind::True
+                | TokenKind::False,
+            ) => {
                 // We'll create a literal pattern directly
                 match self.current_kind() {
                     Some(TokenKind::IntLiteral(_)) => {
@@ -2601,10 +2602,7 @@ impl Parser {
         // Consume ]
         self.consume(TokenKind::RightBracket)?;
 
-        Ok(Attribute {
-            name,
-            args,
-        })
+        Ok(Attribute { name, args })
     }
 
     /// Parse an effect declaration: `effect Name { operations }`
@@ -2678,7 +2676,10 @@ impl Parser {
     /// Consume one of the given tokens
     fn consume_one_of(&mut self, kinds: &[TokenKind]) -> ParseResult<()> {
         if let Some(kind) = self.current_kind() {
-            if kinds.iter().any(|k| std::mem::discriminant(k) == std::mem::discriminant(kind)) {
+            if kinds
+                .iter()
+                .any(|k| std::mem::discriminant(k) == std::mem::discriminant(kind))
+            {
                 self.advance();
                 return Ok(());
             }
@@ -2692,7 +2693,11 @@ impl Parser {
     }
 
     /// Parse template string parts, splitting static text from interpolated expressions
-    fn parse_template_string_parts(&mut self, template: &str, span: &Span) -> ParseResult<Vec<TemplateStringPart>> {
+    fn parse_template_string_parts(
+        &mut self,
+        template: &str,
+        span: &Span,
+    ) -> ParseResult<Vec<TemplateStringPart>> {
         use crate::ast::TemplateStringPart;
 
         let mut parts = Vec::new();
@@ -2720,13 +2725,17 @@ impl Parser {
 
                         if !errors.is_empty() {
                             return Err(ParseError::InvalidSyntax {
-                                message: format!("Failed to lex interpolated expression: {}", expr_str),
+                                message: format!(
+                                    "Failed to lex interpolated expression: {}",
+                                    expr_str
+                                ),
                                 span: span.clone(),
                             });
                         }
 
                         // Parse the expression using the tokens
-                        let old_tokens = std::mem::replace(&mut self.tokens, tokens.into_iter().peekable());
+                        let old_tokens =
+                            std::mem::replace(&mut self.tokens, tokens.into_iter().peekable());
                         let _old_current = std::mem::replace(&mut self.current, self.tokens.next());
 
                         let expr_result = self.parse_expression();
@@ -3006,14 +3015,12 @@ mod tests {
 
         assert_eq!(ast.items.len(), 1);
         match &ast.items[0].kind {
-            ItemKind::Use(use_stmt) => {
-                match &use_stmt.path {
-                    UsePath::Simple(path) => {
-                        assert_eq!(path.len(), 3);
-                    }
-                    _ => panic!("expected simple path"),
+            ItemKind::Use(use_stmt) => match &use_stmt.path {
+                UsePath::Simple(path) => {
+                    assert_eq!(path.len(), 3);
                 }
-            }
+                _ => panic!("expected simple path"),
+            },
             _ => panic!("expected use"),
         }
     }

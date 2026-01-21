@@ -5,8 +5,8 @@
 //!
 //! Tasks provide state management and polling capabilities for futures.
 
-use zulon_async_futures::{Future, Poll, Context};
 use std::pin::Pin;
+use zulon_async_futures::{Context, Future, Poll};
 
 /// A wrapper around a future that tracks its state
 ///

@@ -25,13 +25,13 @@
 //! Machine Code
 //! ```
 
-pub mod ty;
+pub mod error;
 pub mod lir;
 pub mod lower;
 pub mod optimize;
-pub mod error;
+pub mod ty;
 
-pub use ty::LirTy;
-pub use lir::*;
 pub use error::{LirError, Result};
-pub use lower::{LirLoweringContext, lower_mir};
+pub use lir::*;
+pub use lower::{lower_mir, LirLoweringContext};
+pub use ty::LirTy;

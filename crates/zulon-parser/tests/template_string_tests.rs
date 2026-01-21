@@ -276,12 +276,13 @@ fn test_parse_template_string_in_block() {
     "#;
 
     // This currently fails due to parser limitations with blocks
-    let result = std::panic::catch_unwind(|| {
-        parse(source)
-    });
+    let result = std::panic::catch_unwind(|| parse(source));
 
     // Document that this is a known limitation
-    assert!(result.is_err(), "Template strings in block expressions are currently limited");
+    assert!(
+        result.is_err(),
+        "Template strings in block expressions are currently limited"
+    );
 }
 
 #[test]

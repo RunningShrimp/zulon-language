@@ -3,8 +3,8 @@
 
 //! Diagnostic system tests
 
-use zulon_diagnostic::prelude::*;
 use std::path::PathBuf;
+use zulon_diagnostic::prelude::*;
 
 #[test]
 fn test_span_creation() {
@@ -26,10 +26,7 @@ fn test_span_merge() {
         Loc::new(file.clone(), 1, 1, 0),
         Loc::new(file.clone(), 1, 10, 9),
     );
-    let span2 = Span::new(
-        Loc::new(file.clone(), 2, 1, 10),
-        Loc::new(file, 2, 20, 29),
-    );
+    let span2 = Span::new(Loc::new(file.clone(), 2, 1, 10), Loc::new(file, 2, 20, 29));
 
     let merged = span1.merge(span2);
     assert_eq!(merged.lo.line, 1);
@@ -94,11 +91,7 @@ fn test_diagnostic_with_suggestions() {
         Loc::new(file.clone(), 5, 15, 105),
     );
 
-    let suggestion = Suggestion::new(
-        "try this instead",
-        span,
-        "fixed_code",
-    );
+    let suggestion = Suggestion::new("try this instead", span, "fixed_code");
 
     let diagnostic = Diagnostic::error()
         .message("test error")
@@ -115,16 +108,9 @@ fn test_suggestion_apply() {
     let file = Some(PathBuf::from("test.zl"));
 
     // "old_value" starts at offset 8 and ends at offset 17 (length 9)
-    let span = Span::new(
-        Loc::new(file.clone(), 1, 9, 8),
-        Loc::new(file, 1, 18, 17),
-    );
+    let span = Span::new(Loc::new(file.clone(), 1, 9, 8), Loc::new(file, 1, 18, 17));
 
-    let suggestion = Suggestion::new(
-        "use new_value",
-        span,
-        "new_value",
-    );
+    let suggestion = Suggestion::new("use new_value", span, "new_value");
 
     let result = suggestion.apply(source);
     assert_eq!(result, "let x = new_value");

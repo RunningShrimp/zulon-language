@@ -11,14 +11,14 @@
 //! - Multi-line comments
 //! - Error recovery
 
-mod token;
 mod error;
+mod token;
 
-pub use token::*;
 pub use error::*;
+pub use token::*;
 
-use std::str::Chars;
 use std::iter::Peekable;
+use std::str::Chars;
 
 /// The main lexer struct
 pub struct Lexer<'a> {
@@ -209,9 +209,8 @@ impl<'a> Lexer<'a> {
             "bool" => TokenKind::Bool,
             "char" => TokenKind::Char,
             "str" => TokenKind::Str,
-            "i8" | "i16" | "i32" | "i64" | "i128" |
-            "u8" | "u16" | "u32" | "u64" | "u128" |
-            "f32" | "f64" => TokenKind::Ident(ident.into()), // Will be handled in parser
+            "i8" | "i16" | "i32" | "i64" | "i128" | "u8" | "u16" | "u32" | "u64" | "u128"
+            | "f32" | "f64" => TokenKind::Ident(ident.into()), // Will be handled in parser
 
             // Otherwise it's an identifier
             _ => TokenKind::Ident(ident.into()),
@@ -748,7 +747,10 @@ mod tests {
         let (tokens, _errors) = lexer.lex_all();
 
         assert_eq!(tokens[0].kind, TokenKind::StringLiteral("hello".into()));
-        assert_eq!(tokens[1].kind, TokenKind::TemplateString("multiline".into()));
+        assert_eq!(
+            tokens[1].kind,
+            TokenKind::TemplateString("multiline".into())
+        );
     }
 
     #[test]
@@ -791,7 +793,10 @@ mod tests {
 
         assert!(errors.is_empty(), "Should have no errors");
         assert_eq!(tokens.len(), 1);
-        assert_eq!(tokens[0].kind, TokenKind::TemplateString("Hello ${name}!".into()));
+        assert_eq!(
+            tokens[0].kind,
+            TokenKind::TemplateString("Hello ${name}!".into())
+        );
     }
 
     #[test]
@@ -802,7 +807,10 @@ mod tests {
 
         assert!(errors.is_empty(), "Should have no errors");
         assert_eq!(tokens.len(), 1);
-        assert_eq!(tokens[0].kind, TokenKind::TemplateString("Count: ${map.len()}".into()));
+        assert_eq!(
+            tokens[0].kind,
+            TokenKind::TemplateString("Count: ${map.len()}".into())
+        );
     }
 
     #[test]
@@ -813,7 +821,10 @@ mod tests {
 
         assert!(errors.is_empty(), "Should have no errors");
         assert_eq!(tokens.len(), 1);
-        assert_eq!(tokens[0].kind, TokenKind::TemplateString("Test ${func({key: value})}".into()));
+        assert_eq!(
+            tokens[0].kind,
+            TokenKind::TemplateString("Test ${func({key: value})}".into())
+        );
     }
 
     #[test]
@@ -834,7 +845,10 @@ mod tests {
 
         assert!(errors.is_empty(), "Should have no errors");
         assert_eq!(tokens.len(), 1);
-        assert_eq!(tokens[0].kind, TokenKind::TemplateString("Hello ${user}, you have ${count} messages".into()));
+        assert_eq!(
+            tokens[0].kind,
+            TokenKind::TemplateString("Hello ${user}, you have ${count} messages".into())
+        );
     }
 
     #[test]
@@ -845,7 +859,10 @@ mod tests {
 
         assert!(errors.is_empty(), "Should have no errors");
         assert_eq!(tokens.len(), 1);
-        assert_eq!(tokens[0].kind, TokenKind::TemplateString("Price: $100".into()));
+        assert_eq!(
+            tokens[0].kind,
+            TokenKind::TemplateString("Price: $100".into())
+        );
     }
 
     #[test]

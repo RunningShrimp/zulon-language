@@ -11,7 +11,8 @@
 use std::collections::HashMap;
 use zulon_build::{BuildConfig, BuildPipeline};
 use zulon_lir::{
-    LirBlock, LirConstant, LirExternal, LirFunction, LirInstruction, LirOperand, LirTerminator, LirTy,
+    LirBlock, LirConstant, LirExternal, LirFunction, LirInstruction, LirOperand, LirTerminator,
+    LirTy,
 };
 
 fn main() {
@@ -34,7 +35,7 @@ fn main() {
         // Arc functions
         LirExternal {
             name: "zulon_arc_alloc".to_string(),
-            param_types: vec![LirTy::USize], // size_t
+            param_types: vec![LirTy::USize],              // size_t
             return_type: LirTy::Ptr(Box::new(LirTy::I8)), // void*
         },
         LirExternal {
@@ -57,7 +58,7 @@ fn main() {
         output: "arc_demo".into(),
         keep_intermediates: true,
         target: None,
-        ..Default::default()  // Uses opt_level: 2 (-O2)
+        ..Default::default() // Uses opt_level: 2 (-O2)
     };
 
     println!("📦 Building executable...");
@@ -118,7 +119,9 @@ fn create_arc_demo() -> LirFunction {
             // ===== TITLE =====
             LirInstruction::Const {
                 dest: 0,
-                value: LirConstant::String("=== ZULON Arc (Reference Counting) Demo ===".to_string()),
+                value: LirConstant::String(
+                    "=== ZULON Arc (Reference Counting) Demo ===".to_string(),
+                ),
                 ty: LirTy::Ptr(Box::new(LirTy::I8)),
             },
             LirInstruction::CallExternal {
@@ -140,7 +143,6 @@ fn create_arc_demo() -> LirFunction {
                 arg_types: vec![LirTy::Ptr(Box::new(LirTy::I8))],
                 return_type: LirTy::Unit,
             },
-
             // ===== STEP 1: ALLOCATE =====
             LirInstruction::Const {
                 dest: 2,
@@ -154,7 +156,6 @@ fn create_arc_demo() -> LirFunction {
                 arg_types: vec![LirTy::Ptr(Box::new(LirTy::I8))],
                 return_type: LirTy::Unit,
             },
-
             // Allocate memory for i32 (4 bytes)
             LirInstruction::Const {
                 dest: 3,
@@ -168,7 +169,6 @@ fn create_arc_demo() -> LirFunction {
                 arg_types: vec![LirTy::USize],
                 return_type: LirTy::Ptr(Box::new(LirTy::I8)),
             },
-
             // Store value 42 into the Arc
             LirInstruction::Const {
                 dest: 5,
@@ -180,7 +180,6 @@ fn create_arc_demo() -> LirFunction {
                 src: 5,
                 ty: LirTy::I32,
             },
-
             // Current ref count: 1 (initialized by arc_alloc)
 
             // ===== STEP 2: INCREMENT REF COUNT =====
@@ -196,13 +195,11 @@ fn create_arc_demo() -> LirFunction {
                 arg_types: vec![LirTy::Ptr(Box::new(LirTy::I8))],
                 return_type: LirTy::Unit,
             },
-
             // ptr2 = ptr1 (increment ref count - directly use ptr1)
             LirInstruction::RefInc {
                 ptr: 4, // ptr1 is now "cloned"
                 ty: LirTy::I32,
             },
-
             // Current ref count: 2
 
             // ===== STEP 3: DECREMENT FIRST REF =====
@@ -218,12 +215,10 @@ fn create_arc_demo() -> LirFunction {
                 arg_types: vec![LirTy::Ptr(Box::new(LirTy::I8))],
                 return_type: LirTy::Unit,
             },
-
             LirInstruction::RefDec {
                 ptr: 4, // ptr1
                 ty: LirTy::I32,
             },
-
             // Current ref count: 1
 
             // ===== STEP 4: DECREMENT SECOND REF =====
@@ -239,12 +234,10 @@ fn create_arc_demo() -> LirFunction {
                 arg_types: vec![LirTy::Ptr(Box::new(LirTy::I8))],
                 return_type: LirTy::Unit,
             },
-
             LirInstruction::RefDec {
                 ptr: 4, // ptr1 (the same pointer, second ref)
                 ty: LirTy::I32,
             },
-
             // Current ref count: 0
             // Memory is automatically freed!
 
@@ -261,7 +254,6 @@ fn create_arc_demo() -> LirFunction {
                 arg_types: vec![LirTy::Ptr(Box::new(LirTy::I8))],
                 return_type: LirTy::Unit,
             },
-
             LirInstruction::Const {
                 dest: 11,
                 value: LirConstant::String("Arc Status: Memory automatically freed!".to_string()),
@@ -274,7 +266,6 @@ fn create_arc_demo() -> LirFunction {
                 arg_types: vec![LirTy::Ptr(Box::new(LirTy::I8))],
                 return_type: LirTy::Unit,
             },
-
             LirInstruction::Const {
                 dest: 12,
                 value: LirConstant::String("".to_string()),
@@ -287,10 +278,11 @@ fn create_arc_demo() -> LirFunction {
                 arg_types: vec![LirTy::Ptr(Box::new(LirTy::I8))],
                 return_type: LirTy::Unit,
             },
-
             LirInstruction::Const {
                 dest: 13,
-                value: LirConstant::String("Foundation: Manual reference counting complete!".to_string()),
+                value: LirConstant::String(
+                    "Foundation: Manual reference counting complete!".to_string(),
+                ),
                 ty: LirTy::Ptr(Box::new(LirTy::I8)),
             },
             LirInstruction::CallExternal {
@@ -300,7 +292,6 @@ fn create_arc_demo() -> LirFunction {
                 arg_types: vec![LirTy::Ptr(Box::new(LirTy::I8))],
                 return_type: LirTy::Unit,
             },
-
             LirInstruction::Const {
                 dest: 14,
                 value: LirConstant::String("Next: Automatic ARC in compiler (future)".to_string()),
@@ -313,7 +304,6 @@ fn create_arc_demo() -> LirFunction {
                 arg_types: vec![LirTy::Ptr(Box::new(LirTy::I8))],
                 return_type: LirTy::Unit,
             },
-
             // Return success
             LirInstruction::Const {
                 dest: 15,

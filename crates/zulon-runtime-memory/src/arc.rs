@@ -7,9 +7,9 @@
 //! Multiple `Arc` pointers can point to the same data, and the data
 //! is automatically freed when the last `Arc` is dropped.
 
+use std::fmt;
 use std::sync::atomic;
 use std::sync::atomic::Ordering;
-use std::fmt;
 
 /// Internal data structure for Arc
 ///
@@ -262,9 +262,7 @@ impl<T: ?Sized> Clone for Arc<T> {
             (*self.ptr).inc_strong();
         }
 
-        Arc {
-            ptr: self.ptr,
-        }
+        Arc { ptr: self.ptr }
     }
 }
 
@@ -320,9 +318,7 @@ impl<T: ?Sized + fmt::Display> fmt::Display for Arc<T> {
 
 impl<T: ?Sized + fmt::Debug> fmt::Debug for Arc<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_tuple("Arc")
-            .field(&&**self)
-            .finish()
+        f.debug_tuple("Arc").field(&&**self).finish()
     }
 }
 

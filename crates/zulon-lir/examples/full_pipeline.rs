@@ -1,10 +1,10 @@
 // Complete compilation pipeline test
 // Lexer → Parser → HIR → MIR → LIR
 
-use zulon_parser::Parser;
 use zulon_hir::lower_ast_simple;
-use zulon_mir::lower_hir;
 use zulon_lir::lower::LirLoweringContext;
+use zulon_mir::lower_hir;
+use zulon_parser::Parser;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("=== ZULON Complete Compilation Pipeline Test ===\n");
@@ -60,17 +60,18 @@ fn main() {
 
     println!("  ✅ MIR generated: {} functions", mir.functions.len());
     for (i, func) in mir.functions.iter().enumerate() {
-        println!("     [{}] fn {}({}) -> {}",
+        println!(
+            "     [{}] fn {}({}) -> {}",
             i,
             func.name,
-            func.params.iter()
+            func.params
+                .iter()
                 .map(|p| format!("{}: {}", p.name, p.ty.display_name()))
                 .collect::<Vec<_>>()
                 .join(", "),
             func.return_type.display_name()
         );
-        println!("         {} basic blocks",
-            func.blocks.len());
+        println!("         {} basic blocks", func.blocks.len());
     }
 
     // Step 4: LIR Lowering
@@ -80,13 +81,13 @@ fn main() {
 
     println!("  ✅ LIR generated: {} functions", lir.functions.len());
     for (i, func) in lir.functions.iter().enumerate() {
-        println!("     [{}] fn {} -> {}",
+        println!(
+            "     [{}] fn {} -> {}",
             i,
             func.name,
             func.return_type.display_name()
         );
-        println!("         {} basic blocks (SSA form)",
-            func.blocks.len());
+        println!("         {} basic blocks (SSA form)", func.blocks.len());
     }
 
     println!("\n{}", "=".repeat(60));

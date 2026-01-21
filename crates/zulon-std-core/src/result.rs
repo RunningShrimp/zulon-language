@@ -3,7 +3,7 @@
 
 //! Result type: Represents either success (Ok) or error (Err)
 
-use crate::traits::{PartialEq, Clone, Copy};
+use crate::traits::{Clone, Copy, PartialEq};
 
 /// Represents a result that can be either success (Ok) or error (Err)
 #[derive(Debug)]

@@ -28,9 +28,6 @@ impl Label {
     where
         F: FnOnce() -> String,
     {
-        Self {
-            span,
-            message: f(),
-        }
+        Self { span, message: f() }
     }
 }

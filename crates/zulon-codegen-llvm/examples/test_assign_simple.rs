@@ -2,11 +2,11 @@
 // SPDX-License-Identifier: Apache-2.0 OR MIT
 
 use std::io::Cursor;
-use zulon_parser::Parser;
-use zulon_hir::lower_ast_simple;
-use zulon_mir::lower_hir;
-use zulon_lir::lower::LirLoweringContext;
 use zulon_codegen_llvm::CodeGenerator;
+use zulon_hir::lower_ast_simple;
+use zulon_lir::lower::LirLoweringContext;
+use zulon_mir::lower_hir;
+use zulon_parser::Parser;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let source = r#"
@@ -61,7 +61,10 @@ fn main() -> i32 {
     // LIR
     let mut lir_ctx = LirLoweringContext::new();
     let lir = lir_ctx.lower_body(&mir)?;
-    println!("✅ LIR lowering successful - {} functions\n\n", lir.functions.len());
+    println!(
+        "✅ LIR lowering successful - {} functions\n\n",
+        lir.functions.len()
+    );
 
     // LLVM Codegen
     let mut buffer = Cursor::new(Vec::new());
@@ -92,7 +95,10 @@ fn debug_print_block(block: &zulon_hir::HirBlock, indent: usize) {
     for stmt in &block.statements {
         match stmt {
             zulon_hir::HirStatement::Local(local) => {
-                println!("{}Local: {} (type: {:?})\n", indent_str, local.name, local.ty);
+                println!(
+                    "{}Local: {} (type: {:?})\n",
+                    indent_str, local.name, local.ty
+                );
                 if let Some(init) = &local.init {
                     println!("{}  Init: {:?}\n", indent_str, init);
                 }

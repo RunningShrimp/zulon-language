@@ -205,8 +205,8 @@ impl OptPassManager {
         let mut result = ir.to_string();
 
         // Add identity: x + 0 → x
-        result = result.replace(r#"add i32 %v"#, r#"%v"#);  // Simplified
-        result = result.replace(", 0", "");  // Remove zero operands
+        result = result.replace(r#"add i32 %v"#, r#"%v"#); // Simplified
+        result = result.replace(", 0", ""); // Remove zero operands
 
         // Multiply identity: x * 1 → x
         result = result.replace(r#"mul i32 %v"#, r#"%v"#);

@@ -7,8 +7,8 @@
 //! marked as ready when I/O events occur.
 
 use std::collections::HashMap;
-use std::sync::{Arc, Mutex};
 use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::{Arc, Mutex};
 
 /// Global task registry for wake-up notifications
 ///
@@ -50,7 +50,7 @@ impl TaskRegistry {
     /// A handle to the registered task state
     pub fn register_task(&mut self, task_id: usize) -> Arc<Mutex<TaskState>> {
         let state = Arc::new(Mutex::new(TaskState {
-            ready: true,  // Initially ready
+            ready: true, // Initially ready
             active: true,
         }));
 

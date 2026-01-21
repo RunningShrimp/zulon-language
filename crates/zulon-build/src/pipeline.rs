@@ -97,13 +97,15 @@ impl BuildPipeline {
         let mut buffer = Vec::new();
         {
             let mut codegen = CodeGenerator::new(&mut buffer);
-            codegen.generate_module_with_externals(&self.lir_functions, &self.lir_externals)
+            codegen
+                .generate_module_with_externals(&self.lir_functions, &self.lir_externals)
                 .map_err(|e| BuildError::CodeGeneration(e.to_string()))?;
         }
 
         // Write to file
-        let mut file = File::create(&ll_file)
-            .map_err(|e| BuildError::Io(format!("Failed to create {}: {}", ll_file.display(), e)))?;
+        let mut file = File::create(&ll_file).map_err(|e| {
+            BuildError::Io(format!("Failed to create {}: {}", ll_file.display(), e))
+        })?;
 
         file.write_all(&buffer)
             .map_err(|e| BuildError::Io(format!("Failed to write {}: {}", ll_file.display(), e)))?;
@@ -128,8 +130,9 @@ impl BuildPipeline {
         }
 
         // Remove the .bc file (it's just for validation)
-        std::fs::remove_file(&bc_file)
-            .map_err(|e| BuildError::Io(format!("Failed to remove {}: {}", bc_file.display(), e)))?;
+        std::fs::remove_file(&bc_file).map_err(|e| {
+            BuildError::Io(format!("Failed to remove {}: {}", bc_file.display(), e))
+        })?;
 
         Ok(())
     }
@@ -139,10 +142,7 @@ impl BuildPipeline {
         let o_file = self.config.output.with_extension("o");
 
         let mut cmd = Command::new("llc");
-        cmd.arg(ll_file)
-            .arg("-filetype=obj")
-            .arg("-o")
-            .arg(&o_file);
+        cmd.arg(ll_file).arg("-filetype=obj").arg("-o").arg(&o_file);
 
         // Add optimization level
         cmd.arg(format!("-O{}", self.config.opt_level));
@@ -191,17 +191,13 @@ impl BuildPipeline {
         }
 
         // All linkers failed
-        Err(last_error.unwrap_or_else(|| BuildError::LinkerFailed(
-            "No linker found".to_string(),
-        )))
+        Err(last_error.unwrap_or_else(|| BuildError::LinkerFailed("No linker found".to_string())))
     }
 
     /// Try linking with a specific linker
     fn try_linker(&self, linker: &str, o_file: &Path, exe_file: &Path) -> Result<()> {
         let mut cmd = Command::new(linker);
-        cmd.arg(o_file)
-            .arg("-o")
-            .arg(exe_file);
+        cmd.arg(o_file).arg("-o").arg(exe_file);
 
         // Add platform-specific linker flags first
         #[cfg(target_os = "macos")]
@@ -236,10 +232,7 @@ impl BuildPipeline {
 
         if !output.status.success() {
             let stderr = String::from_utf8_lossy(&output.stderr);
-            return Err(BuildError::LinkerFailed(format!(
-                "{}: {}",
-                linker, stderr
-            )));
+            return Err(BuildError::LinkerFailed(format!("{}: {}", linker, stderr)));
         }
 
         Ok(())
@@ -288,14 +281,16 @@ impl BuildPipeline {
     fn cleanup_intermediates(&self, ll_file: &Path, o_file: &Path) -> Result<()> {
         // Remove .ll file
         if ll_file.exists() {
-            std::fs::remove_file(ll_file)
-                .map_err(|e| BuildError::Io(format!("Failed to remove {}: {}", ll_file.display(), e)))?;
+            std::fs::remove_file(ll_file).map_err(|e| {
+                BuildError::Io(format!("Failed to remove {}: {}", ll_file.display(), e))
+            })?;
         }
 
         // Remove .o file
         if o_file.exists() {
-            std::fs::remove_file(o_file)
-                .map_err(|e| BuildError::Io(format!("Failed to remove {}: {}", o_file.display(), e)))?;
+            std::fs::remove_file(o_file).map_err(|e| {
+                BuildError::Io(format!("Failed to remove {}: {}", o_file.display(), e))
+            })?;
         }
 
         Ok(())

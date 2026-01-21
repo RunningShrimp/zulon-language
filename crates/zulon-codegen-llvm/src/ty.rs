@@ -14,25 +14,19 @@ pub enum LlvmType {
     Void,
 
     /// Integer type
-    Integer(u32),  // bit width: 1, 8, 16, 32, 64, 128
+    Integer(u32), // bit width: 1, 8, 16, 32, 64, 128
 
     /// Floating point type
-    Float(u32),  // bit width: 32 or 64
+    Float(u32), // bit width: 32 or 64
 
     /// Pointer type
     Pointer(Box<LlvmType>),
 
     /// Array type
-    Array {
-        inner: Box<LlvmType>,
-        len: u64,
-    },
+    Array { inner: Box<LlvmType>, len: u64 },
 
     /// Struct type
-    Struct {
-        name: String,
-        fields: Vec<LlvmType>,
-    },
+    Struct { name: String, fields: Vec<LlvmType> },
 
     /// Function type
     Function {
@@ -68,22 +62,34 @@ impl LlvmType {
             }
 
             LlvmType::Struct { name, fields } => {
-                let field_str = fields.iter()
+                let field_str = fields
+                    .iter()
                     .map(|t| t.to_llvm_ir())
                     .collect::<Vec<_>>()
                     .join(", ");
                 format!("%struct.{} {{ {} }}", name, field_str)
             }
 
-            LlvmType::Function { params, return_type, is_varargs } => {
-                let param_str = params.iter()
+            LlvmType::Function {
+                params,
+                return_type,
+                is_varargs,
+            } => {
+                let param_str = params
+                    .iter()
                     .map(|t| t.to_llvm_ir())
                     .collect::<Vec<_>>()
                     .join(", ");
 
                 let varargs = if *is_varargs { "..." } else { "" };
 
-                format!("{} ({} {}) -> {}", return_type.to_llvm_ir(), param_str, varargs, return_type.to_llvm_ir())
+                format!(
+                    "{} ({} {}) -> {}",
+                    return_type.to_llvm_ir(),
+                    param_str,
+                    varargs,
+                    return_type.to_llvm_ir()
+                )
             }
         }
     }
@@ -128,24 +134,18 @@ impl From<LirTy> for LlvmType {
             LirTy::Never => LlvmType::Void, // Never is bottom type
 
             // Pointers
-            LirTy::Ptr(inner) => {
-                LlvmType::Pointer(Box::new((*inner).into()))
-            }
+            LirTy::Ptr(inner) => LlvmType::Pointer(Box::new((*inner).into())),
 
             // Arrays
-            LirTy::Array { inner, len } => {
-                LlvmType::Array {
-                    inner: Box::new((*inner).into()),
-                    len,
-                }
-            }
+            LirTy::Array { inner, len } => LlvmType::Array {
+                inner: Box::new((*inner).into()),
+                len,
+            },
 
             // Structs
             LirTy::Struct { name, fields, .. } => {
                 // Convert LIR field types to LLVM field types
-                let llvm_fields: Vec<LlvmType> = fields.iter()
-                    .map(|f| f.clone().into())
-                    .collect();
+                let llvm_fields: Vec<LlvmType> = fields.iter().map(|f| f.clone().into()).collect();
 
                 LlvmType::Struct {
                     name,

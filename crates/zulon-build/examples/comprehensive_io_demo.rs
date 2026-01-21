@@ -67,7 +67,10 @@ fn main() {
         },
         LirExternal {
             name: "zulon_strcmp".to_string(),
-            param_types: vec![LirTy::Ptr(Box::new(LirTy::I8)), LirTy::Ptr(Box::new(LirTy::I8))],
+            param_types: vec![
+                LirTy::Ptr(Box::new(LirTy::I8)),
+                LirTy::Ptr(Box::new(LirTy::I8)),
+            ],
             return_type: LirTy::I32,
         },
     ];
@@ -80,7 +83,7 @@ fn main() {
         output: "comprehensive_io_demo".into(),
         keep_intermediates: true,
         target: None,
-        ..Default::default()  // Uses opt_level: 2 (-O2)
+        ..Default::default() // Uses opt_level: 2 (-O2)
     };
 
     println!("📦 Building executable...");
@@ -162,7 +165,6 @@ fn create_comprehensive_demo() -> LirFunction {
                 arg_types: vec![LirTy::Ptr(Box::new(LirTy::I8))],
                 return_type: LirTy::Unit,
             },
-
             // ===== NUMERIC OUTPUT =====
             LirInstruction::Const {
                 dest: 2,
@@ -176,7 +178,6 @@ fn create_comprehensive_demo() -> LirFunction {
                 arg_types: vec![LirTy::Ptr(Box::new(LirTy::I8))],
                 return_type: LirTy::Unit,
             },
-
             // i32
             LirInstruction::Const {
                 dest: 3,
@@ -190,7 +191,6 @@ fn create_comprehensive_demo() -> LirFunction {
                 arg_types: vec![LirTy::I32],
                 return_type: LirTy::Unit,
             },
-
             // i64
             LirInstruction::Const {
                 dest: 4,
@@ -204,7 +204,6 @@ fn create_comprehensive_demo() -> LirFunction {
                 arg_types: vec![LirTy::I64],
                 return_type: LirTy::Unit,
             },
-
             // f64
             LirInstruction::Const {
                 dest: 5,
@@ -218,7 +217,6 @@ fn create_comprehensive_demo() -> LirFunction {
                 arg_types: vec![LirTy::F64],
                 return_type: LirTy::Unit,
             },
-
             // ===== STRING UTILITIES =====
             LirInstruction::Const {
                 dest: 6,
@@ -232,7 +230,6 @@ fn create_comprehensive_demo() -> LirFunction {
                 arg_types: vec![LirTy::Ptr(Box::new(LirTy::I8))],
                 return_type: LirTy::Unit,
             },
-
             LirInstruction::Const {
                 dest: 7,
                 value: LirConstant::String("String Utilities:".to_string()),
@@ -245,7 +242,6 @@ fn create_comprehensive_demo() -> LirFunction {
                 arg_types: vec![LirTy::Ptr(Box::new(LirTy::I8))],
                 return_type: LirTy::Unit,
             },
-
             // strlen demo
             LirInstruction::Const {
                 dest: 8,
@@ -278,7 +274,6 @@ fn create_comprehensive_demo() -> LirFunction {
                 arg_types: vec![LirTy::I64],
                 return_type: LirTy::Unit,
             },
-
             // strcmp demo
             LirInstruction::Const {
                 dest: 11,
@@ -294,7 +289,10 @@ fn create_comprehensive_demo() -> LirFunction {
                 dest: Some(13),
                 func_name: "zulon_strcmp".to_string(),
                 args: vec![11, 12],
-                arg_types: vec![LirTy::Ptr(Box::new(LirTy::I8)), LirTy::Ptr(Box::new(LirTy::I8))],
+                arg_types: vec![
+                    LirTy::Ptr(Box::new(LirTy::I8)),
+                    LirTy::Ptr(Box::new(LirTy::I8)),
+                ],
                 return_type: LirTy::I32,
             },
             LirInstruction::Const {
@@ -316,7 +314,6 @@ fn create_comprehensive_demo() -> LirFunction {
                 arg_types: vec![LirTy::I32],
                 return_type: LirTy::Unit,
             },
-
             // ===== CHARACTER I/O =====
             LirInstruction::Const {
                 dest: 15,
@@ -330,7 +327,6 @@ fn create_comprehensive_demo() -> LirFunction {
                 arg_types: vec![LirTy::Ptr(Box::new(LirTy::I8))],
                 return_type: LirTy::Unit,
             },
-
             LirInstruction::Const {
                 dest: 16,
                 value: LirConstant::String("Character I/O: Type a character...".to_string()),
@@ -343,7 +339,6 @@ fn create_comprehensive_demo() -> LirFunction {
                 arg_types: vec![LirTy::Ptr(Box::new(LirTy::I8))],
                 return_type: LirTy::Unit,
             },
-
             LirInstruction::CallExternal {
                 dest: Some(17),
                 func_name: "zulon_getchar".to_string(),
@@ -351,7 +346,6 @@ fn create_comprehensive_demo() -> LirFunction {
                 arg_types: vec![],
                 return_type: LirTy::I32,
             },
-
             LirInstruction::Const {
                 dest: 18,
                 value: LirConstant::String("You typed: '".to_string()),
@@ -383,7 +377,6 @@ fn create_comprehensive_demo() -> LirFunction {
                 arg_types: vec![LirTy::Ptr(Box::new(LirTy::I8))],
                 return_type: LirTy::Unit,
             },
-
             // ===== SUMMARY =====
             LirInstruction::Const {
                 dest: 20,
@@ -397,7 +390,6 @@ fn create_comprehensive_demo() -> LirFunction {
                 arg_types: vec![LirTy::Ptr(Box::new(LirTy::I8))],
                 return_type: LirTy::Unit,
             },
-
             LirInstruction::Const {
                 dest: 21,
                 value: LirConstant::String("Phase 1.5 Status: 100% COMPLETE ✅".to_string()),
@@ -410,7 +402,6 @@ fn create_comprehensive_demo() -> LirFunction {
                 arg_types: vec![LirTy::Ptr(Box::new(LirTy::I8))],
                 return_type: LirTy::Unit,
             },
-
             LirInstruction::Const {
                 dest: 22,
                 value: LirConstant::String("Next: Phase 1.6 (Memory Management - ARC)".to_string()),
@@ -423,7 +414,6 @@ fn create_comprehensive_demo() -> LirFunction {
                 arg_types: vec![LirTy::Ptr(Box::new(LirTy::I8))],
                 return_type: LirTy::Unit,
             },
-
             // Return success
             LirInstruction::Const {
                 dest: 23,

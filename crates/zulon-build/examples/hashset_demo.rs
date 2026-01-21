@@ -13,7 +13,11 @@ fn main() {
 
     println!("   Create empty HashSet:");
     let mut set: HashSet<i32> = HashSet::new();
-    println!("      HashSet::new() -> len={}, is_empty={}\n", set.len(), set.is_empty());
+    println!(
+        "      HashSet::new() -> len={}, is_empty={}\n",
+        set.len(),
+        set.is_empty()
+    );
 
     println!("   Insert values:");
     set.insert(10);
@@ -38,7 +42,11 @@ fn main() {
 
     println!("   Clear set:");
     set.clear();
-    println!("      After clear: len={}, is_empty={}\n", set.len(), set.is_empty());
+    println!(
+        "      After clear: len={}, is_empty={}\n",
+        set.len(),
+        set.is_empty()
+    );
 
     // Part 3: With Strings
     println!("3. WITH STRING VALUES\n");
@@ -51,8 +59,14 @@ fn main() {
 
     println!("   Fruit set:");
     println!("      len = {}", fruit_set.len());
-    println!("      contains(\"apple\") = {}", fruit_set.contains(&"apple"));
-    println!("      contains(\"grape\") = {}\n", fruit_set.contains(&"grape"));
+    println!(
+        "      contains(\"apple\") = {}",
+        fruit_set.contains(&"apple")
+    );
+    println!(
+        "      contains(\"grape\") = {}\n",
+        fruit_set.contains(&"grape")
+    );
 
     // Summary
     println!("=== SUMMARY ===");

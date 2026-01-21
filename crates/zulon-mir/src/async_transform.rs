@@ -60,7 +60,7 @@ impl AsyncTransformContext {
             func,
             await_points: Vec::new(),
             await_blocks: HashSet::new(),
-            state_var: 0, // Will be allocated
+            state_var: 0,  // Will be allocated
             future_var: 0, // Will be allocated
         }
     }
@@ -130,7 +130,9 @@ impl AsyncTransformContext {
     /// must be preserved in the state machine.
     fn analyze_variable_capture(&mut self) -> Result<()> {
         // Collect block IDs first to avoid borrow issues
-        let await_blocks: Vec<(usize, MirNodeId)> = self.await_points.iter()
+        let await_blocks: Vec<(usize, MirNodeId)> = self
+            .await_points
+            .iter()
             .map(|ap| (ap.id, ap.block_id))
             .collect();
 
@@ -158,7 +160,9 @@ impl AsyncTransformContext {
 
         // Update state machine's preserved_locals with all captured vars
         if let Some(ref mut sm) = self.func.state_machine {
-            let all_captured: HashSet<TempVar> = self.await_points.iter()
+            let all_captured: HashSet<TempVar> = self
+                .await_points
+                .iter()
                 .flat_map(|ap| ap.captured_locals.iter().copied())
                 .collect();
 
@@ -169,7 +173,11 @@ impl AsyncTransformContext {
     }
 
     /// Collect all live variables reachable from a given block
-    fn collect_live_variables_after(&self, block_id: MirNodeId, live_vars: &mut HashSet<TempVar>) -> Result<()> {
+    fn collect_live_variables_after(
+        &self,
+        block_id: MirNodeId,
+        live_vars: &mut HashSet<TempVar>,
+    ) -> Result<()> {
         let mut visited = HashSet::new();
         self.collect_live_variables_recursive(block_id, live_vars, &mut visited)
     }
@@ -207,11 +215,17 @@ impl AsyncTransformContext {
                 MirTerminator::Goto { target } => {
                     self.collect_live_variables_recursive(*target, live_vars, visited)?;
                 }
-                MirTerminator::If { then_block, else_block, .. } => {
+                MirTerminator::If {
+                    then_block,
+                    else_block,
+                    ..
+                } => {
                     self.collect_live_variables_recursive(*then_block, live_vars, visited)?;
                     self.collect_live_variables_recursive(*else_block, live_vars, visited)?;
                 }
-                MirTerminator::Switch { targets, default, .. } => {
+                MirTerminator::Switch {
+                    targets, default, ..
+                } => {
                     for (_, target) in targets {
                         self.collect_live_variables_recursive(*target, live_vars, visited)?;
                     }
@@ -230,7 +244,11 @@ impl AsyncTransformContext {
     }
 
     /// Collect temporaries used in an instruction
-    fn collect_temporaries_from_instruction(&self, instr: &MirInstruction, live_vars: &mut HashSet<TempVar>) {
+    fn collect_temporaries_from_instruction(
+        &self,
+        instr: &MirInstruction,
+        live_vars: &mut HashSet<TempVar>,
+    ) {
         match instr {
             MirInstruction::Const { dest, .. } => {
                 live_vars.insert(*dest);
@@ -239,7 +257,9 @@ impl AsyncTransformContext {
                 live_vars.insert(*dest);
                 self.collect_temporaries_from_place(src, live_vars);
             }
-            MirInstruction::BinaryOp { dest, left, right, .. } => {
+            MirInstruction::BinaryOp {
+                dest, left, right, ..
+            } => {
                 live_vars.insert(*dest);
                 live_vars.insert(*left);
                 live_vars.insert(*right);
@@ -285,7 +305,11 @@ impl AsyncTransformContext {
     }
 
     /// Collect temporaries used in a terminator
-    fn collect_temporaries_from_terminator(&self, term: &MirTerminator, live_vars: &mut HashSet<TempVar>) {
+    fn collect_temporaries_from_terminator(
+        &self,
+        term: &MirTerminator,
+        live_vars: &mut HashSet<TempVar>,
+    ) {
         match term {
             MirTerminator::Return(ret_place) => {
                 if let Some(place) = ret_place {
@@ -387,7 +411,9 @@ impl AsyncTransformContext {
         let block_ids: Vec<MirNodeId> = self.func.blocks.keys().copied().collect();
 
         // Build a map from block_id to await_point (cloned to avoid borrow issues)
-        let block_to_await: HashMap<MirNodeId, AwaitPoint> = self.await_points.iter()
+        let block_to_await: HashMap<MirNodeId, AwaitPoint> = self
+            .await_points
+            .iter()
             .map(|ap| (ap.block_id, ap.clone()))
             .collect();
 
@@ -399,7 +425,8 @@ impl AsyncTransformContext {
                 // Get the await point for this block
                 let await_point = block_to_await.get(&block_id).unwrap();
 
-                let (pre_block, resume_block) = self.split_await_block(block_id, &block, await_point)?;
+                let (pre_block, resume_block) =
+                    self.split_await_block(block_id, &block, await_point)?;
 
                 block_transformation.insert(block_id, (pre_block.id, resume_block.id));
                 new_blocks.insert(pre_block.id, pre_block);
@@ -420,16 +447,22 @@ impl AsyncTransformContext {
     }
 
     /// Split a block containing an await into pre-await and resume blocks
-    fn split_await_block(&mut self, block_id: MirNodeId, block: &MirBasicBlock, await_point: &AwaitPoint) -> Result<(MirBasicBlock, MirBasicBlock)> {
+    fn split_await_block(
+        &mut self,
+        block_id: MirNodeId,
+        block: &MirBasicBlock,
+        await_point: &AwaitPoint,
+    ) -> Result<(MirBasicBlock, MirBasicBlock)> {
         // Find the await instruction
         let await_idx = block.instructions.iter().position(|instr| {
             matches!(instr, MirInstruction::Call { func, .. } if matches!(func, MirPlace::Local(name) if name == "await" || name.contains("poll")))
         });
 
         if await_idx.is_none() {
-            return Err(MirError::TransformError(
-                format!("Block {} marked as await block but no await found", block_id)
-            ));
+            return Err(MirError::TransformError(format!(
+                "Block {} marked as await block but no await found",
+                block_id
+            )));
         }
 
         let await_idx = await_idx.unwrap();
@@ -475,7 +508,11 @@ impl AsyncTransformContext {
     }
 
     /// Generate code to save captured variables before an await
-    fn generate_state_saving(&mut self, block: &mut MirBasicBlock, await_point: &AwaitPoint) -> Result<()> {
+    fn generate_state_saving(
+        &mut self,
+        block: &mut MirBasicBlock,
+        await_point: &AwaitPoint,
+    ) -> Result<()> {
         // For each captured temporary, generate a store instruction
         // In a full implementation, this would store to a state machine struct
         // For MVP: Generate comments/nops to show where saving would happen
@@ -503,7 +540,11 @@ impl AsyncTransformContext {
     }
 
     /// Generate code to restore captured variables after an await
-    fn generate_state_restoration(&mut self, block: &mut MirBasicBlock, await_point: &AwaitPoint) -> Result<()> {
+    fn generate_state_restoration(
+        &mut self,
+        block: &mut MirBasicBlock,
+        await_point: &AwaitPoint,
+    ) -> Result<()> {
         // For each captured temporary, generate a load instruction
         // In a full implementation, this would load from the state machine struct
 
@@ -529,7 +570,10 @@ impl AsyncTransformContext {
     }
 
     /// Update terminators to point to new block IDs after transformation
-    fn update_terminators(&mut self, transformation: &HashMap<MirNodeId, (MirNodeId, MirNodeId)>) -> Result<()> {
+    fn update_terminators(
+        &mut self,
+        transformation: &HashMap<MirNodeId, (MirNodeId, MirNodeId)>,
+    ) -> Result<()> {
         for (_block_id, block) in &mut self.func.blocks {
             if let Some(ref mut terminator) = block.terminator {
                 match terminator {
@@ -538,7 +582,11 @@ impl AsyncTransformContext {
                             *target = *resume_id;
                         }
                     }
-                    MirTerminator::If { then_block, else_block, .. } => {
+                    MirTerminator::If {
+                        then_block,
+                        else_block,
+                        ..
+                    } => {
                         if let Some((_, resume_id)) = transformation.get(then_block) {
                             *then_block = *resume_id;
                         }
@@ -546,7 +594,9 @@ impl AsyncTransformContext {
                             *else_block = *resume_id;
                         }
                     }
-                    MirTerminator::Switch { targets, default, .. } => {
+                    MirTerminator::Switch {
+                        targets, default, ..
+                    } => {
                         if let Some((_, resume_id)) = transformation.get(default) {
                             *default = *resume_id;
                         }

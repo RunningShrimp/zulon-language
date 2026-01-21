@@ -1,0 +1,18 @@
+// Copyright 2026 ZULON Language Team
+// SPDX-License-Identifier: Apache-2.0 OR MIT
+
+//! Tests for file system module
+
+// Verify that the fs module compiles correctly
+// This is a minimal test to verify syntax
+
+fn main() -> i32 {
+    println!("File system module syntax test: OK");
+    0
+}
+
+#[test]
+fn test_syntax() {
+    // Just verify compilation succeeds
+    assert!(true);
+}

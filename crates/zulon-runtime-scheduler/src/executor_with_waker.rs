@@ -6,11 +6,13 @@
 //! This module extends the event loop executor with actual task wake-up
 //! mechanism using the task registry.
 
+use crate::waker_registry::{
+    generate_task_id, global_registry, init_global_registry, TaskRegistry,
+};
 use crate::Executor;
-use crate::waker_registry::{generate_task_id, global_registry, init_global_registry, TaskRegistry};
-use zulon_async_futures::{Future, Poll, Context, Waker, RawWaker, RawWakerVTable};
 use std::collections::VecDeque;
 use std::sync::Arc;
+use zulon_async_futures::{Context, Future, Poll, RawWaker, RawWakerVTable, Waker};
 
 /// A task that can be woken up by the event loop
 struct EventLoopTask {
@@ -127,10 +129,7 @@ impl EventLoopExecutorWithWaker {
         // Create waker data that contains the task ID
         let data = Arc::new(TaskWakerData { task_id });
 
-        let raw_waker = RawWaker::new(
-            Arc::into_raw(data) as *const (),
-            &TASK_WAKER_VTABLE,
-        );
+        let raw_waker = RawWaker::new(Arc::into_raw(data) as *const (), &TASK_WAKER_VTABLE);
 
         unsafe { Waker::from_raw(raw_waker) }
     }

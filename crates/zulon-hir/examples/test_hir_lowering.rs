@@ -1,7 +1,7 @@
 // Test AST → HIR lowering pipeline
 
-use zulon_parser::Parser;
 use zulon_hir::{lower_ast_simple, HirCrate};
+use zulon_parser::Parser;
 
 fn main() {
     println!("=== ZULON AST → HIR Lowering Test ===\n");

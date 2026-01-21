@@ -4,8 +4,8 @@
 //! Integration with zulon-diagnostic
 
 use crate::{LexError, LexErrorKind};
-use zulon_diagnostic::{Diagnostic, Span, Suggestion, Loc};
 use std::path::PathBuf;
+use zulon_diagnostic::{Diagnostic, Loc, Span, Suggestion};
 
 /// Estimate byte offset from line and column (1-indexed)
 fn estimate_byte_offset(source_code: &str, line: usize, column: usize) -> usize {
@@ -65,17 +65,14 @@ impl LexError {
             LexErrorKind::InvalidEscapeSequence(c) => {
                 (format!("invalid escape sequence '\\{}'", c), Some("E0008"))
             }
-            LexErrorKind::UnexpectedEof => {
-                ("unexpected end of file".to_string(), Some("E0009"))
-            }
-            LexErrorKind::UnterminatedInterpolation => {
-                ("unterminated string interpolation '${{...}}'".to_string(), Some("E0010"))
-            }
+            LexErrorKind::UnexpectedEof => ("unexpected end of file".to_string(), Some("E0009")),
+            LexErrorKind::UnterminatedInterpolation => (
+                "unterminated string interpolation '${{...}}'".to_string(),
+                Some("E0010"),
+            ),
         };
 
-        let mut diagnostic = Diagnostic::error()
-            .message(message)
-            .span(span.clone());
+        let mut diagnostic = Diagnostic::error().message(message).span(span.clone());
 
         if let Some(code) = code {
             diagnostic = diagnostic.code(code);
@@ -140,7 +137,10 @@ mod tests {
         let source = "let x = \"hello";
         let error = LexError {
             kind: LexErrorKind::UnterminatedString,
-            position: Position { line: 1, column: 16 },
+            position: Position {
+                line: 1,
+                column: 16,
+            },
         };
 
         let diagnostic = error.to_diagnostic(source);

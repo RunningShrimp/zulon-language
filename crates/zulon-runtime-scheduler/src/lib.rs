@@ -27,21 +27,21 @@
 //! executor.run();
 //! ```
 
-pub mod executor;
-pub mod task;
 pub mod basic_executor;
-pub mod local_executor;
 pub mod event_loop_executor;
-pub mod event_loop_waker;
-pub mod waker_registry;
-pub mod executor_with_waker;
 pub mod event_loop_integration;
+pub mod event_loop_waker;
+pub mod executor;
+pub mod executor_with_waker;
+pub mod local_executor;
+pub mod task;
+pub mod waker_registry;
 
-pub use executor::{Executor, ExecutorExt};
-pub use task::Task;
 pub use basic_executor::BasicExecutor;
-pub use local_executor::LocalExecutor;
 pub use event_loop_executor::EventLoopExecutor;
+pub use event_loop_integration::{EventInterest, IntegratedEventLoopExecutor};
 pub use event_loop_waker::EventLoopExecutor as EventLoopWakerExecutor;
+pub use executor::{Executor, ExecutorExt};
 pub use executor_with_waker::EventLoopExecutorWithWaker;
-pub use event_loop_integration::{IntegratedEventLoopExecutor, EventInterest};
+pub use local_executor::LocalExecutor;
+pub use task::Task;

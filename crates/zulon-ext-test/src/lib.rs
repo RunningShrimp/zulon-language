@@ -40,13 +40,13 @@
 
 // Re-export testing components
 pub mod assertions;
-pub mod test_runner;
 pub mod test_discovery;
+pub mod test_runner;
 
 // Public API
 // Note: Macros are re-exported at the crate root via macro_export
-pub use test_runner::{TestRunner, TestResult, TestStats};
 pub use test_discovery::{TestDiscovery, TestMetadata};
+pub use test_runner::{TestResult, TestRunner, TestStats};
 
 /// Test attribute marker
 ///

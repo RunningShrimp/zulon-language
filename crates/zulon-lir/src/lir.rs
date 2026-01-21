@@ -47,11 +47,7 @@ pub struct LirFunction {
 
 impl LirFunction {
     /// Create a new LIR function
-    pub fn new(
-        name: String,
-        params: Vec<(VReg, LirTy)>,
-        return_type: LirTy,
-    ) -> Self {
+    pub fn new(name: String, params: Vec<(VReg, LirTy)>, return_type: LirTy) -> Self {
         let entry_block = 0;
         let (param_regs, param_types): (Vec<_>, Vec<_>) = params.into_iter().unzip();
 
@@ -71,11 +67,14 @@ impl LirFunction {
         let mut entry = LirBlock::new(entry_block);
         for (i, &reg) in param_regs.iter().enumerate() {
             // Add phi node for each parameter
-            entry.phi_nodes.insert(reg, LirPhi {
-                def: reg,
-                sources: vec![(reg, entry_block)],
-                ty: func.param_types[i].clone(),
-            });
+            entry.phi_nodes.insert(
+                reg,
+                LirPhi {
+                    def: reg,
+                    sources: vec![(reg, entry_block)],
+                    ty: func.param_types[i].clone(),
+                },
+            );
         }
         func.blocks.insert(entry_block, entry);
 
@@ -168,11 +167,7 @@ pub enum LirInstruction {
     },
 
     /// Copy (register-to-register)
-    Copy {
-        dest: VReg,
-        src: VReg,
-        ty: LirTy,
-    },
+    Copy { dest: VReg, src: VReg, ty: LirTy },
 
     /// Binary operation
     BinaryOp {
@@ -247,16 +242,10 @@ pub enum LirInstruction {
     },
 
     /// Increment reference count (for Arc<T>)
-    RefInc {
-        ptr: VReg,
-        ty: LirTy,
-    },
+    RefInc { ptr: VReg, ty: LirTy },
 
     /// Decrement reference count (for Arc<T>)
-    RefDec {
-        ptr: VReg,
-        ty: LirTy,
-    },
+    RefDec { ptr: VReg, ty: LirTy },
 }
 
 /// Constant value
@@ -280,9 +269,16 @@ pub enum LirOperand {
 /// Binary operation
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum LirBinOp {
-    Add, Sub, Mul, Div, Mod,
-    BitAnd, BitOr, BitXor,
-    LeftShift, RightShift,
+    Add,
+    Sub,
+    Mul,
+    Div,
+    Mod,
+    BitAnd,
+    BitOr,
+    BitXor,
+    LeftShift,
+    RightShift,
 }
 
 /// Stack slot allocation (for mutable variables)
@@ -295,15 +291,19 @@ pub struct LirAlloca {
 /// Unary operation
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum LirUnaryOp {
-    Neg, Not,
+    Neg,
+    Not,
 }
 
 /// Comparison operation
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum LirCmpOp {
-    Eq, NotEq,
-    Less, LessEq,
-    Greater, GreaterEq,
+    Eq,
+    NotEq,
+    Less,
+    LessEq,
+    Greater,
+    GreaterEq,
 }
 
 /// Terminator - ends a basic block with control flow
@@ -316,9 +316,7 @@ pub enum LirTerminator {
     Throw(VReg),
 
     /// Unconditional jump
-    Jump {
-        target: LirNodeId,
-    },
+    Jump { target: LirNodeId },
 
     /// Conditional branch
     Branch {

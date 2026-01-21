@@ -3,9 +3,9 @@
 
 //! Hash map implementation (HashMap<K, V>)
 
-use crate::traits::{Clone, PartialEq, Hash};
-use crate::Vec;
+use crate::traits::{Clone, Hash, PartialEq};
 use crate::Optional;
+use crate::Vec;
 
 /// Default initial capacity for HashMap
 const DEFAULT_CAPACITY: usize = 16;
@@ -282,7 +282,7 @@ mod tests {
         let map: HashMap<i32, i32> = HashMap::new();
         match map.get(&1) {
             Optional::Some(_) => panic!("Expected None"),
-            Optional::None => {},
+            Optional::None => {}
         }
     }
 

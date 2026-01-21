@@ -7,7 +7,8 @@ license.workspace = true
 repository.workspace = true
 homepage.workspace = true
 
-# TODO: Add dependencies when needed
-[dependencies]
+[lib]
+name = "zulon_ext_bench"
+path = "src"
 
-[dev-dependencies]
+[dependencies]

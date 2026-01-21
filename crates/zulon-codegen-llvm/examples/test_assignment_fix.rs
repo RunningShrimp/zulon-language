@@ -82,7 +82,13 @@ fn compile_zulon(name: &str, code: &str) -> Result<(), Box<dyn std::error::Error
     println!("  Compiling to LLVM IR...");
 
     let output = Command::new("cargo")
-        .args(["run", "-p", "zulon-codegen-llvm", "--example", "compile_simple_loop"])
+        .args([
+            "run",
+            "-p",
+            "zulon-codegen-llvm",
+            "--example",
+            "compile_simple_loop",
+        ])
         .output()?;
 
     if output.status.success() {

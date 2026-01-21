@@ -10,7 +10,7 @@
 
 use zulon_std_core::{Clone, Ordering};
 use zulon_std_core::{Optional, Optional::None, Optional::Some};
-use zulon_std_core::{Outcome, Outcome::Ok, Outcome::Err};
+use zulon_std_core::{Outcome, Outcome::Err, Outcome::Ok};
 
 fn main() {
     println!("=== ZULON Standard Library Core Demo ===\n");
@@ -25,27 +25,57 @@ fn main() {
     println!("   a) Clone and Copy Traits:");
     let x = 42i32;
     let y = zulon_std_core::Clone::clone(&x); // Clone
-    let z = x;         // Copy (implicit)
+    let z = x; // Copy (implicit)
     println!("      Original: {}, Clone: {}, Copy: {}", x, y, z);
 
     // PartialEq trait
     println!("\n   b) PartialEq Trait:");
-    println!("      42 == 42: {}", zulon_std_core::PartialEq::eq(&42_i32, &42));
-    println!("      42 != 43: {}", zulon_std_core::PartialEq::ne(&42_i32, &43));
+    println!(
+        "      42 == 42: {}",
+        zulon_std_core::PartialEq::eq(&42_i32, &42)
+    );
+    println!(
+        "      42 != 43: {}",
+        zulon_std_core::PartialEq::ne(&42_i32, &43)
+    );
 
     // PartialOrd trait
     println!("\n   c) PartialOrd Trait:");
-    println!("      42 < 43: {}", zulon_std_core::PartialOrd::lt(&42_i32, &43));
-    println!("      42 <= 42: {}", zulon_std_core::PartialOrd::le(&42_i32, &42));
-    println!("      43 > 42: {}", zulon_std_core::PartialOrd::gt(&43_i32, &42));
-    println!("      42 >= 42: {}", zulon_std_core::PartialOrd::ge(&42_i32, &42));
-    println!("      partial_cmp(42, 43): {:?}", zulon_std_core::PartialOrd::partial_cmp(&42_i32, &43));
+    println!(
+        "      42 < 43: {}",
+        zulon_std_core::PartialOrd::lt(&42_i32, &43)
+    );
+    println!(
+        "      42 <= 42: {}",
+        zulon_std_core::PartialOrd::le(&42_i32, &42)
+    );
+    println!(
+        "      43 > 42: {}",
+        zulon_std_core::PartialOrd::gt(&43_i32, &42)
+    );
+    println!(
+        "      42 >= 42: {}",
+        zulon_std_core::PartialOrd::ge(&42_i32, &42)
+    );
+    println!(
+        "      partial_cmp(42, 43): {:?}",
+        zulon_std_core::PartialOrd::partial_cmp(&42_i32, &43)
+    );
 
     // Ord trait
     println!("\n   d) Ord Trait:");
-    println!("      cmp(42, 43): {:?}", zulon_std_core::Ord::cmp(&42_i32, &43));
-    println!("      cmp(43, 42): {:?}", zulon_std_core::Ord::cmp(&43_i32, &42));
-    println!("      cmp(42, 42): {:?}", zulon_std_core::Ord::cmp(&42_i32, &42));
+    println!(
+        "      cmp(42, 43): {:?}",
+        zulon_std_core::Ord::cmp(&42_i32, &43)
+    );
+    println!(
+        "      cmp(43, 42): {:?}",
+        zulon_std_core::Ord::cmp(&43_i32, &42)
+    );
+    println!(
+        "      cmp(42, 42): {:?}",
+        zulon_std_core::Ord::cmp(&42_i32, &42)
+    );
 
     // Ordering enum
     println!("\n   e) Ordering Enum:");
@@ -77,9 +107,18 @@ fn main() {
     println!("\n   c) Unwrapping Optional Values:");
     println!("      Some(42).unwrap(): {}", some_value.unwrap());
     println!("      Some(42).unwrap_or(100): {}", Some(42).unwrap_or(100));
-    println!("      None.unwrap_or(100): {}", no_value.clone().unwrap_or(100));
-    println!("      Some(42).unwrap_or_else(|| 100): {}", Some(42).unwrap_or_else(|| 100));
-    println!("      None.unwrap_or_else(|| 100): {}", no_value.clone().unwrap_or_else(|| 100));
+    println!(
+        "      None.unwrap_or(100): {}",
+        no_value.clone().unwrap_or(100)
+    );
+    println!(
+        "      Some(42).unwrap_or_else(|| 100): {}",
+        Some(42).unwrap_or_else(|| 100)
+    );
+    println!(
+        "      None.unwrap_or_else(|| 100): {}",
+        no_value.clone().unwrap_or_else(|| 100)
+    );
 
     // Mapping Optional values
     println!("\n   d) Mapping Optional Values:");
@@ -97,17 +136,30 @@ fn main() {
             Some(x / y)
         }
     }
-    let result = Some(100).and_then(|x| maybe_divide(x, 2)).and_then(|x| maybe_divide(x, 5));
+    let result = Some(100)
+        .and_then(|x| maybe_divide(x, 2))
+        .and_then(|x| maybe_divide(x, 5));
     println!("      100 / 2 / 5 = {:?}", result);
-    let failed = Some(100).and_then(|x| maybe_divide(x, 0)).and_then(|x| maybe_divide(x, 5));
+    let failed = Some(100)
+        .and_then(|x| maybe_divide(x, 0))
+        .and_then(|x| maybe_divide(x, 5));
     println!("      100 / 0 / 5 = {:?}", failed);
 
     // Optional combinators
     println!("\n   f) Optional Combinators:");
-    println!("      Some(42).or(Some(100)) = {:?}", Some(42).or(Some(100)));
+    println!(
+        "      Some(42).or(Some(100)) = {:?}",
+        Some(42).or(Some(100))
+    );
     println!("      None.or(Some(100)) = {:?}", None::<i32>.or(Some(100)));
-    println!("      Some(42).filter(|&x| x > 40) = {:?}", Some(42).filter(|&x| x > 40));
-    println!("      Some(42).filter(|&x| x > 50) = {:?}", Some(42).filter(|&x| x > 50));
+    println!(
+        "      Some(42).filter(|&x| x > 40) = {:?}",
+        Some(42).filter(|&x| x > 40)
+    );
+    println!(
+        "      Some(42).filter(|&x| x > 50) = {:?}",
+        Some(42).filter(|&x| x > 50)
+    );
 
     // Zipping Optionals
     println!("\n   g) Zipping Optionals:");
@@ -137,8 +189,14 @@ fn main() {
     // Unwrapping Outcome values
     println!("\n   c) Unwrapping Outcome Values:");
     println!("      Ok(42).unwrap(): {}", success.unwrap());
-    println!("      Ok(42).unwrap_or(100): {}", Ok::<i32, &str>(42).unwrap_or(100));
-    println!("      Err(\"error\").unwrap_or(100): {}", failure.unwrap_or(100));
+    println!(
+        "      Ok(42).unwrap_or(100): {}",
+        Ok::<i32, &str>(42).unwrap_or(100)
+    );
+    println!(
+        "      Err(\"error\").unwrap_or(100): {}",
+        failure.unwrap_or(100)
+    );
 
     // Mapping Outcome values
     println!("\n   d) Mapping Outcome Values:");
@@ -163,10 +221,14 @@ fn main() {
 
     // Outcome combinators
     println!("\n   f) Outcome Combinators:");
-    println!("      Ok(42).or_else(|_| Err(\"backup\")) = {:?}",
-             Ok::<i32, &str>(42).or_else(|_: &str| Err("backup")));
-    println!("      Err(\"error\").or_else(|_| Err(\"backup\")) = {:?}",
-             Err::<i32, &str>("error").or_else(|_: &str| Err("backup")));
+    println!(
+        "      Ok(42).or_else(|_| Err(\"backup\")) = {:?}",
+        Ok::<i32, &str>(42).or_else(|_: &str| Err("backup"))
+    );
+    println!(
+        "      Err(\"error\").or_else(|_| Err(\"backup\")) = {:?}",
+        Err::<i32, &str>("error").or_else(|_: &str| Err("backup"))
+    );
 
     // =========================================================================
     // Part 4: Real-World Example - Safe Division
@@ -230,14 +292,22 @@ fn main() {
         Ok(())
     }
 
-    let usernames = vec!["ab", "alice", "this_username_is_way_too_long", "bob@home", "charlie"];
+    let usernames = vec![
+        "ab",
+        "alice",
+        "this_username_is_way_too_long",
+        "bob@home",
+        "charlie",
+    ];
 
     for username in usernames {
         match validate_username(username) {
             Ok(_) => println!("      '{}' is valid ✓", username),
             Err(ValidationError::TooShort) => println!("      '{}' is too short ✗", username),
             Err(ValidationError::TooLong) => println!("      '{}' is too long ✗", username),
-            Err(ValidationError::InvalidChar) => println!("      '{}' has invalid characters ✗", username),
+            Err(ValidationError::InvalidChar) => {
+                println!("      '{}' has invalid characters ✗", username)
+            }
         }
     }
 

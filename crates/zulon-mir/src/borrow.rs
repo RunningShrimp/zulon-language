@@ -79,7 +79,12 @@ struct BorrowNode {
 
 impl BorrowNode {
     /// Create a new borrow node
-    fn new(_id: BorrowId, kind: BorrowKind, place: MirPlace, lifetime: (MirNodeId, MirNodeId)) -> Self {
+    fn new(
+        _id: BorrowId,
+        kind: BorrowKind,
+        place: MirPlace,
+        lifetime: (MirNodeId, MirNodeId),
+    ) -> Self {
         let permission = match kind {
             BorrowKind::Shared => Permission::Read,
             BorrowKind::Unique => Permission::ReadWrite,
@@ -284,11 +289,19 @@ impl BorrowChecker {
     /// Check an instruction for borrow violations
     fn check_instruction(&self, inst: &MirInstruction, _func: &MirFunction) -> Result<()> {
         match inst {
-            MirInstruction::Load { dest: _, src, ty: _ } => {
+            MirInstruction::Load {
+                dest: _,
+                src,
+                ty: _,
+            } => {
                 self.can_read(src, self.current_block)?;
             }
 
-            MirInstruction::Store { dest, src: _, ty: _ } => {
+            MirInstruction::Store {
+                dest,
+                src: _,
+                ty: _,
+            } => {
                 self.can_write(dest, self.current_block)?;
             }
 
@@ -364,11 +377,19 @@ impl BorrowChecker {
                 }
             }
 
-            MirTerminator::If { condition, then_block: _, else_block: _ } => {
+            MirTerminator::If {
+                condition,
+                then_block: _,
+                else_block: _,
+            } => {
                 self.can_read(&MirPlace::Temp(*condition), self.current_block)?;
             }
 
-            MirTerminator::Switch { scrutinee, targets: _, default: _ } => {
+            MirTerminator::Switch {
+                scrutinee,
+                targets: _,
+                default: _,
+            } => {
                 self.can_read(&MirPlace::Temp(*scrutinee), self.current_block)?;
             }
 

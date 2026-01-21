@@ -18,7 +18,8 @@ pub trait TypeDisplay {
 
 /// Helper function for displaying types with optional formatting
 pub fn format_type_list<T: TypeDisplay>(types: &[T], separator: &str) -> String {
-    types.iter()
+    types
+        .iter()
         .map(|t| t.display_type())
         .collect::<Vec<_>>()
         .join(separator)

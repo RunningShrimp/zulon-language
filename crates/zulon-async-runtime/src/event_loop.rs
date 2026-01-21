@@ -30,10 +30,18 @@ pub trait EventHandler: Send + Sync {
 /// Implementations exist for epoll (Linux), kqueue (macOS/BSD), and IOCP (Windows).
 pub trait EventLoop: Send + Sync {
     /// Register a file descriptor for read events
-    fn register_read(&mut self, fd: Fd, handler: Box<dyn EventHandler>) -> Result<(), EventLoopError>;
+    fn register_read(
+        &mut self,
+        fd: Fd,
+        handler: Box<dyn EventHandler>,
+    ) -> Result<(), EventLoopError>;
 
     /// Register a file descriptor for write events
-    fn register_write(&mut self, fd: Fd, handler: Box<dyn EventHandler>) -> Result<(), EventLoopError>;
+    fn register_write(
+        &mut self,
+        fd: Fd,
+        handler: Box<dyn EventHandler>,
+    ) -> Result<(), EventLoopError>;
 
     /// Deregister a file descriptor
     fn deregister(&mut self, fd: Fd) -> Result<(), EventLoopError>;
@@ -67,12 +75,20 @@ impl Default for MockEventLoop {
 
 #[cfg(test)]
 impl EventLoop for MockEventLoop {
-    fn register_read(&mut self, fd: Fd, handler: Box<dyn EventHandler>) -> Result<(), EventLoopError> {
+    fn register_read(
+        &mut self,
+        fd: Fd,
+        handler: Box<dyn EventHandler>,
+    ) -> Result<(), EventLoopError> {
         self.handlers.insert(fd, handler);
         Ok(())
     }
 
-    fn register_write(&mut self, _fd: Fd, _handler: Box<dyn EventHandler>) -> Result<(), EventLoopError> {
+    fn register_write(
+        &mut self,
+        _fd: Fd,
+        _handler: Box<dyn EventHandler>,
+    ) -> Result<(), EventLoopError> {
         // Mock implementation
         Ok(())
     }
@@ -118,9 +134,7 @@ mod tests {
         let mut loop_: MockEventLoop = MockEventLoop::default();
         assert!(loop_.is_empty());
 
-        loop_
-            .register_read(1, Box::new(TestHandler))
-            .unwrap();
+        loop_.register_read(1, Box::new(TestHandler)).unwrap();
         assert!(!loop_.is_empty());
         assert_eq!(loop_.run_once(None).unwrap(), 1);
 

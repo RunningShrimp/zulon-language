@@ -13,7 +13,11 @@ fn main() {
 
     println!("   Create empty Vec:");
     let mut vec: Vec<i32> = Vec::new();
-    println!("      Vec::new() -> capacity={}, len={}\n", vec.capacity(), vec.len());
+    println!(
+        "      Vec::new() -> capacity={}, len={}\n",
+        vec.capacity(),
+        vec.len()
+    );
 
     println!("   Push elements:");
     vec.push(10);
@@ -38,7 +42,11 @@ fn main() {
     vec2.push(1);
     vec2.push(2);
     vec2.push(3);
-    println!("   After pushing 1, 2, 3: len={}, capacity={}\n", vec2.len(), vec2.capacity());
+    println!(
+        "   After pushing 1, 2, 3: len={}, capacity={}\n",
+        vec2.len(),
+        vec2.capacity()
+    );
 
     // Part 3: Clear and Truncate
     println!("3. CLEAR AND TRUNCATE\n");
@@ -55,7 +63,11 @@ fn main() {
     println!("   truncate(3): len={}", vec3.len());
 
     vec3.clear();
-    println!("   clear(): len={}, is_empty={}\n", vec3.len(), vec3.is_empty());
+    println!(
+        "   clear(): len={}, is_empty={}\n",
+        vec3.len(),
+        vec3.is_empty()
+    );
 
     // Summary
     println!("=== SUMMARY ===");

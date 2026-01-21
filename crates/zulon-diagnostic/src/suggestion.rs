@@ -18,11 +18,7 @@ pub struct Suggestion {
 
 impl Suggestion {
     /// Create a new suggestion
-    pub fn new(
-        message: impl Into<String>,
-        span: Span,
-        replacement: impl Into<String>,
-    ) -> Self {
+    pub fn new(message: impl Into<String>, span: Span, replacement: impl Into<String>) -> Self {
         Self {
             message: message.into(),
             span,

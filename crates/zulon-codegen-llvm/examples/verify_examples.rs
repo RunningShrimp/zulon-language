@@ -1,8 +1,8 @@
 // Verify which ZULON example programs can be compiled with current compiler
-use zulon_parser::Parser;
 use zulon_hir::lower_ast_simple;
-use zulon_mir::lower_hir;
 use zulon_lir::lower::LirLoweringContext;
+use zulon_mir::lower_hir;
+use zulon_parser::Parser;
 
 fn test_compile(source: &str, name: &str) -> Result<(), Box<dyn std::error::Error>> {
     println!("Testing: {}", name);

@@ -7,11 +7,11 @@
 //! enabling tasks to be woken up when I/O events occur.
 
 use crate::Executor;
-use zulon_async_futures::{Future, Poll, Context, Waker, RawWaker, RawWakerVTable};
 use std::collections::VecDeque;
-use std::sync::Arc;
-use std::sync::atomic::{AtomicUsize, Ordering};
 use std::os::unix::io::RawFd;
+use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::Arc;
+use zulon_async_futures::{Context, Future, Poll, RawWaker, RawWakerVTable, Waker};
 
 // We'll need event loop types from Phase 2.2
 // For now, we'll create a simplified version that demonstrates the concept
@@ -126,10 +126,7 @@ impl EventLoopExecutor {
             executor_ptr: std::ptr::null(), // Will be set during polling
         });
 
-        let raw_waker = RawWaker::new(
-            Arc::into_raw(data) as *const (),
-            &TASK_WAKER_VTABLE,
-        );
+        let raw_waker = RawWaker::new(Arc::into_raw(data) as *const (), &TASK_WAKER_VTABLE);
 
         unsafe { Waker::from_raw(raw_waker) }
     }

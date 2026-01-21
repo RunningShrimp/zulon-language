@@ -3,15 +3,15 @@
 
 //! Test simple loop compilation
 
-use std::io::Cursor;
 use std::fs;
+use std::io::Cursor;
 use std::process::Command;
 
-use zulon_parser::Parser;
-use zulon_hir::lower_ast_simple;
-use zulon_mir::lower_hir;
-use zulon_lir::lower::LirLoweringContext;
 use zulon_codegen_llvm::CodeGenerator;
+use zulon_hir::lower_ast_simple;
+use zulon_lir::lower::LirLoweringContext;
+use zulon_mir::lower_hir;
+use zulon_parser::Parser;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("🔍 Testing Simple Loop Compilation\n");
@@ -20,36 +20,38 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Parse
     let source = fs::read_to_string("test_simple_loop.zl")?;
     let mut parser = Parser::from_source(&source);
-    let ast = parser.parse()
-        .map_err(|e| format!("Parse error: {}", e))?;
+    let ast = parser.parse().map_err(|e| format!("Parse error: {}", e))?;
 
     println!("✅ 1. Parse successful");
 
     // HIR lowering
-    let hir = lower_ast_simple(&ast)
-        .map_err(|e| format!("HIR lowering error: {:?}", e))?;
+    let hir = lower_ast_simple(&ast).map_err(|e| format!("HIR lowering error: {:?}", e))?;
 
     println!("✅ 2. HIR lowering successful");
 
     // MIR lowering
-    let mir = lower_hir(&hir)
-        .map_err(|e| format!("MIR lowering error: {:?}", e))?;
+    let mir = lower_hir(&hir).map_err(|e| format!("MIR lowering error: {:?}", e))?;
 
     println!("✅ 3. MIR lowering successful");
 
     // LIR lowering
     let mut lir_ctx = LirLoweringContext::new();
-    let lir = lir_ctx.lower_body(&mir)
+    let lir = lir_ctx
+        .lower_body(&mir)
         .map_err(|e| format!("LIR lowering error: {:?}", e))?;
 
-    println!("✅ 4. LIR lowering successful ({} functions)", lir.functions.len());
+    println!(
+        "✅ 4. LIR lowering successful ({} functions)",
+        lir.functions.len()
+    );
 
     // LLVM code generation
     let mut buffer = Cursor::new(Vec::new());
     let mut codegen = CodeGenerator::new(&mut buffer);
 
     for func in &lir.functions {
-        codegen.generate_function(func)
+        codegen
+            .generate_function(func)
             .map_err(|e| format!("LLVM codegen error for function {}: {:?}", func.name, e))?;
     }
 

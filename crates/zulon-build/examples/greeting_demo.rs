@@ -44,7 +44,7 @@ fn main() {
         output: "greeting_demo".into(),
         keep_intermediates: true,
         target: None,
-        ..Default::default()  // Uses opt_level: 2 (-O2)
+        ..Default::default() // Uses opt_level: 2 (-O2)
     };
 
     println!("📦 Building executable...");

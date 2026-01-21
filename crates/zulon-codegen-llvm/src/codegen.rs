@@ -6,8 +6,8 @@
 //! Converts LIR to LLVM IR (text format).
 
 use crate::abi::{CallInfo, CallingConvention};
-use crate::error::{CodegenError, Result};
 use crate::enum_layout::{EnumLayout, EnumLayoutCache};
+use crate::error::{CodegenError, Result};
 use crate::layout::{LayoutCache, StructLayout};
 use crate::ty::LlvmType;
 use std::collections::HashMap;
@@ -114,7 +114,7 @@ impl<W: Write> CodeGenerator<W> {
         // Generate blocks
         self.indent += 1;
         let mut block_ids: Vec<_> = func.blocks.keys().copied().collect();
-        block_ids.sort();  // Generate in ID order for determinism
+        block_ids.sort(); // Generate in ID order for determinism
 
         for block_id in block_ids {
             if let Some(block) = func.blocks.get(&block_id) {
@@ -156,8 +156,13 @@ impl<W: Write> CodeGenerator<W> {
     /// Generate a basic block
     fn generate_block(&mut self, func: &LirFunction, block: &LirBlock) -> Result<()> {
         // Block label
-        writeln!(self.writer, "{}block{}:", "  ".repeat(self.indent), block.id)
-            .map_err(|e| CodegenError::InstructionError(format!("IO error: {}", e)))?;
+        writeln!(
+            self.writer,
+            "{}block{}:",
+            "  ".repeat(self.indent),
+            block.id
+        )
+        .map_err(|e| CodegenError::InstructionError(format!("IO error: {}", e)))?;
 
         self.indent += 1;
 
@@ -183,7 +188,14 @@ impl<W: Write> CodeGenerator<W> {
     /// Generate phi node
     fn generate_phi(&mut self, vreg: &zulon_lir::VReg, phi: &zulon_lir::LirPhi) -> Result<()> {
         let ty: LlvmType = phi.ty.clone().into();
-        write!(self.writer, "{}  %v{} = phi {}", "  ".repeat(self.indent), vreg, ty.to_llvm_ir()).unwrap();
+        write!(
+            self.writer,
+            "{}  %v{} = phi {}",
+            "  ".repeat(self.indent),
+            vreg,
+            ty.to_llvm_ir()
+        )
+        .unwrap();
 
         let mut sources = phi.sources.iter().peekable();
         while let Some((reg, block_id)) = sources.next() {
@@ -214,7 +226,7 @@ impl<W: Write> CodeGenerator<W> {
             }
 
             LirInstruction::Copy { dest, src, ty: _ } => {
-                let ty = LlvmType::Integer(32);  // Placeholder
+                let ty = LlvmType::Integer(32); // Placeholder
                 writeln!(
                     self.writer,
                     "{}  %v{} = add {} %v{}, 0",
@@ -222,14 +234,26 @@ impl<W: Write> CodeGenerator<W> {
                     dest,
                     ty.to_llvm_ir(),
                     src
-                ).unwrap();
+                )
+                .unwrap();
             }
 
-            LirInstruction::BinaryOp { dest, op, left, right, ty } => {
+            LirInstruction::BinaryOp {
+                dest,
+                op,
+                left,
+                right,
+                ty,
+            } => {
                 self.generate_binary_op(*dest, op, *left, *right, ty)?;
             }
 
-            LirInstruction::UnaryOp { dest, op, operand, ty } => {
+            LirInstruction::UnaryOp {
+                dest,
+                op,
+                operand,
+                ty,
+            } => {
                 self.generate_unary_op(*dest, op, *operand, ty)?;
             }
 
@@ -241,26 +265,52 @@ impl<W: Write> CodeGenerator<W> {
                 self.generate_store(dest, *src, ty)?;
             }
 
-            LirInstruction::Gep { dest, base, indices, ty } => {
+            LirInstruction::Gep {
+                dest,
+                base,
+                indices,
+                ty,
+            } => {
                 self.generate_gep(*dest, *base, indices, ty)?;
             }
 
-            LirInstruction::Call { dest, func: _func_vreg, args, return_type } => {
+            LirInstruction::Call {
+                dest,
+                func: _func_vreg,
+                args,
+                return_type,
+            } => {
                 // Placeholder: use function name "unknown"
                 self.generate_call(*dest, "unknown", args, return_type, &[])?;
             }
 
-            LirInstruction::CallExternal { dest, func_name, args, arg_types, return_type } => {
+            LirInstruction::CallExternal {
+                dest,
+                func_name,
+                args,
+                arg_types,
+                return_type,
+            } => {
                 self.generate_call(*dest, func_name, args, return_type, arg_types)?;
             }
 
-            LirInstruction::Cmp { dest, op, left, right } => {
+            LirInstruction::Cmp {
+                dest,
+                op,
+                left,
+                right,
+            } => {
                 // Assume i32 for now
                 let ty = zulon_lir::LirTy::I32;
                 self.generate_cmp(*dest, op, *left, *right, &ty)?;
             }
 
-            LirInstruction::Cast { dest, src, from, to } => {
+            LirInstruction::Cast {
+                dest,
+                src,
+                from,
+                to,
+            } => {
                 self.generate_cast(*dest, *src, from, to)?;
             }
 
@@ -293,15 +343,20 @@ impl<W: Write> CodeGenerator<W> {
             "  ".repeat(self.indent),
             alloca.dest,
             type_str
-        ).map_err(|e| CodegenError::InstructionError(format!("IO error: {}", e)))?;
+        )
+        .map_err(|e| CodegenError::InstructionError(format!("IO error: {}", e)))?;
 
         Ok(())
     }
 
     /// Generate constant instruction
-    fn generate_const(&mut self, dest: zulon_lir::VReg, value: &zulon_lir::LirConstant, ty: &zulon_lir::LirTy) -> Result<()> {
+    fn generate_const(
+        &mut self,
+        dest: zulon_lir::VReg,
+        value: &zulon_lir::LirConstant,
+        ty: &zulon_lir::LirTy,
+    ) -> Result<()> {
         let llvm_ty: LlvmType = ty.clone().into();
-
 
         match value {
             zulon_lir::LirConstant::Integer(val) => {
@@ -313,7 +368,8 @@ impl<W: Write> CodeGenerator<W> {
                         dest,
                         llvm_ty.to_llvm_ir(),
                         val
-                    ).unwrap();
+                    )
+                    .unwrap();
                 } else {
                     writeln!(
                         self.writer,
@@ -322,7 +378,8 @@ impl<W: Write> CodeGenerator<W> {
                         dest,
                         llvm_ty.to_llvm_ir(),
                         val
-                    ).unwrap();
+                    )
+                    .unwrap();
                 }
             }
 
@@ -334,7 +391,8 @@ impl<W: Write> CodeGenerator<W> {
                     dest,
                     llvm_ty.to_llvm_ir(),
                     val
-                ).unwrap();
+                )
+                .unwrap();
             }
 
             zulon_lir::LirConstant::String(_s) => {
@@ -352,7 +410,8 @@ impl<W: Write> CodeGenerator<W> {
                     dest,
                     str_len,
                     global_name
-                ).unwrap();
+                )
+                .unwrap();
             }
 
             zulon_lir::LirConstant::Bool(val) => {
@@ -363,11 +422,19 @@ impl<W: Write> CodeGenerator<W> {
                     dest,
                     llvm_ty.to_llvm_ir(),
                     if *val { 1 } else { 0 }
-                ).unwrap();
+                )
+                .unwrap();
             }
 
             zulon_lir::LirConstant::Unit => {
-                writeln!(self.writer, "{}  %v{} = add {} 0, 0", "  ".repeat(self.indent), dest, llvm_ty.to_llvm_ir()).unwrap();
+                writeln!(
+                    self.writer,
+                    "{}  %v{} = add {} 0, 0",
+                    "  ".repeat(self.indent),
+                    dest,
+                    llvm_ty.to_llvm_ir()
+                )
+                .unwrap();
             }
         }
 
@@ -437,7 +504,8 @@ impl<W: Write> CodeGenerator<W> {
                 llvm_ty.to_llvm_ir(),
                 left,
                 right
-            ).unwrap();
+            )
+            .unwrap();
         } else {
             writeln!(
                 self.writer,
@@ -448,7 +516,8 @@ impl<W: Write> CodeGenerator<W> {
                 llvm_ty.to_llvm_ir(),
                 left,
                 right
-            ).unwrap();
+            )
+            .unwrap();
         }
 
         Ok(())
@@ -474,7 +543,8 @@ impl<W: Write> CodeGenerator<W> {
                         dest,
                         llvm_ty.to_llvm_ir(),
                         operand
-                    ).unwrap();
+                    )
+                    .unwrap();
                 } else {
                     writeln!(
                         self.writer,
@@ -483,7 +553,8 @@ impl<W: Write> CodeGenerator<W> {
                         dest,
                         llvm_ty.to_llvm_ir(),
                         operand
-                    ).unwrap();
+                    )
+                    .unwrap();
                 }
             }
 
@@ -495,7 +566,8 @@ impl<W: Write> CodeGenerator<W> {
                     dest,
                     llvm_ty.to_llvm_ir(),
                     operand
-                ).unwrap();
+                )
+                .unwrap();
             }
         }
 
@@ -527,7 +599,8 @@ impl<W: Write> CodeGenerator<W> {
             type_str,
             type_str,
             src_str
-        ).unwrap();
+        )
+        .unwrap();
 
         Ok(())
     }
@@ -557,7 +630,8 @@ impl<W: Write> CodeGenerator<W> {
             src,
             type_str,
             dest_str
-        ).unwrap();
+        )
+        .unwrap();
 
         Ok(())
     }
@@ -611,7 +685,8 @@ impl<W: Write> CodeGenerator<W> {
             base_type,
             base,
             indices_str.join(", ")
-        ).unwrap();
+        )
+        .unwrap();
 
         Ok(())
     }
@@ -629,16 +704,20 @@ impl<W: Write> CodeGenerator<W> {
 
         // Format arguments with types
         // Add 'noundef' attribute for better optimization (matches Clang behavior)
-        let args_str: Vec<String> = args.iter().enumerate().map(|(i, &arg_reg)| {
-            if i < arg_types.len() {
-                let arg_ty: LlvmType = arg_types[i].clone().into();
-                // Add noundef for all arguments (matches Clang's output for externals)
-                format!("{} noundef %v{}", arg_ty.to_llvm_ir(), arg_reg)
-            } else {
-                // Default to i32 if no type info
-                format!("i32 noundef %v{}", arg_reg)
-            }
-        }).collect();
+        let args_str: Vec<String> = args
+            .iter()
+            .enumerate()
+            .map(|(i, &arg_reg)| {
+                if i < arg_types.len() {
+                    let arg_ty: LlvmType = arg_types[i].clone().into();
+                    // Add noundef for all arguments (matches Clang's output for externals)
+                    format!("{} noundef %v{}", arg_ty.to_llvm_ir(), arg_reg)
+                } else {
+                    // Default to i32 if no type info
+                    format!("i32 noundef %v{}", arg_reg)
+                }
+            })
+            .collect();
 
         // Use to_llvm_ref() for struct types (definition vs reference)
         // Struct types need just the name when used as return type, not the full definition
@@ -655,7 +734,8 @@ impl<W: Write> CodeGenerator<W> {
             // For variadic functions like printf, the format string is the only fixed parameter
             // The number of fixed parameters equals param_types.len() (excluding variable args)
             let fixed_count = self.get_external_fixed_param_count(func_name);
-            let fixed_types: Vec<String> = arg_types.iter()
+            let fixed_types: Vec<String> = arg_types
+                .iter()
                 .take(fixed_count)
                 .map(|ty| {
                     let llvm_ty: LlvmType = ty.clone().into();
@@ -665,14 +745,22 @@ impl<W: Write> CodeGenerator<W> {
             (fixed_types, ", ...")
         } else {
             // For regular functions, include all parameter types
-            let all_types: Vec<String> = arg_types.iter().map(|ty| {
-                let llvm_ty: LlvmType = ty.clone().into();
-                llvm_ty.to_llvm_ir()
-            }).collect();
+            let all_types: Vec<String> = arg_types
+                .iter()
+                .map(|ty| {
+                    let llvm_ty: LlvmType = ty.clone().into();
+                    llvm_ty.to_llvm_ir()
+                })
+                .collect();
             (all_types, "")
         };
 
-        let func_type = format!("{} ({}{})", return_type_str, arg_types_str.join(", "), variadic_suffix);
+        let func_type = format!(
+            "{} ({}{})",
+            return_type_str,
+            arg_types_str.join(", "),
+            variadic_suffix
+        );
 
         if let Some(dest_vreg) = dest {
             writeln!(
@@ -683,7 +771,8 @@ impl<W: Write> CodeGenerator<W> {
                 func_type,
                 func_name,
                 args_str.join(", ")
-            ).unwrap();
+            )
+            .unwrap();
         } else {
             writeln!(
                 self.writer,
@@ -692,7 +781,8 @@ impl<W: Write> CodeGenerator<W> {
                 func_type,
                 func_name,
                 args_str.join(", ")
-            ).unwrap();
+            )
+            .unwrap();
         }
 
         Ok(())
@@ -702,11 +792,9 @@ impl<W: Write> CodeGenerator<W> {
     fn is_external_variadic(&self, func_name: &str) -> bool {
         // Known variadic functions from C standard library
         match func_name {
-            "printf" | "scanf" | "sprintf" | "sscanf" |
-            "fprintf" | "fscanf" | "vprintf" | "vscanf" |
-            "vsprintf" | "vsscanf" | "vfprintf" | "vfscanf" |
-            "open" | "ioctl" | "execl" | "execlp" | "execle" |
-            "execv" | "execvp" | "execvpe" | "fcntl" => true,
+            "printf" | "scanf" | "sprintf" | "sscanf" | "fprintf" | "fscanf" | "vprintf"
+            | "vscanf" | "vsprintf" | "vsscanf" | "vfprintf" | "vfscanf" | "open" | "ioctl"
+            | "execl" | "execlp" | "execle" | "execv" | "execvp" | "execvpe" | "fcntl" => true,
             _ => false,
         }
     }
@@ -723,10 +811,10 @@ impl<W: Write> CodeGenerator<W> {
             "sprintf" | "vsprintf" => 2,
             "scanf" | "sscanf" | "vscanf" | "vsscanf" => 2,
             "fprintf" | "fscanf" | "vfprintf" | "vfscanf" => 2,
-            "open" => 2,  // pathname, flags (mode is variable for O_CREAT)
+            "open" => 2, // pathname, flags (mode is variable for O_CREAT)
             "ioctl" | "execl" | "execlp" | "execle" | "fcntl" => 2,
             "execv" | "execvp" | "execvpe" => 2,
-            _ => 0,  // Default: assume no fixed parameters
+            _ => 0, // Default: assume no fixed parameters
         }
     }
 
@@ -752,7 +840,8 @@ impl<W: Write> CodeGenerator<W> {
                 llvm_ty.to_llvm_ir(),
                 left,
                 right
-            ).unwrap();
+            )
+            .unwrap();
         } else {
             writeln!(
                 self.writer,
@@ -763,7 +852,8 @@ impl<W: Write> CodeGenerator<W> {
                 llvm_ty.to_llvm_ir(),
                 left,
                 right
-            ).unwrap();
+            )
+            .unwrap();
         }
 
         Ok(())
@@ -792,7 +882,8 @@ impl<W: Write> CodeGenerator<W> {
             from_llvm.to_llvm_ir(),
             src,
             to_llvm.to_llvm_ir()
-        ).unwrap();
+        )
+        .unwrap();
 
         Ok(())
     }
@@ -805,7 +896,8 @@ impl<W: Write> CodeGenerator<W> {
             "{}  call void @zulon_ref_inc(i8* %v{})",
             "  ".repeat(self.indent),
             ptr
-        ).unwrap();
+        )
+        .unwrap();
         Ok(())
     }
 
@@ -817,7 +909,8 @@ impl<W: Write> CodeGenerator<W> {
             "{}  call void @zulon_ref_dec(i8* %v{})",
             "  ".repeat(self.indent),
             ptr
-        ).unwrap();
+        )
+        .unwrap();
         Ok(())
     }
 
@@ -831,7 +924,11 @@ impl<W: Write> CodeGenerator<W> {
     }
 
     /// Generate terminator
-    fn generate_terminator(&mut self, func: &LirFunction, terminator: &LirTerminator) -> Result<()> {
+    fn generate_terminator(
+        &mut self,
+        func: &LirFunction,
+        terminator: &LirTerminator,
+    ) -> Result<()> {
         match terminator {
             LirTerminator::Return(value) => {
                 let ret_ty: LlvmType = func.return_type.clone().into();
@@ -857,7 +954,8 @@ impl<W: Write> CodeGenerator<W> {
                             "  ".repeat(self.indent),
                             ret_ty.to_llvm_ir(),
                             vreg
-                        ).unwrap();
+                        )
+                        .unwrap();
                     }
                 } else {
                     // Return without value
@@ -872,7 +970,8 @@ impl<W: Write> CodeGenerator<W> {
                             "{}  ret {} 0",
                             "  ".repeat(self.indent),
                             ret_ty.to_llvm_ir()
-                        ).unwrap();
+                        )
+                        .unwrap();
                     }
                 }
             }
@@ -891,7 +990,9 @@ impl<W: Write> CodeGenerator<W> {
                     self.generate_error_return(*error_vreg, &ret_ty)?;
                 } else {
                     // This shouldn't happen - throw without error type
-                    return Err(CodegenError::FunctionError("Throw terminator in non-error function".to_string()));
+                    return Err(CodegenError::FunctionError(
+                        "Throw terminator in non-error function".to_string(),
+                    ));
                 }
             }
 
@@ -901,10 +1002,15 @@ impl<W: Write> CodeGenerator<W> {
                     "{}  br label %block{}",
                     "  ".repeat(self.indent),
                     target
-                ).unwrap();
+                )
+                .unwrap();
             }
 
-            LirTerminator::Branch { condition, then_block, else_block } => {
+            LirTerminator::Branch {
+                condition,
+                then_block,
+                else_block,
+            } => {
                 writeln!(
                     self.writer,
                     "{}  br i1 %v{}, label %block{}, label %block{}",
@@ -912,17 +1018,23 @@ impl<W: Write> CodeGenerator<W> {
                     condition,
                     then_block,
                     else_block
-                ).unwrap();
+                )
+                .unwrap();
             }
 
-            LirTerminator::Switch { scrutinee, targets, default } => {
+            LirTerminator::Switch {
+                scrutinee,
+                targets,
+                default,
+            } => {
                 writeln!(
                     self.writer,
                     "{}  switch i32 %v{}, label %block{} [",
                     "  ".repeat(self.indent),
                     scrutinee,
                     default
-                ).unwrap();
+                )
+                .unwrap();
 
                 self.indent += 1;
                 for (val, block) in targets {
@@ -932,7 +1044,8 @@ impl<W: Write> CodeGenerator<W> {
                         "  ".repeat(self.indent),
                         val,
                         block
-                    ).unwrap();
+                    )
+                    .unwrap();
                 }
                 self.indent -= 1;
 
@@ -974,7 +1087,11 @@ impl<W: Write> CodeGenerator<W> {
     }
 
     /// Convert comparison operation to LLVM IR
-    fn cmp_op_to_llvm(&self, op: &zulon_lir::LirCmpOp, is_float: bool) -> Result<(&'static str, bool)> {
+    fn cmp_op_to_llvm(
+        &self,
+        op: &zulon_lir::LirCmpOp,
+        is_float: bool,
+    ) -> Result<(&'static str, bool)> {
         match (op, is_float) {
             // Integer comparisons
             (zulon_lir::LirCmpOp::Eq, false) => Ok(("eq", false)),
@@ -1097,15 +1214,19 @@ impl<W: Write> CodeGenerator<W> {
     fn generate_external_decl(&mut self, external: &zulon_lir::LirExternal) -> Result<()> {
         let return_llvm_ty: LlvmType = external.return_type.clone().into();
 
-        write!(self.writer, "declare {} @{}(",
+        write!(
+            self.writer,
+            "declare {} @{}(",
             return_llvm_ty.to_llvm_ir(),
             external.name
-        ).map_err(|e| CodegenError::InstructionError(format!("IO error: {}", e)))?;
+        )
+        .map_err(|e| CodegenError::InstructionError(format!("IO error: {}", e)))?;
 
         // Parameter types with noundef attribute (matches Clang)
         for (i, param_ty) in external.param_types.iter().enumerate() {
             if i > 0 {
-                write!(self.writer, ", ").map_err(|e| CodegenError::InstructionError(format!("IO error: {}", e)))?;
+                write!(self.writer, ", ")
+                    .map_err(|e| CodegenError::InstructionError(format!("IO error: {}", e)))?;
             }
             let llvm_ty: LlvmType = param_ty.clone().into();
             write!(self.writer, "{} noundef", llvm_ty.to_llvm_ir())
@@ -1114,7 +1235,8 @@ impl<W: Write> CodeGenerator<W> {
 
         // Add "..." for variadic functions
         if external.variadic {
-            write!(self.writer, ", ...").map_err(|e| CodegenError::InstructionError(format!("IO error: {}", e)))?;
+            write!(self.writer, ", ...")
+                .map_err(|e| CodegenError::InstructionError(format!("IO error: {}", e)))?;
         }
 
         writeln!(self.writer, ")")
@@ -1183,7 +1305,12 @@ impl<W: Write> CodeGenerator<W> {
         // Scan all instructions to find allocations
         for block in func.blocks.values() {
             for instr in &block.instructions {
-                if let LirInstruction::Load { dest: _, src: _, ty } = instr {
+                if let LirInstruction::Load {
+                    dest: _,
+                    src: _,
+                    ty,
+                } = instr
+                {
                     // Simplified: assume each local needs stack space
                     // Real implementation would do liveness analysis
                     total_size += ty.size() as i64;
@@ -1239,7 +1366,8 @@ impl<W: Write> CodeGenerator<W> {
             "  ".repeat(self.indent),
             outcome_reg,
             type_ref
-        ).unwrap();
+        )
+        .unwrap();
 
         // Step 2: Get pointer to discriminant field (field 0)
         writeln!(
@@ -1249,7 +1377,8 @@ impl<W: Write> CodeGenerator<W> {
             disc_ptr_reg,
             type_ref,
             outcome_reg
-        ).unwrap();
+        )
+        .unwrap();
 
         // Step 3: Store discriminant value = 1 (Err variant)
         writeln!(
@@ -1257,7 +1386,8 @@ impl<W: Write> CodeGenerator<W> {
             "{}  store i32 1, ptr %v{}",
             "  ".repeat(self.indent),
             disc_ptr_reg
-        ).unwrap();
+        )
+        .unwrap();
 
         // Step 4: Get pointer to data field (field 1)
         writeln!(
@@ -1267,7 +1397,8 @@ impl<W: Write> CodeGenerator<W> {
             data_ptr_reg,
             type_ref,
             outcome_reg
-        ).unwrap();
+        )
+        .unwrap();
 
         // Step 5: Store error value in data field
         // Store the error value directly (error_vreg is the actual value, not a pointer)
@@ -1277,7 +1408,8 @@ impl<W: Write> CodeGenerator<W> {
             "  ".repeat(self.indent),
             error_vreg,
             data_ptr_reg
-        ).unwrap();
+        )
+        .unwrap();
 
         // Step 6: Load the entire Outcome and return it
         writeln!(
@@ -1287,7 +1419,8 @@ impl<W: Write> CodeGenerator<W> {
             outcome_loaded_reg,
             type_ref,
             outcome_reg
-        ).unwrap();
+        )
+        .unwrap();
 
         // Return the constructed Outcome::Err
         writeln!(
@@ -1296,7 +1429,8 @@ impl<W: Write> CodeGenerator<W> {
             "  ".repeat(self.indent),
             type_ref,
             outcome_loaded_reg
-        ).unwrap();
+        )
+        .unwrap();
 
         Ok(())
     }
@@ -1309,11 +1443,7 @@ impl<W: Write> CodeGenerator<W> {
     /// Outcome layout: { i32 discriminant, <ok_type> data }
     /// - discriminant = 0 for Ok, 1 for Err
     /// - data field contains the actual value
-    fn generate_ok_return(
-        &mut self,
-        value_vreg: zulon_lir::VReg,
-        ret_ty: &LlvmType,
-    ) -> Result<()> {
+    fn generate_ok_return(&mut self, value_vreg: zulon_lir::VReg, ret_ty: &LlvmType) -> Result<()> {
         // Use struct reference for all struct type operations
         let type_ref = ret_ty.to_llvm_ref();
 
@@ -1334,7 +1464,8 @@ impl<W: Write> CodeGenerator<W> {
             "  ".repeat(self.indent),
             outcome_reg,
             type_ref
-        ).unwrap();
+        )
+        .unwrap();
 
         // Step 2: Get pointer to discriminant field (field 0)
         writeln!(
@@ -1344,7 +1475,8 @@ impl<W: Write> CodeGenerator<W> {
             disc_ptr_reg,
             type_ref,
             outcome_reg
-        ).unwrap();
+        )
+        .unwrap();
 
         // Step 3: Store discriminant value = 0 (Ok variant)
         writeln!(
@@ -1352,7 +1484,8 @@ impl<W: Write> CodeGenerator<W> {
             "{}  store i32 0, ptr %v{}",
             "  ".repeat(self.indent),
             disc_ptr_reg
-        ).unwrap();
+        )
+        .unwrap();
 
         // Step 4: Get pointer to data field (field 1)
         writeln!(
@@ -1362,7 +1495,8 @@ impl<W: Write> CodeGenerator<W> {
             data_ptr_reg,
             type_ref,
             outcome_reg
-        ).unwrap();
+        )
+        .unwrap();
 
         // Step 5: Store the actual value directly in data field
         // Note: value_vreg is the actual computed value (e.g., result of sdiv)
@@ -1372,7 +1506,8 @@ impl<W: Write> CodeGenerator<W> {
             "  ".repeat(self.indent),
             value_vreg,
             data_ptr_reg
-        ).unwrap();
+        )
+        .unwrap();
 
         // Step 6: Load the entire Outcome and return it
         writeln!(
@@ -1382,7 +1517,8 @@ impl<W: Write> CodeGenerator<W> {
             outcome_loaded_reg,
             type_ref,
             outcome_reg
-        ).unwrap();
+        )
+        .unwrap();
 
         // Return the constructed Outcome::Ok
         writeln!(
@@ -1391,7 +1527,8 @@ impl<W: Write> CodeGenerator<W> {
             "  ".repeat(self.indent),
             type_ref,
             outcome_loaded_reg
-        ).unwrap();
+        )
+        .unwrap();
 
         Ok(())
     }
@@ -1438,27 +1575,28 @@ fn get_datalayout() -> String {
     // Detect host architecture and return appropriate datalayout
     // These match Clang's default datalayouts for each platform
     match std::env::consts::ARCH {
-        "x86_64" => {
-            match std::env::consts::OS {
-                "linux" => "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-i128:128-f80:128-n8:16:32:64-S128".to_string(),
-                "macos" => "e-m:o-p270:32:32-p271:32:32-p272:64:64-i64:64-i128:128-n32:64-S128-Fn32".to_string(),
-                _ => "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-i128:128-f80:128-n8:16:32:64-S128".to_string(),
+        "x86_64" => match std::env::consts::OS {
+            "linux" => {
+                "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-i128:128-f80:128-n8:16:32:64-S128"
+                    .to_string()
             }
-        }
-        "aarch64" => {
-            match std::env::consts::OS {
-                "linux" => "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-i128:128-n8:16:32:64-S128".to_string(),
-                "macos" => "e-m:o-p270:32:32-p271:32:32-p272:64:64-i64:64-i128:128-n32:64-S128-Fn32".to_string(),
-                _ => "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-i128:128-n8:16:32:64-S128".to_string(),
-            }
-        }
-        "riscv64" => {
-            "e-m:e-p:64:64-i64:64-i128:128-n32:64-S128".to_string()
-        }
+            "macos" => "e-m:o-p270:32:32-p271:32:32-p272:64:64-i64:64-i128:128-n32:64-S128-Fn32"
+                .to_string(),
+            _ => "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-i128:128-f80:128-n8:16:32:64-S128"
+                .to_string(),
+        },
+        "aarch64" => match std::env::consts::OS {
+            "linux" => "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-i128:128-n8:16:32:64-S128"
+                .to_string(),
+            "macos" => "e-m:o-p270:32:32-p271:32:32-p272:64:64-i64:64-i128:128-n32:64-S128-Fn32"
+                .to_string(),
+            _ => "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-i128:128-n8:16:32:64-S128"
+                .to_string(),
+        },
+        "riscv64" => "e-m:e-p:64:64-i64:64-i128:128-n32:64-S128".to_string(),
         _ => {
             // Default generic datalayout
             "e-m:e-p:64:64-i64:64-i128:128-n32:64-S128".to_string()
         }
     }
 }
-
